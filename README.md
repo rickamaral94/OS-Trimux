@@ -140,7 +140,7 @@ executa o mesmo processo e publica a imagem como artefato.
 
 ## Testes
 
-* 148 verificações unitárias em C (com AddressSanitizer/UBSan).
+* 166 verificações unitárias em C (com AddressSanitizer/UBSan).
 * Testes Python: `trimuxctl` contra um Brick Pro simulado, scripts de boot com
   comandos do firmware simulados, imagem/partição/expansão em arquivos de
   imagem, catálogo e traduções, e o menu com entradas roteirizadas.

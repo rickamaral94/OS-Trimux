@@ -20,7 +20,7 @@ Como rodar: `make test` (A + partes S que não exigem Docker),
 
 | Conjunto | Categoria | Resultado |
 |---|---|---|
-| `tests/unit/test_core.c` — 148 verificações (INI, gravação atômica, caminhos, idiomas, catálogo, varredura da biblioteca, `.m3u`, índice, favoritos/recentes, perfis de energia, LEDs, proteção térmica, validação do pedido de lançamento, migração de configurações, sysinfo), com ASan/UBSan | A | **passou** |
+| `tests/unit/test_core.c` — 166 verificações (INI, gravação atômica, caminhos, idiomas, catálogo, varredura da biblioteca, `.m3u`, índice, favoritos/recentes, perfis de energia, LEDs, proteção térmica, validação do pedido de lançamento, migração de configurações, sysinfo), com ASan/UBSan | A | **passou** |
 | `tests/py/test_ctl.py` — `trimuxctl` com Brick Pro simulado: perfis ≤ 1,8 GHz e sem governador `performance`, arquivos térmicos intocados, LEDs só quando ativados, contador de boot/modo seguro, varredura | A/S | **passou** |
 | `tests/py/test_supervisor.py` — scripts de boot com comandos do firmware simulados: port `.sh` roda da própria pasta com limite de energia e scripts auxiliares não aparecem; modelo errado → oficial, laço de falhas → oficial, modo seguro, lançamento aplica limite **antes** do emulador e restaura depois, perfil automático por emulador, pedido adulterado recusado, desligar, `preload.sh`, guarda de reinício do `MainUI`, POSIX/LF/`sh -n` | S | **passou** |
 | `tests/py/test_image.py` — imagem: MBR, partição 0x0C em 2048, área de boot zerada (sem `eGON.BT0`), FAT32 válido (`fsck.fat`), nomes longos; expansão para cartão de 8 GiB com `fsck` limpo e escrita de 200 MB no espaço novo; recusa de cartões com 2 partições ou sem FAT; limite de 1 TiB; imagem final sem ROMs/BIOS/firmware | A (contêiner) | **passou** |
