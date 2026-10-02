@@ -21,6 +21,7 @@
 #include "../core/library.h"
 #include "../core/log.h"
 #include "../core/net.h"
+#include "../core/perf.h"
 #include "../core/paths.h"
 #include "../core/power.h"
 #include "../core/sysinfo.h"
@@ -48,6 +49,10 @@ static void open_log(void)
         tm_log_init(log, 256 * 1024, "ctl");
     else
         tm_log_init(NULL, 0, "ctl");
+    TmIni ini; /* [diag] verbose: detailed log, chosen in the menu */
+    if (tm_settings_load(&ini, &P) == 0 && tm_ini_get_long(&ini, "diag", "verbose", 0))
+        tm_log_set_level(TM_LOG_DEBUG);
+    tm_ini_free(&ini);
 }
 
 static int load_catalog(TmCatalog *cat)
@@ -261,8 +266,22 @@ static const TmPowerProfile *switch_profile(TmSwitchAction sw, const TmPowerProf
 }
 
 /* Runs RetroArch once and supervises temperature until it exits. */
+/* One performance sample (only when the log is on). */
+static void perf_sample(TmPerf *perf, TmPowerCaps *caps, int have_power, const char *profile)
+{
+    if (!perf)
+        return;
+    long cur = -1, mx = -1;
+    int bat = -1, chg = -1;
+    if (have_power)
+        tm_power_read(caps, &cur, NULL, &mx, NULL, 0);
+    tm_battery_read(&bat, &chg);
+    tm_perf_sample(perf, tm_now_ms(), cur, mx, caps->has_temp ? tm_power_temp_mc(caps) : -1, bat, chg, profile);
+}
+
 static int run_retroarch(const char *ra, const char *cfg, const char *append, const TmLaunch *l, TmPowerCaps *caps,
-                         int have_power, int guard_on, const TmPowerProfile *prof, uint64_t *elapsed_ms)
+                         int have_power, int guard_on, const TmPowerProfile *prof, uint64_t *elapsed_ms,
+                         TmPerf *perf)
 {
     uint64_t t0 = tm_now_ms();
     pid_t pid = fork();
@@ -306,6 +325,7 @@ static int run_retroarch(const char *ra, const char *cfg, const char *append, co
     const TmPowerProfile *economy = tm_power_profile("economy");
     TmSwitchAction sw = tm_switch_active(&ini);
     int status = 0, tick = 0;
+    perf_sample(perf, caps, have_power, switch_profile(sw, prof)->id);
     for (;;) {
         pid_t w = waitpid(pid, &status, WNOHANG);
         if (w == pid || (w < 0 && errno != EINTR))
@@ -324,10 +344,13 @@ static int run_retroarch(const char *ra, const char *cfg, const char *append, co
         tick = 0; /* every 10 s: temperature and CPU limit enforcement */
         /* thermal protection wins over everything, including boost */
         const TmPowerProfile *want = g.throttled ? economy : switch_profile(sw, prof);
+        perf_sample(perf, caps, have_power, want->id);
         if (guard_on) {
             long t = tm_power_temp_mc(caps);
             int act = tm_thermal_step(&g, t);
             if (act == TM_THERMAL_THROTTLE && have_power) {
+                if (perf)
+                    tm_perf_throttled(perf);
                 LOGW("thermal: %ld mC sustained, limiting to economy", t);
                 tm_power_apply(caps, economy);
                 continue;
@@ -369,14 +392,26 @@ static int cmd_launch(void)
     }
     TmIni ini;
     tm_settings_load(&ini, &P);
-    char extra[1024], cheevos[640];
+    char extra[2048], cheevos[640];
     int len = snprintf(extra, sizeof extra, "user_language = \"%d\"",
                        tm_ra_language(tm_ini_get(&ini, "general", "language", "pt_BR")));
     /* RetroAchievements login (lines written only to the RAM config) */
     if (tm_cheevos_cfg(&ini, cheevos, sizeof cheevos) != 0)
         LOGW("launch: RetroAchievements account has unsupported characters, ignored");
     else if (cheevos[0] && len > 0 && (size_t)len < sizeof extra)
-        snprintf(extra + len, sizeof extra - (size_t)len, "\n%s", cheevos);
+        len += snprintf(extra + len, sizeof extra - (size_t)len, "\n%s", cheevos);
+    /* Settings > System > Logs: FPS on screen and RetroArch's own log file
+     * (overwritten on every game, so it never grows across sessions) */
+    if (tm_ini_get_long(&ini, "diag", "show_fps", 0) && len > 0 && (size_t)len < sizeof extra)
+        len += snprintf(extra + len, sizeof extra - (size_t)len, "\nfps_show = \"true\"");
+    char ralog[TM_PATH_MAX];
+    if (tm_ini_get_long(&ini, "diag", "retroarch_log", 0) && tm_path_join(ralog, sizeof ralog, P.logdir, "retroarch") == 0 &&
+        !strchr(ralog, '"') && tm_mkdir_p(ralog) == 0 && len > 0 && (size_t)len < sizeof extra)
+        len += snprintf(extra + len, sizeof extra - (size_t)len,
+                        "\nlog_verbosity = \"true\"\nlog_to_file = \"true\"\nlog_to_file_timestamp = \"false\"\n"
+                        "frontend_log_level = \"1\"\nlibretro_log_level = \"1\"\nlog_dir = \"%s\"",
+                        ralog);
+    int perf_on = (int)tm_ini_get_long(&ini, "diag", "perf", 0);
     char ra[TM_PATH_MAX], cfg[TM_PATH_MAX], append[TM_PATH_MAX], cache[TM_PATH_MAX];
     tm_path_join(ra, sizeof ra, P.retroarch, "retroarch");
     tm_path_join(cache, sizeof cache, P.tmp, "cache"); /* RetroArch archive extraction, in RAM */
@@ -403,19 +438,30 @@ static int cmd_launch(void)
     tm_path_join(marker, sizeof marker, P.state, "in_game");
     tm_atomic_write(marker, l.rom_rel, strlen(l.rom_rel));
 
+    TmPerf perf_s, *perf = NULL;
+    if (perf_on) {
+        if (tm_perf_open(&perf_s, P.logdir, l.system->id, l.emu->id, l.rom_rel, prof->id) == 0)
+            perf = &perf_s;
+        else
+            LOGW("perf: could not create the performance log");
+    }
     uint64_t elapsed = 0;
-    int code = run_retroarch(ra, cfg, append, &l, &caps, have_power, guard_on, prof, &elapsed);
+    int code = run_retroarch(ra, cfg, append, &l, &caps, have_power, guard_on, prof, &elapsed, perf);
     if (code != 0 && elapsed < 5000 && strcmp(l.emu->type, "retroarch") == 0) {
         /* Failed right away: retry once with RetroArch's SDL2 renderer, in
          * case the GLES context could not be created on this firmware. */
         LOGW("launch: RetroArch failed in %llu ms (status %d); retrying with video_driver=sdl2",
              (unsigned long long)elapsed, code);
-        char extra2[1100];
+        char extra2[2100];
         snprintf(extra2, sizeof extra2, "%s\nvideo_driver = \"sdl2\"", extra);
         if (tm_launch_write_ra_append(&P, &l, extra2, append, sizeof append) == 0)
-            code = run_retroarch(ra, cfg, append, &l, &caps, have_power, guard_on, prof, &elapsed);
+            code = run_retroarch(ra, cfg, append, &l, &caps, have_power, guard_on, prof, &elapsed, perf);
     }
     unlink(marker);
+    if (perf) {
+        perf_sample(perf, &caps, have_power, NULL);
+        tm_perf_close(perf, tm_now_ms(), code);
+    }
     if (have_power) { /* menu profile, still honouring the side switch */
         TmIni after;
         tm_settings_load(&after, &P);

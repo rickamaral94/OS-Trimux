@@ -272,3 +272,33 @@ def test_supervisor_applies_network_settings(rig, env):
             break
         time.sleep(0.1)
     assert "sshd stop" in read(log)
+
+
+def test_performance_log_and_retroarch_diagnostics(rig):
+    os.makedirs(rig["tmp"], exist_ok=True)
+    req = "[launch]\nsystem = GBA\nrom = Roms/GBA/Celeste Classic (World).gba\nemulator = gpsp\n"
+    cfg = os.path.join(rig["card"], "TriMuxData/config/trimux.ini")
+    perf = os.path.join(rig["card"], "TriMuxData/logs/perf")
+    # off by default: nothing written, no extra RetroArch options
+    write(os.path.join(rig["tmp"], "launch.ini"), req)
+    scripted_ui(rig, [10, 20])
+    run_supervisor(rig)
+    app = read(os.path.join(rig["dir"], "ra_append"))
+    assert not os.path.exists(perf) and "fps_show" not in app and "log_to_file" not in app
+    # on: session recorded, FPS and RetroArch log requested
+    write(cfg, "[diag]\nperf = 1\nshow_fps = 1\nretroarch_log = 1\n")
+    write(os.path.join(rig["tmp"], "launch.ini"), req)
+    scripted_ui(rig, [10, 20])
+    run_supervisor(rig)
+    app = read(os.path.join(rig["dir"], "ra_append"))
+    assert 'fps_show = "true"' in app and 'log_to_file = "true"' in app
+    assert 'log_dir = "%s"' % os.path.join(rig["card"], "TriMuxData/logs/retroarch") in app
+    sessions = read(os.path.join(perf, "sessions.csv")).splitlines()
+    assert sessions[0].startswith("inicio;plataforma;emulador;jogo;perfil;")
+    fields = sessions[1].split(";")
+    assert len(fields) == 16 and fields[1] == "GBA" and fields[2] == "gpsp"
+    assert fields[3] == "Celeste Classic (World).gba"          # file name only
+    assert fields[9] == "48" and fields[11] == "76"             # simulated temperature and battery
+    samples = [f for f in os.listdir(perf) if f.endswith("_GBA.csv")]
+    assert len(samples) == 1
+    assert read(os.path.join(perf, samples[0])).startswith("tempo_s;cpu_mhz;limite_mhz;temp_c;bateria")

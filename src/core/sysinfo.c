@@ -36,6 +36,19 @@ static void read_battery(TmSysInfo *si)
     closedir(d);
 }
 
+int tm_battery_read(int *pct, int *charging)
+{
+    TmSysInfo si;
+    si.battery_pct = -1;
+    si.charging = -1;
+    read_battery(&si);
+    if (pct)
+        *pct = si.battery_pct;
+    if (charging)
+        *charging = si.charging;
+    return si.battery_pct >= 0 ? 0 : -1;
+}
+
 static void read_meminfo(TmSysInfo *si)
 {
     char p[512];

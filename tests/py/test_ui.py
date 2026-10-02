@@ -174,3 +174,33 @@ def test_retroachievements_account_entry(env):
     r = ui(env, cheevos + ",DOWN,DOWN,A,A,A,A,A,A,A,START,B,B,B")
     cfg = read(os.path.join(env["TRIMUX_SDCARD"], "TriMuxData/config/trimux.ini"))
     assert "password = qqqqqq" in cfg
+
+
+DIAG = "UP,A" + ",DOWN" * 10 + ",A" + ",DOWN" * 3 + ",A"   # Configurações -> Sistema -> Registros e desempenho
+
+
+def test_diagnostics_toggles(env):
+    assert ui(env, DIAG + ",A,DOWN,A,DOWN,DOWN,A,B,B,B").returncode == 0   # perf, FPS, detailed log
+    cfg = read(os.path.join(env["TRIMUX_SDCARD"], "TriMuxData/config/trimux.ini"))
+    assert "[diag]" in cfg and "perf = 1" in cfg and "show_fps = 1" in cfg and "verbose = 1" in cfg
+
+
+def test_sessions_page_and_clear(env, tmp_path):
+    perf = os.path.join(env["TRIMUX_SDCARD"], "TriMuxData/logs/perf")
+    write(os.path.join(perf, "sessions.csv"),
+          "inicio;plataforma;emulador;jogo;perfil;duracao_s;cpu_media_mhz;cpu_max_mhz;temp_inicio_c;temp_max_c;"
+          "temp_fim_c;bateria_inicio;bateria_fim;carregando;protecao_termica;saida\n"
+          "2026-10-02 13:00;GBA;gpsp;Celeste.gba;balanced;1800;1404;1608;45;61;58;90;80;0;0;0\n"
+          "2026-10-02 14:00;PS;pcsx_rearmed;Demo.cue;boost;1800;1890;2000;46;74;71;80;66;0;1;0\n")
+    write(os.path.join(perf, "20261002-140000_PS.csv"), "tempo_s;cpu_mhz\n")
+    write(os.path.join(perf, "minhas-notas.txt"), "x")
+    shot = str(tmp_path / "perf.bmp")
+    assert ui(env, DIAG + ",DOWN,DOWN,A,shot=%s,B,B,B,B" % shot).returncode == 0
+    assert os.path.getsize(shot) > 100000
+    # clear needs confirmation (default "No"), then removes only performance files
+    assert ui(env, DIAG + ",UP,A,A,B,B,B").returncode == 0
+    assert os.path.exists(os.path.join(perf, "sessions.csv"))
+    assert ui(env, DIAG + ",UP,A,LEFT,A,B,B,B").returncode == 0
+    assert not os.path.exists(os.path.join(perf, "sessions.csv"))
+    assert not os.path.exists(os.path.join(perf, "20261002-140000_PS.csv"))
+    assert os.path.exists(os.path.join(perf, "minhas-notas.txt"))

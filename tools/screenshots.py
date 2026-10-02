@@ -31,6 +31,18 @@ SHOTS = [
     ("15-senha-wifi", "UP,A" + ",DOWN" * 6 + ",A,DOWN,DOWN,A,DOWN,A,A,RIGHT,A,RIGHT,A,R1,DOWN,A,RIGHT,A", True),
 ]
 NET_SHOTS = {"13-rede", "14-wifi-redes", "15-senha-wifi"}
+DIAG = "UP,A" + ",DOWN" * 10 + ",A" + ",DOWN" * 3 + ",A"
+SHOTS += [
+    ("16-registros", DIAG, True),
+    ("17-sessoes", DIAG + ",DOWN,DOWN,A,DOWN", True),
+]
+# example sessions for the screenshots (simulated numbers, not measurements)
+EXAMPLE_SESSIONS = (
+    "inicio;plataforma;emulador;jogo;perfil;duracao_s;cpu_media_mhz;cpu_max_mhz;temp_inicio_c;temp_max_c;"
+    "temp_fim_c;bateria_inicio;bateria_fim;carregando;protecao_termica;saida\n"
+    "2026-10-02 13:00;GBA;gpsp;Celeste Classic.gba;economy;1800;1104;1200;44;55;54;90;83;0;0;0\n"
+    "2026-10-02 13:40;GBA;gpsp;Celeste Classic.gba;balanced;1800;1390;1608;45;61;58;83;74;0;0;0\n"
+    "2026-10-02 14:20;PS;pcsx_rearmed;Demo.cue;boost;2400;1880;2000;47;74;71;74;58;0;1;0\n")
 
 
 def main():
@@ -56,6 +68,8 @@ def main():
                 write(os.path.join(dev, "netstate/status"), "wpa_state=COMPLETED\nssid=Casa\nip_address=192.168.0.23\n")
                 write(os.path.join(dev, "netstate/networks"),
                       "network id / ssid / bssid / flags\n0\tCasa\tany\t[CURRENT]\n")
+            if name in ("16-registros", "17-sessoes"):
+                write(os.path.join(sd, "TriMuxData/logs/perf/sessions.csv"), EXAMPLE_SESSIONS)
             if wizard_done:
                 write(os.path.join(sd, "TriMuxData/config/trimux.ini"), "[general]\nwizard_done = 1\n")
                 write(os.path.join(sd, "TriMuxData/config/recent.txt"), "Roms/GBA/Celeste Classic (World).gba\n")

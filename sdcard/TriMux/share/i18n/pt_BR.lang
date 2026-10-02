@@ -491,3 +491,30 @@ kb.layer.upper = ABC
 kb.layer.symbols = #+=
 kb.layer.lower = abc
 kb.hints = A:Digitar|X:Apagar|Y:Espaço|R1:ABC/#+=|START:Pronto|B:Voltar
+
+# Registros e desempenho
+diag.title = Registros e desempenho
+diag.desc = Medir temperatura, CPU, bateria e FPS nos jogos; logs técnicos para investigar problemas.
+diag.measure = Medição
+diag.perf = Registro de desempenho nos jogos
+diag.perf.desc = Durante cada jogo, anota a cada 10 s a frequência da CPU, o limite em uso, a temperatura e a bateria, e no fim um resumo da sessão. Arquivos em TriMuxData/logs/perf (abrem em planilha). Use para comparar perfis, 2,0 GHz e emuladores. Desligado, nada é gravado.
+diag.fps = Mostrar FPS nos jogos
+diag.fps.desc = Mostra quadros por segundo no canto da tela durante o jogo (recurso do RetroArch). Útil para ver se um perfil mais econômico ainda roda a velocidade total.
+diag.sessions = Sessões gravadas
+diag.sessions.desc = Resumo por perfil (temperatura, consumo de bateria, CPU) e a lista das últimas sessões.
+diag.sessions.none = Nenhuma sessão gravada. Ligue o registro de desempenho e jogue alguns minutos.
+diag.by_profile = Resumo por perfil
+diag.recent = Sessões (mais recentes primeiro)
+diag.profile.desc = Sessões gravadas: %d. Temperatura máxima média: %s. Consumo médio de bateria: %s (sessões consideradas: %d, só as de 5 min ou mais e sem carregador). CPU média: %s.
+diag.viewlog = Ver log do TriMux
+diag.session.desc = Emulador: %s. Perfil: %s. CPU média %s (máx. %s). Temperatura: %s no início, máx. %s, %s no fim. Bateria: %s → %s%s. Proteção térmica acionada %d vez(es).
+diag.charging = carregando
+diag.technical = Logs técnicos
+diag.verbose = Log detalhado do TriMux
+diag.verbose.desc = Registra mais detalhes em TriMuxData/logs/trimux.log (limitado a 256 KB + 1 cópia). Ligue só para investigar um problema.
+diag.ralog = Log do RetroArch
+diag.ralog.desc = O RetroArch grava o próprio log em TriMuxData/logs/retroarch/retroarch.log, substituído a cada jogo. Ajuda a entender um jogo que não abre ou fecha sozinho.
+diag.clear = Apagar registros de desempenho
+diag.clear.desc = Apaga as sessões gravadas e o log do RetroArch. Não mexe em jogos, saves nem configurações.
+diag.clear.confirm = Apagar todas as sessões gravadas e o log do RetroArch?
+diag.cleared = %d arquivos apagados

@@ -16,11 +16,11 @@ Como rodar: `make test` (A + partes S que não exigem Docker),
 `make docker-smoke` ou `scripts/smoke_qemu.sh` dentro do contêiner (S, QEMU),
 `python3 tools/screenshots.py` (S, capturas).
 
-## Resultado da execução desta versão (0.1.0)
+## Resultado da execução desta versão (0.2.0)
 
 | Conjunto | Categoria | Resultado |
 |---|---|---|
-| `tests/unit/test_core.c` — 213 verificações (INI, gravação atômica, caminhos, idiomas, catálogo, varredura da biblioteca, `.m3u`, índice, favoritos/recentes, perfis de energia, LEDs, proteção térmica, validação do pedido de lançamento, migração de configurações, sysinfo, rede: leitura da saída do `wpa_cli` com nomes escapados, redes ocultas e repetidas, SSID em hex, regra da senha WPA, conta do RetroAchievements, comandos enviados a ferramentas falsas, tempo limite de processos), com ASan/UBSan | A | **passou** |
+| `tests/unit/test_core.c` — 241 verificações (INI, gravação atômica, caminhos, idiomas, catálogo, varredura da biblioteca, `.m3u`, índice, favoritos/recentes, perfis de energia, LEDs, proteção térmica, validação do pedido de lançamento, migração de configurações, sysinfo, rede: leitura da saída do `wpa_cli` com nomes escapados, redes ocultas e repetidas, SSID em hex, regra da senha WPA, conta do RetroAchievements, comandos enviados a ferramentas falsas, tempo limite de processos; registro de desempenho: amostras, resumo, nomes com `;`, valores ausentes, consumo por hora, ordem das sessões, limite de arquivos, apagar só os próprios arquivos), com ASan/UBSan | A | **passou** |
 | `tests/py/test_ctl.py` — `trimuxctl` com Brick Pro simulado: perfis ≤ 1,8 GHz e sem governador `performance`, arquivos térmicos intocados, LEDs só quando ativados, contador de boot/modo seguro, varredura | A/S | **passou** |
 | `tests/py/test_ctl.py` (rede) — `trimuxctl net`: SSH do firmware desligado por padrão no boot, Wi-Fi só muda se o usuário escolheu, ligar Wi-Fi usa os mesmos argumentos do `/etc/init.d/wpa_supplicant`, Bluetooth iniciado da pasta e com as bibliotecas do firmware, aparelho sem Wi-Fi | S | **passou** |
 | `tests/py/test_supervisor.py` — scripts de boot com comandos do firmware simulados: port `.sh` roda da própria pasta com limite de energia e scripts auxiliares não aparecem; modelo errado → oficial, laço de falhas → oficial, modo seguro, lançamento aplica limite **antes** do emulador e restaura depois, perfil automático por emulador, pedido adulterado recusado, desligar, `preload.sh`, guarda de reinício do `MainUI`, POSIX/LF/`sh -n` | S | **passou** |
@@ -28,6 +28,7 @@ Como rodar: `make test` (A + partes S que não exigem Docker),
 | `tests/py/test_data.py` — todas as chaves de tradução usadas existem em pt_BR, especificadores de formato iguais entre idiomas, catálogo consistente, nenhum arquivo de ROM/imagem no repositório | A | **passou** |
 | `tests/py/test_ui.py` — menu com entradas roteirizadas: assistente, lançamento grava pedido válido e recentes, favorito e emulador por jogo persistem, confirmação para sistema oficial/desligar, configuração corrompida não trava; rede: ligar Wi-Fi, procurar, digitar a senha no teclado e conectar (senha fora do log e do `trimux.ini`), senha curta não é enviada, FTP só roda com a janela aberta e para quando o menu fecha, SSH pede confirmação (padrão "Não"), conta do RetroAchievements com aspas recusada | S | **passou** (no computador com SDL; ignorado no contêiner, que não tem SDL nativo) |
 | `scripts/smoke_qemu.sh` — com bibliotecas do firmware v1.1.1 e `LD_BIND_NOW=1`: `trimuxctl` identifica o Brick Pro; `trimux-ui` resolve todos os símbolos da libSDL2/glibc do firmware (o SDL do firmware só tem o driver de vídeo "mali", por isso a janela não abre em QEMU); `retroarch --features` (com SSL ativo; suporte a RetroAchievements confirmado no binário); os 20 núcleos carregam e o nome/extensões batem com o catálogo | S | **passou** (5/5) |
+| Registro de desempenho (em `test_supervisor.py`) — desligado não grava nada; ligado grava sessão e amostras com temperatura e bateria do aparelho simulado, só o nome do jogo; FPS e log do RetroArch chegam à configuração do jogo só quando ativados. Menu (em `test_ui.py`): opções salvas, tela de sessões, apagar pede confirmação e não toca em outros arquivos | S | **passou** |
 | Conta do RetroAchievements (em `test_supervisor.py`) — só chega ao RetroArch quando ativada, nunca vai para o log | S | **passou** |
 | `scripts/check_abi.py` — RetroArch, núcleos e binários exigem no máximo GLIBC 2.33 / GLIBCXX 3.4.28 e só bibliotecas presentes no firmware | A | **passou** |
 | Reprodutibilidade — duas gerações da imagem a partir da mesma árvore produziram o mesmo SHA-256 do `.img` | A | **passou** |
@@ -84,3 +85,6 @@ Marque com data, firmware, versão do TriMux e observações ao executar.
 | H32 | RetroAchievements: login ao abrir um jogo com conquistas, notificação de conquista, modo hardcore bloqueia estados; sem Wi-Fi o jogo abre normalmente | pendente |
 | H33 | FTP: copiar um jogo pelo Windows Explorer e FileZilla; servidor para ao fechar a janela; não acessa fora do cartão | pendente |
 | H34 | SSH: desligado após boot com o TriMux; ligar/desligar pelo menu; SFTP com WinSCP | pendente |
+| H35 | Registro de desempenho: sessão de 30 min gera `sessions.csv` e amostras com temperatura, CPU e bateria coerentes com *Informações*; abre em planilha | pendente |
+| H36 | FPS na tela e log do RetroArch em `TriMuxData/logs/retroarch/` quando ativados; nada gravado quando desligados | pendente |
+| H37 | Comparação de perfis (Economia × Equilibrado × 2,0 GHz) no mesmo jogo, 2 sessões cada, seguindo [DIAGNOSTICO.md](DIAGNOSTICO.md) | pendente |

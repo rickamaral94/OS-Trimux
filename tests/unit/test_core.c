@@ -11,6 +11,7 @@
 #include "../../src/core/net.h"
 #include "../../src/core/log.h"
 #include "../../src/core/paths.h"
+#include "../../src/core/perf.h"
 #include "../../src/core/power.h"
 #include "../../src/core/sysinfo.h"
 #include "../../src/core/util.h"
@@ -647,6 +648,88 @@ static void test_net(void)
     CHECK(tm_run(argv2, NULL, 0, 200) == -1 && tm_now_ms() - t0 < 2000);
 }
 
+static void test_perf(void)
+{
+    char logdir[700], p[900];
+    snprintf(logdir, sizeof logdir, "%s/perflogs", T);
+    TmPerf pf;
+    CHECK(tm_perf_open(&pf, logdir, "GBA", "gpsp", "Roms/GBA/Jogo; com ponto.gba", "balanced") == 0);
+    CHECK(strcmp(pf.game, "Jogo, com ponto.gba") == 0); /* name only, no separator */
+    tm_perf_sample(&pf, 1000, 1200000, 1608000, 48400, 80, 0, "balanced");
+    tm_perf_sample(&pf, 11000, 1608000, 1608000, 61600, 79, 0, "balanced");
+    tm_perf_throttled(&pf);
+    tm_perf_sample(&pf, 1801000, -1, 1200000, 55000, 70, 0, "economy");
+    char file[1100];
+    tm_strlcpy(file, pf.file, sizeof file);
+    tm_perf_close(&pf, 1801000, 0);
+    char *samples = tm_read_file(file, 1 << 16, NULL);
+    CHECK(samples && strncmp(samples, "tempo_s;cpu_mhz;", 16) == 0);
+    CHECK(samples && strstr(samples, "\n0;1200;1608;48;80;0;balanced\n"));
+    CHECK(samples && strstr(samples, "\n1800;-1;1200;55;70;0;economy\n"));
+    free(samples);
+    TmPerfSummary r[4];
+    CHECK(tm_perf_recent(logdir, r, 4) == 1);
+    CHECK_STR(r[0].system, "GBA");
+    CHECK(r[0].duration_s == 1800 && r[0].avg_mhz == 1404 && r[0].max_mhz == 1608);
+    CHECK(r[0].temp_start_c == 48 && r[0].temp_max_c == 62 && r[0].temp_end_c == 55);
+    CHECK(r[0].bat_start == 80 && r[0].bat_end == 70 && r[0].throttles == 1 && !r[0].charged);
+    CHECK(tm_perf_drain_per_hour(&r[0]) == 20);
+    TmPerfSummary c = r[0];
+    c.charged = 1;
+    CHECK(tm_perf_drain_per_hour(&c) == -1);
+    c.charged = 0;
+    c.duration_s = 120;
+    CHECK(tm_perf_drain_per_hour(&c) == -1);
+
+    /* newest first; damaged lines ignored */
+    CHECK(tm_perf_open(&pf, logdir, "FC", "fceumm", "x.nes", "economy") == 0);
+    tm_perf_sample(&pf, 0, 816000, 1200000, -1, -1, 1, NULL);
+    tm_perf_close(&pf, 600000, 4);
+    snprintf(p, sizeof p, "%s/perf/sessions.csv", logdir);
+    FILE *f = fopen(p, "a");
+    if (f) {
+        fputs("lixo;sem;campos\n", f);
+        fclose(f);
+    }
+    CHECK(tm_perf_recent(logdir, r, 4) == 2);
+    CHECK_STR(r[0].system, "FC");
+    CHECK(r[0].temp_max_c == -1 && r[0].bat_start == -1 && r[0].charged == 1 && r[0].exit_code == 4);
+    CHECK_STR(r[1].system, "GBA");
+    CHECK(tm_perf_recent(logdir, r, 1) == 1);
+
+    /* round trip of the pure formatter */
+    char line[512];
+    TmPerfSummary back;
+    CHECK(tm_perf_format_summary(&r[1], line, sizeof line) == 0 && tm_perf_parse_summary(line, &back) == 0);
+    CHECK(back.duration_s == r[1].duration_s && strcmp(back.game, r[1].game) == 0);
+    CHECK(tm_perf_parse_summary("inicio;plataforma", &back) == -1);
+
+    /* pruning keeps the newest sample files; clearing removes only our files */
+    char d[800];
+    snprintf(d, sizeof d, "%s/perf", logdir);
+    for (int i = 0; i < TM_PERF_KEEP_SESSIONS + 5; i++) {
+        snprintf(p, sizeof p, "%s/20200101-0000%02d_GB.csv", d, i);
+        f = fopen(p, "w");
+        if (f)
+            fclose(f);
+    }
+    snprintf(p, sizeof p, "%s/notas.txt", d);
+    f = fopen(p, "w");
+    if (f)
+        fclose(f);
+    CHECK(tm_perf_open(&pf, logdir, "GB", "gambatte", "y.gb", "economy") == 0);
+    tm_perf_close(&pf, 0, 0);
+    snprintf(p, sizeof p, "%s/20200101-000000_GB.csv", d);
+    CHECK(!tm_file_exists(p)); /* oldest pruned */
+    put("perflogs/retroarch/retroarch.log", "ra\n");
+    CHECK(tm_perf_clear(logdir) >= TM_PERF_KEEP_SESSIONS);
+    snprintf(p, sizeof p, "%s/notas.txt", d);
+    CHECK(tm_file_exists(p)); /* not ours: kept */
+    CHECK(tm_perf_recent(logdir, r, 4) == 0);
+    snprintf(p, sizeof p, "%s/retroarch/retroarch.log", logdir);
+    CHECK(!tm_file_exists(p));
+}
+
 int main(void)
 {
     snprintf(T, sizeof T, "/tmp/trimux-unit-%d", (int)getpid());
@@ -665,6 +748,7 @@ int main(void)
     test_sysinfo();
     test_buttons();
     test_net();
+    test_perf();
     char cmd[600];
     snprintf(cmd, sizeof cmd, "rm -rf '%s'", T);
     if (system(cmd) != 0)

@@ -145,3 +145,32 @@ não o modifica.
 Apague `trimui/`, `TriMux/` e, se quiser, `TriMuxData/` do cartão. Jogos,
 saves e BIOS continuam onde estão e funcionam no sistema oficial ou em outros
 firmwares que usem as mesmas pastas.
+
+## Perguntas frequentes
+
+### Dá para instalar o TriMux na memória interna, sem o cartão?
+
+**Não nesta versão, e não há passo a passo para isso de propósito.** O TriMux
+roda só a partir do microSD.
+
+O firmware oficial procura a interface em dois lugares, nesta ordem: a pasta
+`trimui/` do cartão (o que o TriMux usa) e um arquivo de imagem na memória
+interna, `/mnt/UDISK/trimui.img`. Esse arquivo interno é o lugar da própria
+interface da TrimUI, gravado pelo atualizador oficial. Instalar o TriMux ali
+teria estes problemas:
+
+* **Some a volta ao sistema oficial.** Hoje basta tirar o cartão ou segurar
+  SELECT ao ligar. Na memória interna, o TriMux ocuparia o lugar da interface
+  oficial.
+* **Uma falha se repete a cada inicialização** e tirar o cartão não resolve.
+  A saída seria o cartão de recuperação da TrimUI, que regrava a memória
+  interna inteira.
+* **O formato desse arquivo não é documentado** pela TrimUI, e o TriMux não
+  grava na memória interna com base em suposições (veja
+  [VIABILIDADE.md](VIABILIDADE.md)).
+* **O cartão continua necessário:** jogos, BIOS e saves ficam nele.
+
+Pode ser estudado depois que os testes no aparelho passarem
+([TESTES.md](TESTES.md)), com o arquivo de atualização oficial para entender
+o formato, um cartão de recuperação já testado e uma volta automática para a
+interface oficial em caso de falha.
