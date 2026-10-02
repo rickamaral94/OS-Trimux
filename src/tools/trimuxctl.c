@@ -20,6 +20,7 @@
 #include "../core/leds.h"
 #include "../core/library.h"
 #include "../core/log.h"
+#include "../core/net.h"
 #include "../core/paths.h"
 #include "../core/power.h"
 #include "../core/sysinfo.h"
@@ -368,9 +369,14 @@ static int cmd_launch(void)
     }
     TmIni ini;
     tm_settings_load(&ini, &P);
-    char extra[128];
-    snprintf(extra, sizeof extra, "user_language = \"%d\"",
-             tm_ra_language(tm_ini_get(&ini, "general", "language", "pt_BR")));
+    char extra[1024], cheevos[640];
+    int len = snprintf(extra, sizeof extra, "user_language = \"%d\"",
+                       tm_ra_language(tm_ini_get(&ini, "general", "language", "pt_BR")));
+    /* RetroAchievements login (lines written only to the RAM config) */
+    if (tm_cheevos_cfg(&ini, cheevos, sizeof cheevos) != 0)
+        LOGW("launch: RetroAchievements account has unsupported characters, ignored");
+    else if (cheevos[0] && len > 0 && (size_t)len < sizeof extra)
+        snprintf(extra + len, sizeof extra - (size_t)len, "\n%s", cheevos);
     char ra[TM_PATH_MAX], cfg[TM_PATH_MAX], append[TM_PATH_MAX], cache[TM_PATH_MAX];
     tm_path_join(ra, sizeof ra, P.retroarch, "retroarch");
     tm_path_join(cache, sizeof cache, P.tmp, "cache"); /* RetroArch archive extraction, in RAM */
@@ -404,7 +410,7 @@ static int cmd_launch(void)
          * case the GLES context could not be created on this firmware. */
         LOGW("launch: RetroArch failed in %llu ms (status %d); retrying with video_driver=sdl2",
              (unsigned long long)elapsed, code);
-        char extra2[192];
+        char extra2[1100];
         snprintf(extra2, sizeof extra2, "%s\nvideo_driver = \"sdl2\"", extra);
         if (tm_launch_write_ra_append(&P, &l, extra2, append, sizeof append) == 0)
             code = run_retroarch(ra, cfg, append, &l, &caps, have_power, guard_on, prof, &elapsed);
@@ -531,10 +537,40 @@ static int cmd_card_grow(int argc, char **argv)
     return rc ? 1 : 0;
 }
 
+static int cmd_net(int argc, char **argv)
+{
+    const char *sub = argc > 0 ? argv[0] : "status";
+    TmIni ini;
+    tm_settings_load(&ini, &P);
+    int rc = 0;
+    if (strcmp(sub, "apply") == 0) {
+        /* boot: any FTP server left by a crashed menu is stopped first */
+        char pf[TM_PATH_MAX];
+        if (tm_path_join(pf, sizeof pf, P.tmp, "ftp.pid") == 0)
+            tm_ftp_stop(pf);
+        tm_net_apply(&ini);
+    } else if (strcmp(sub, "status") == 0) {
+        TmWifiStatus st;
+        int avail = tm_wifi_available(), on = avail && tm_wifi_running();
+        if (on)
+            tm_wifi_status(&st);
+        printf("wifi_available=%d\nwifi_on=%d\n", avail, on);
+        if (on)
+            printf("wifi_state=%s\nwifi_ssid=%s\nwifi_ip=%s\n", st.state, st.ssid, st.ip);
+        printf("bluetooth_available=%d\nbluetooth_on=%d\n", tm_bt_available(), tm_bt_available() && tm_bt_running());
+        printf("ssh_available=%d\nssh_on=%d\n", tm_ssh_available(), tm_ssh_available() && tm_ssh_running());
+    } else {
+        fprintf(stderr, "usage: trimuxctl net apply|status\n");
+        rc = 1;
+    }
+    tm_ini_free(&ini);
+    return rc;
+}
+
 int main(int argc, char **argv)
 {
     if (argc < 2) {
-        fprintf(stderr, "usage: trimuxctl power|leds|sysinfo|device|scan|launch|boot|fat-grow|card-grow ...\n");
+        fprintf(stderr, "usage: trimuxctl power|leds|switch|net|sysinfo|device|scan|launch|boot|fat-grow|card-grow ...\n");
         return 1;
     }
     if (tm_paths_init(&P) != 0)
@@ -549,6 +585,8 @@ int main(int argc, char **argv)
         return cmd_leds(argc - 2, argv + 2);
     if (strcmp(c, "switch") == 0)
         return cmd_switch();
+    if (strcmp(c, "net") == 0)
+        return cmd_net(argc - 2, argv + 2);
     if (strcmp(c, "sysinfo") == 0)
         return cmd_sysinfo();
     if (strcmp(c, "device") == 0) /* 0 only on a TrimUI Brick Pro firmware */

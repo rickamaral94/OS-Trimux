@@ -9,7 +9,16 @@ import pytest
 
 from conftest import UI, read, write
 
-pytestmark = pytest.mark.skipif(not os.path.exists(UI), reason="build/native/trimux-ui not built (make ui-native)")
+def _ui_runs():
+    """The UI binary exists and its libraries resolve here (a host build copied
+    into the container does not)."""
+    if not os.path.exists(UI):
+        return False
+    r = subprocess.run(["ldd", UI], capture_output=True, text=True)
+    return r.returncode == 0 and "not found" not in r.stdout
+
+
+pytestmark = pytest.mark.skipif(not _ui_runs(), reason="build/native/trimux-ui not built for this system (make ui-native)")
 
 
 def ui(env, script, done_wizard=True):
@@ -90,3 +99,78 @@ def test_switch_boost_needs_confirmation_in_menu(env):
     assert ui(env, page + ",RIGHT,LEFT,A,B,B,B").returncode == 0   # from "mute": dialog, "Yes"
     text = read(cfg)
     assert "switch = boost" in text and "boost_ack = 1" in text
+
+
+NET = "UP,A" + ",DOWN" * 6 + ",A"     # Home -> Configurações -> Rede e conexões (lands on "Wi-Fi")
+
+
+def net_log(env):
+    p = os.path.join(env["TRIMUX_SYSFS_ROOT"], "net.log")
+    return read(p) if os.path.exists(p) else ""
+
+
+def wifi_connected(env):
+    dev = env["TRIMUX_SYSFS_ROOT"]
+    write(os.path.join(dev, "run/wpa_supplicant"), "")
+    write(os.path.join(dev, "netstate/status"), "wpa_state=COMPLETED\nssid=Casa\nip_address=127.0.0.1\n")
+
+
+def test_wifi_on_scan_and_connect_with_password(env):
+    # Wi-Fi on -> Procurar redes -> "Casa" (strongest) -> type 8 letters -> START
+    r = ui(env, NET + ",A,DOWN,DOWN,A,DOWN,A" + ",A" * 8 + ",START,wait=1200,B,B,B")
+    assert r.returncode == 0
+    log = net_log(env)
+    assert "wpa_supplicant -B -iwlan0" in log
+    assert "set_network 0 ssid 43617361" in log          # "Casa", hex-encoded
+    assert 'set_network 0 psk "qqqqqqqq"' in log and "save_config" in log
+    cfg = read(os.path.join(env["TRIMUX_SDCARD"], "TriMuxData/config/trimux.ini"))
+    assert "wifi = on" in cfg and "qqqqqqqq" not in cfg
+    assert "qqqqqqqq" not in read(os.path.join(env["TRIMUX_SDCARD"], "TriMuxData/logs/trimux.log"))
+
+
+def test_wifi_short_password_is_not_sent(env):
+    wifi_connected(env)
+    write(os.path.join(env["TRIMUX_SYSFS_ROOT"], "netstate/status"), "wpa_state=SCANNING\n")
+    r = ui(env, NET + ",DOWN,DOWN,A,DOWN,A,A,A,A,START,B,B,B,B")
+    assert r.returncode == 0
+    assert "add_network" not in net_log(env)
+
+
+def test_ftp_runs_only_while_dialog_is_open(env, tmp_path):
+    wifi_connected(env)
+    shot = str(tmp_path / "ftp.bmp")
+    r = ui(env, NET + ",DOWN" * 6 + ",A,shot=%s,B" % shot)
+    assert r.returncode == 0
+    dev, sd = env["TRIMUX_SYSFS_ROOT"], env["TRIMUX_SDCARD"]
+    assert "busybox tcpsvd -c 4 127.0.0.1 21 %s/bin/busybox ftpd -w -t 600 %s" % (dev, sd) in net_log(env)
+    assert not os.path.exists(os.path.join(env["TRIMUX_TMP"], "ftp.pid"))
+    ps = subprocess.run(["pgrep", "-f", "%s/bin/busybox tcpsvd" % dev], capture_output=True)
+    assert ps.returncode == 1, "FTP server left running"
+
+
+def test_ftp_stops_when_menu_exits(env):
+    wifi_connected(env)
+    assert ui(env, NET + ",DOWN" * 6 + ",A").returncode == 0   # script ends with the dialog open
+    ps = subprocess.run(["pgrep", "-f", "%s/bin/busybox tcpsvd" % env["TRIMUX_SYSFS_ROOT"]], capture_output=True)
+    assert ps.returncode == 1
+
+
+def test_ssh_needs_confirmation(env):
+    ssh = NET + ",DOWN" * 7
+    assert ui(env, ssh + ",A,A,B,B,B").returncode == 0          # dialog defaults to "No"
+    assert "sshd start" not in net_log(env)
+    assert ui(env, ssh + ",A,LEFT,A,B,B,B").returncode == 0
+    assert "sshd start" in net_log(env)
+    assert "ssh = 1" in read(os.path.join(env["TRIMUX_SDCARD"], "TriMuxData/config/trimux.ini"))
+
+
+def test_retroachievements_account_entry(env):
+    cheevos = NET + ",DOWN" * 5 + ",A"
+    # enable, user "qqq"; password with a quote is refused
+    r = ui(env, cheevos + ",A,DOWN,A,A,A,A,START,DOWN,A,R1,R1,DOWN,RIGHT,RIGHT,RIGHT,A,START,B,B,B")
+    assert r.returncode == 0
+    cfg = read(os.path.join(env["TRIMUX_SDCARD"], "TriMuxData/config/trimux.ini"))
+    assert "[cheevos]" in cfg and "enable = 1" in cfg and "user = qqq" in cfg and "password" not in cfg
+    r = ui(env, cheevos + ",DOWN,DOWN,A,A,A,A,A,A,A,START,B,B,B")
+    cfg = read(os.path.join(env["TRIMUX_SDCARD"], "TriMuxData/config/trimux.ini"))
+    assert "password = qqqqqq" in cfg

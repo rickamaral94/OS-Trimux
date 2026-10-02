@@ -20,7 +20,8 @@ enum {
     ACT_POWER_DEFAULT, ACT_LED_MANAGED, ACT_LED_ON, ACT_LED_COLOR, ACT_LED_BRIGHT, ACT_LED_EFFECT, ACT_RESCAN,
     ACT_MKDIRS, ACT_SET_PLAT_EMU, ACT_RESTORE_EMU, ACT_SET_GAME_EMU, ACT_INFO, ACT_WIZARD, ACT_STOCK,
     ACT_REBOOT, ACT_POWEROFF, ACT_GROW, ACT_PLAY, ACT_FAV, ACT_REMOVE_RECENT, ACT_FAV_ONLY, ACT_SEARCH,
-    ACT_KEY_ACTION, ACT_SWITCH_ACTION,
+    ACT_KEY_ACTION, ACT_SWITCH_ACTION, ACT_WIFI_TOGGLE, ACT_WIFI_RESCAN, ACT_WIFI_AP, ACT_WIFI_SAVED, ACT_BT_TOGGLE,
+    ACT_SSH_TOGGLE, ACT_FTP, ACT_CHEEVOS_USER, ACT_CHEEVOS_PASS,
 };
 
 static const struct {
@@ -108,6 +109,7 @@ static void page_settings(Menu *m)
     add_page(m, PAGE_DISPLAY, tr("settings.display"), tr("settings.display.desc"));
     MenuItem *l = add_page(m, PAGE_LEDS, tr("settings.leds"), tr(A.leds.available ? "settings.leds.desc" : "leds.unavailable"));
     l->enabled = A.leds.available;
+    add_page(m, PAGE_NETWORK, tr("settings.network"), tr("settings.network.desc"));
     add_page(m, PAGE_LIBRARY, tr("settings.library"), tr("settings.library.desc"));
     add_page(m, PAGE_EMULATORS, tr("settings.emulators"), tr("settings.emulators.desc"));
     add_page(m, PAGE_STORAGE, tr("settings.storage"), tr("settings.storage.desc"));
@@ -568,6 +570,248 @@ static void page_log(Menu *m)
 
 /* ------------------------------------------------------------ engine */
 
+
+/* ------------------------------------------------------------ network */
+
+static void header_row(Menu *m, const char *label)
+{
+    MenuItem *h = add(m, ACT_NONE, label, "", "");
+    h->enabled = 0;
+}
+
+static void refresh_wifi_status(int force)
+{
+    if (!force && A.wst_time && tm_now_ms() - A.wst_time < 2000)
+        return;
+    A.wst_time = tm_now_ms();
+    if (!tm_wifi_available() || tm_wifi_status(&A.wst) != 0)
+        memset(&A.wst, 0, sizeof A.wst);
+}
+
+static int wifi_connected(void) { return strcmp(A.wst.state, "COMPLETED") == 0 && A.wst.ip[0]; }
+
+static void wifi_status_text(char *out, size_t size)
+{
+    if (!tm_wifi_available())
+        tm_strlcpy(out, tr("wifi.unavailable.short"), size);
+    else if (!tm_wifi_running())
+        tm_strlcpy(out, tr("common.off"), size);
+    else if (A.connect_until)
+        snprintf(out, size, tr("wifi.connecting"), A.connect_ssid);
+    else if (wifi_connected())
+        snprintf(out, size, "%s · %s", A.wst.ssid, A.wst.ip);
+    else
+        tm_strlcpy(out, tr("wifi.disconnected"), size);
+}
+
+static void page_network(Menu *m)
+{
+    tm_strlcpy(m->title, tr("settings.network"), sizeof m->title);
+    int avail = tm_wifi_available(), on = avail && tm_wifi_running();
+    refresh_wifi_status(0);
+    header_row(m, "Wi-Fi");
+    MenuItem *it = add(m, ACT_WIFI_TOGGLE, "Wi-Fi", onoff(on), tr(avail ? "wifi.desc" : "wifi.unavailable"));
+    it->enabled = avail;
+    char v[96];
+    wifi_status_text(v, sizeof v);
+    add(m, ACT_NONE, tr("wifi.status"), v, tr("wifi.status.desc"));
+    it = add_page(m, PAGE_WIFI_SCAN, tr("wifi.scan"), tr(on ? "wifi.scan.desc" : "wifi.needs_on"));
+    it->enabled = on;
+    it = add_page(m, PAGE_WIFI_SAVED, tr("wifi.saved"), tr(on ? "wifi.saved.desc" : "wifi.needs_on"));
+    it->enabled = on;
+
+    header_row(m, "Bluetooth");
+    int bt = (int)setting_long("network", "bluetooth", 0);
+    it = add(m, ACT_BT_TOGGLE, tr("bt.service"), onoff(bt && tm_bt_available()),
+             tr(tm_bt_available() ? "bt.desc" : "bt.unavailable"));
+    it->enabled = tm_bt_available();
+
+    header_row(m, tr("net.online"));
+    it = add_page(m, PAGE_CHEEVOS, "RetroAchievements", tr("cheevos.desc"));
+    tm_strlcpy(it->value, onoff((int)setting_long("cheevos", "enable", 0)), sizeof it->value);
+    it = add(m, ACT_FTP, tr("ftp.title"), "›", tr(tm_ftp_available() ? "ftp.desc" : "ftp.unavailable"));
+    it->enabled = tm_ftp_available() && on;
+    if (tm_ftp_available() && !on)
+        tm_strlcpy(it->desc, tr("wifi.needs_on"), sizeof it->desc);
+    it = add(m, ACT_SSH_TOGGLE, tr("ssh.title"), onoff((int)setting_long("network", "ssh", 0)),
+             tr(tm_ssh_available() ? "ssh.desc" : "ssh.unavailable"));
+    it->enabled = tm_ssh_available();
+}
+
+static void page_wifi_scan(Menu *m)
+{
+    tm_strlcpy(m->title, tr("wifi.scan"), sizeof m->title);
+    add(m, ACT_WIFI_RESCAN, tr(A.scan_at ? "wifi.scanning" : "wifi.rescan"), "", tr("wifi.rescan.desc"));
+    if (!A.naps && !A.scan_at) {
+        MenuItem *it = add(m, ACT_NONE, tr("wifi.none_found"), "", tr("wifi.none_found.desc"));
+        it->enabled = 0;
+    }
+    for (size_t i = 0; i < A.naps; i++) {
+        const TmWifiAp *ap = &A.aps[i];
+        int q = 2 * (ap->signal + 100);
+        q = q < 0 ? 0 : q > 100 ? 100 : q;
+        const char *kind = ap->current                         ? tr("wifi.connected")
+                           : ap->saved_id >= 0                 ? tr("wifi.sec.saved")
+                           : ap->security == TM_WIFI_OPEN      ? tr("wifi.sec.open")
+                           : ap->security == TM_WIFI_PSK       ? tr("wifi.sec.psk")
+                                                               : tr("wifi.sec.unsupported");
+        char v[64];
+        snprintf(v, sizeof v, "%s · %d%%", kind, q);
+        MenuItem *it = add(m, ACT_WIFI_AP, ap->ssid, v,
+                           tr(ap->current                          ? "wifi.current.desc"
+                              : ap->saved_id >= 0                  ? "wifi.saved_ap.desc"
+                              : ap->security == TM_WIFI_UNSUPPORTED ? "wifi.unsupported.desc"
+                              : ap->security == TM_WIFI_OPEN       ? "wifi.open.desc"
+                                                                   : "wifi.ap.desc"));
+        it->arg = (long)i;
+        tm_strlcpy(it->sarg, ap->ssid, sizeof it->sarg);
+    }
+}
+
+static void page_wifi_saved(Menu *m)
+{
+    tm_strlcpy(m->title, tr("wifi.saved"), sizeof m->title);
+    TmWifiNet nets[TM_WIFI_MAX];
+    size_t n = tm_wifi_networks(nets, TM_WIFI_MAX);
+    if (!n) {
+        MenuItem *it = add(m, ACT_NONE, tr("wifi.saved.none"), "", "");
+        it->enabled = 0;
+    }
+    for (size_t i = 0; i < n; i++) {
+        MenuItem *it = add(m, ACT_WIFI_SAVED, nets[i].ssid, nets[i].current ? tr("wifi.connected") : "",
+                           tr("wifi.forget.desc"));
+        it->arg = nets[i].id;
+        tm_strlcpy(it->sarg, nets[i].ssid, sizeof it->sarg);
+    }
+}
+
+static void page_cheevos(Menu *m)
+{
+    tm_strlcpy(m->title, "RetroAchievements", sizeof m->title);
+    MenuItem *it = add(m, ACT_TOGGLE, tr("cheevos.enable"), onoff((int)setting_long("cheevos", "enable", 0)),
+                       tr("cheevos.enable.desc"));
+    tm_strlcpy(it->sarg, "cheevos/enable", sizeof it->sarg);
+    const char *user = tm_ini_get(&A.settings, "cheevos", "user", "");
+    add(m, ACT_CHEEVOS_USER, tr("cheevos.user"), user[0] ? user : tr("cheevos.not_set"), tr("cheevos.user.desc"));
+    const char *pass = tm_ini_get(&A.settings, "cheevos", "password", "");
+    add(m, ACT_CHEEVOS_PASS, tr("cheevos.password"), tr(pass[0] ? "cheevos.set" : "cheevos.not_set"),
+        tr("cheevos.password.desc"));
+    it = add(m, ACT_TOGGLE, tr("cheevos.hardcore"), onoff((int)setting_long("cheevos", "hardcore", 0)),
+             tr("cheevos.hardcore.desc"));
+    tm_strlcpy(it->sarg, "cheevos/hardcore", sizeof it->sarg);
+    refresh_wifi_status(0);
+    char v[96];
+    wifi_status_text(v, sizeof v);
+    add(m, ACT_NONE, "Wi-Fi", v, tr("cheevos.wifi.desc"));
+}
+
+static void wifi_scan_now(void)
+{
+    if (tm_wifi_scan_start() == 0)
+        A.scan_at = tm_now_ms();
+    /* results cached by wpa_supplicant from earlier scans show right away */
+    A.naps = tm_wifi_scan_results(A.aps, TM_WIFI_MAX);
+}
+
+static void wifi_connect_started(const char *ssid)
+{
+    tm_strlcpy(A.connect_ssid, ssid, sizeof A.connect_ssid);
+    A.connect_until = tm_now_ms() + 25000;
+    char msg[160];
+    snprintf(msg, sizeof msg, tr("wifi.connecting"), ssid);
+    app_toast(msg);
+}
+
+static void ftp_pidfile(char *out, size_t size) { tm_path_join(out, size, A.paths.tmp, "ftp.pid"); }
+
+void net_ftp_stop(void)
+{
+    char pf[TM_PATH_MAX];
+    ftp_pidfile(pf, sizeof pf);
+    if (tm_file_exists(pf))
+        tm_ftp_stop(pf);
+}
+
+static void ftp_start(void)
+{
+    refresh_wifi_status(1);
+    if (!wifi_connected()) {
+        app_dialog(DLG_INFO, tr("ftp.title"), tr("ftp.needs_wifi"), 0, NULL, 1);
+        return;
+    }
+    char pf[TM_PATH_MAX], msg[512];
+    ftp_pidfile(pf, sizeof pf);
+    if (tm_ftp_start(A.wst.ip, 21, A.paths.sd, pf) != 0) {
+        app_dialog(DLG_INFO, tr("ftp.title"), tr("ftp.failed"), 0, NULL, 1);
+        return;
+    }
+    snprintf(msg, sizeof msg, tr("ftp.running"), A.wst.ip);
+    app_dialog(DLG_FTP, tr("ftp.title"), msg, 0, NULL, 1);
+}
+
+void net_tick(void)
+{
+    uint64_t now = tm_now_ms();
+    Menu *m = cur();
+    int page = A.screen == SCR_MENU && m ? m->page : 0;
+    if (A.scan_at && now - A.scan_at > 4000) {
+        A.scan_at = 0;
+        A.naps = tm_wifi_scan_results(A.aps, TM_WIFI_MAX);
+        if (page == PAGE_WIFI_SCAN)
+            menu_rebuild();
+    }
+    if (A.connect_until) {
+        refresh_wifi_status(1);
+        char msg[160];
+        if (wifi_connected() && strcmp(A.wst.ssid, A.connect_ssid) == 0) {
+            A.connect_until = 0;
+            snprintf(msg, sizeof msg, tr("wifi.connected_to"), A.wst.ssid, A.wst.ip);
+            app_toast(msg);
+            A.naps = tm_wifi_scan_results(A.aps, TM_WIFI_MAX);
+        } else if (now > A.connect_until) {
+            A.connect_until = 0;
+            snprintf(msg, sizeof msg, tr("wifi.connect_failed"), A.connect_ssid);
+            app_dialog(DLG_INFO, "Wi-Fi", msg, 0, NULL, 1);
+        }
+        if (page)
+            menu_rebuild();
+    } else if (page == PAGE_NETWORK || page == PAGE_CHEEVOS) {
+        refresh_wifi_status(0);
+        menu_rebuild();
+    }
+}
+
+void menu_keyboard_done(int purpose, const char *ctx, const char *text, int cancelled)
+{
+    if (cancelled)
+        return;
+    switch (purpose) {
+    case KB_WIFI_PSK:
+        if (!tm_wifi_psk_valid(text)) {
+            app_toast(tr("wifi.psk_invalid"));
+            keyboard_open_text(KB_WIFI_PSK, A.menus[A.nmenus - 1].title, text, ctx);
+            return;
+        }
+        if (tm_wifi_connect(ctx, text, 0) == 0)
+            wifi_connect_started(ctx);
+        else
+            app_toast(tr("wifi.connect_error"));
+        break;
+    case KB_CHEEVOS_USER:
+    case KB_CHEEVOS_PASS:
+        if (strchr(text, '"')) {
+            app_toast(tr("cheevos.bad_char"));
+            return;
+        }
+        tm_ini_set(&A.settings, "cheevos", purpose == KB_CHEEVOS_USER ? "user" : "password", text);
+        app_mark_settings();
+        app_save_all();
+        break;
+    default: break;
+    }
+    menu_rebuild();
+}
+
 void menu_rebuild(void)
 {
     Menu *m = cur();
@@ -600,6 +844,10 @@ void menu_rebuild(void)
     case PAGE_ABOUT: page_about(m); break;
     case PAGE_LOG: page_log(m); break;
     case PAGE_BUTTONS: page_buttons(m); break;
+    case PAGE_NETWORK: page_network(m); break;
+    case PAGE_WIFI_SCAN: page_wifi_scan(m); break;
+    case PAGE_WIFI_SAVED: page_wifi_saved(m); break;
+    case PAGE_CHEEVOS: page_cheevos(m); break;
     }
     m->sel = sel < m->n ? sel : (m->n ? m->n - 1 : 0);
     m->top = top;
@@ -748,6 +996,8 @@ static void activate(MenuItem *it, TmButton b)
     switch (it->id) {
     case ACT_PAGE:
         if (b == BTN_A) {
+            if (it->arg == PAGE_WIFI_SCAN)
+                wifi_scan_now();
             if (it->arg == PAGE_EMU_CHOOSE)
                 menu_open((int)it->arg, strtol(it->sarg, NULL, 10), NULL);
             else
@@ -919,6 +1169,75 @@ static void activate(MenuItem *it, TmButton b)
             keyboard_open(A.query, SCR_GAMES);
         }
         return;
+    case ACT_WIFI_TOGGLE: {
+        int on = !tm_wifi_running();
+        tm_ini_set(&A.settings, "network", "wifi", on ? "on" : "off");
+        app_mark_settings();
+        if (tm_wifi_set(on) != 0)
+            app_toast(tr("wifi.toggle_failed"));
+        A.wst_time = 0;
+        A.naps = 0;
+        A.connect_until = 0;
+        if (!on)
+            net_ftp_stop();
+        break;
+    }
+    case ACT_WIFI_RESCAN: if (b == BTN_A) wifi_scan_now(); break;
+    case ACT_WIFI_AP: {
+        if (b != BTN_A || it->arg < 0 || (size_t)it->arg >= A.naps)
+            return;
+        const TmWifiAp *ap = &A.aps[it->arg];
+        if (ap->current) {
+            app_toast(tr("wifi.already"));
+            return;
+        }
+        if (ap->saved_id < 0 && ap->security == TM_WIFI_UNSUPPORTED) {
+            app_dialog(DLG_INFO, ap->ssid, tr("wifi.unsupported.desc"), 0, NULL, 1);
+            return;
+        }
+        if (ap->saved_id < 0 && ap->security == TM_WIFI_PSK) {
+            snprintf(msg, sizeof msg, tr("wifi.password_for"), ap->ssid);
+            keyboard_open_text(KB_WIFI_PSK, msg, "", ap->ssid);
+            return;
+        }
+        if (tm_wifi_connect(ap->ssid, NULL, ap->security == TM_WIFI_OPEN) == 0)
+            wifi_connect_started(ap->ssid);
+        else
+            app_toast(tr("wifi.connect_error"));
+        break;
+    }
+    case ACT_WIFI_SAVED:
+        if (b == BTN_A) {
+            snprintf(msg, sizeof msg, tr("wifi.forget.confirm"), it->sarg);
+            app_dialog(DLG_WIFI_FORGET, tr("wifi.forget"), msg, it->arg, it->sarg, 0);
+        }
+        return;
+    case ACT_BT_TOGGLE: {
+        int on = !setting_long("network", "bluetooth", 0);
+        tm_ini_set_long(&A.settings, "network", "bluetooth", on);
+        app_mark_settings();
+        if (tm_bt_set(on) == 0 && on)
+            app_toast(tr("bt.started"));
+        break;
+    }
+    case ACT_SSH_TOGGLE:
+        if (!setting_long("network", "ssh", 0)) {
+            app_dialog(DLG_SSH, tr("ssh.title"), tr("ssh.confirm"), 0, NULL, 0);
+            return;
+        }
+        tm_ini_set_long(&A.settings, "network", "ssh", 0);
+        app_mark_settings();
+        tm_ssh_set(0);
+        break;
+    case ACT_FTP: if (b == BTN_A) ftp_start(); return;
+    case ACT_CHEEVOS_USER:
+        if (b == BTN_A)
+            keyboard_open_text(KB_CHEEVOS_USER, tr("cheevos.user"), tm_ini_get(&A.settings, "cheevos", "user", ""), NULL);
+        return;
+    case ACT_CHEEVOS_PASS:
+        if (b == BTN_A)
+            keyboard_open_text(KB_CHEEVOS_PASS, tr("cheevos.password"), "", NULL);
+        return;
     default: return;
     }
     menu_rebuild();
@@ -995,6 +1314,21 @@ void menu_dialog_result(int id, long arg, const char *sarg, int yes)
         if (A.power.has_cpufreq)
             tm_power_apply(&A.power, tm_power_profile(TM_POWER_DEFAULT));
         app_toast(tr("power.restored"));
+        menu_rebuild();
+        break;
+    case DLG_FTP:
+        net_ftp_stop();
+        app_rescan(); /* games copied over FTP show up right away */
+        break;
+    case DLG_SSH:
+        tm_ini_set_long(&A.settings, "network", "ssh", 1);
+        app_mark_settings();
+        if (tm_ssh_set(1) != 0)
+            app_toast(tr("ssh.failed"));
+        menu_rebuild();
+        break;
+    case DLG_WIFI_FORGET:
+        app_toast(tr(tm_wifi_forget((int)arg) == 0 ? "wifi.forgotten" : "wifi.connect_error"));
         menu_rebuild();
         break;
     case DLG_WIZ_SKIP:

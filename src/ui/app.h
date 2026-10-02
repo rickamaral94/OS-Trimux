@@ -8,6 +8,7 @@
 #include "../core/leds.h"
 #include "../core/library.h"
 #include "../core/lists.h"
+#include "../core/net.h"
 #include "../core/paths.h"
 #include "../core/power.h"
 #include "../core/sysinfo.h"
@@ -101,8 +102,20 @@ typedef struct {
     int wiz_step, wiz_sel;
     /* on-screen keyboard */
     int kb_row, kb_col;
-    char kb_buf[64];
+    char kb_buf[128];
     ScreenType kb_return;
+    int kb_purpose; /* KB_* */
+    int kb_layer;   /* text mode: 0 lower, 1 upper, 2 symbols */
+    char kb_title[96];
+    char kb_ctx[64];
+    /* network */
+    TmWifiAp aps[TM_WIFI_MAX];
+    size_t naps;
+    uint64_t scan_at;       /* scan requested at (0 = none pending) */
+    uint64_t connect_until; /* waiting for a connection until */
+    char connect_ssid[TM_SSID_MAX + 1];
+    TmWifiStatus wst;
+    uint64_t wst_time;
     /* controller test */
     uint64_t ctrl_start_held;
     /* dialogs / toast */
@@ -168,7 +181,15 @@ void wizard_draw(void);
 void wizard_input(TmButton b);
 
 /* keyboard.c */
+enum { KB_SEARCH = 0, KB_WIFI_PSK, KB_CHEEVOS_USER, KB_CHEEVOS_PASS };
 void keyboard_open(const char *initial, ScreenType ret);
+/* Free text entry (all printable ASCII); the result goes to
+ * menu_keyboard_done(). ctx is passed back unchanged. */
+void keyboard_open_text(int purpose, const char *title, const char *initial, const char *ctx);
+void menu_keyboard_done(int purpose, const char *ctx, const char *text, int cancelled);
+/* menus.c: Wi-Fi scan/connection polling and the FTP server lifetime */
+void net_tick(void);
+void net_ftp_stop(void);
 void keyboard_draw(void);
 void keyboard_input(TmButton b);
 
@@ -177,13 +198,14 @@ enum {
     PAGE_SETTINGS = 1, PAGE_LANGUAGE, PAGE_APPEARANCE, PAGE_CONTROLS, PAGE_POWER, PAGE_LEDS, PAGE_LED_ZONE,
     PAGE_LIBRARY, PAGE_FOLDERS, PAGE_BIOS, PAGE_EMULATORS, PAGE_EMU_PLATFORM, PAGE_STORAGE, PAGE_SYSTEM,
     PAGE_QUICK, PAGE_GAME_OPTIONS, PAGE_EMU_CHOOSE, PAGE_HOTKEYS, PAGE_DISPLAY, PAGE_ABOUT, PAGE_LOG,
-    PAGE_ADD_GAMES, PAGE_BUTTONS,
+    PAGE_ADD_GAMES, PAGE_BUTTONS, PAGE_NETWORK, PAGE_WIFI_SCAN, PAGE_WIFI_SAVED, PAGE_CHEEVOS,
 };
 
 /* dialog ids */
 enum {
     DLG_NONE = 0, DLG_STOCK, DLG_POWEROFF, DLG_REBOOT, DLG_MKDIRS, DLG_RESTORE_EMU, DLG_GROW, DLG_EXPERIMENTAL,
     DLG_WIZ_SKIP, DLG_POWER_DEFAULT, DLG_INFO, DLG_IDLE, DLG_BOOST,
+    DLG_FTP, DLG_SSH, DLG_WIFI_FORGET,
 };
 
 #endif

@@ -15,9 +15,15 @@ compilação cruzada não contam como prova de desempenho.
 | Memória | Sem swap no cartão; rewind e run-ahead desligados; cache de extração do RetroArch em RAM e limpo a cada volta ao menu. | `retroarch.base.cfg`, `premenu.sh` |
 | CPU | Perfis com teto de 1,8 GHz; "Automático" usa Economia (≤ 1,2 GHz) para 8/16 bits. 2,0 GHz só pela chave lateral, por escolha do usuário. | `src/core/power.c`, `emulators.ini` |
 
-Tamanhos da versão 0.1.0 (medidos no build): `trimux-ui` 171 KB,
-`trimuxctl` 81 KB, RetroArch 13,7 MB, 20 núcleos ~131 MB (FinalBurn Neo 81 MB),
-árvore do cartão ~143 MB, imagem 1 GiB (21 MB em `.img.xz`).
+Tamanhos da versão 0.1.0 (medidos no build): `trimux-ui` 208 KB,
+`trimuxctl` 97 KB, RetroArch 14,9 MB (com rede, HTTPS e RetroAchievements),
+20 núcleos ~131 MB (FinalBurn Neo 81 MB), árvore do cartão ~145 MB, imagem
+1 GiB (23 MB em `.img.xz`).
+
+Rede: nada de rede roda por padrão além do que o firmware já liga. O
+`trimui_btmanager` só é iniciado se o usuário ativar; o servidor FTP só existe
+com a janela aberta; o SSH do firmware fica desligado. A tela de Rede consulta
+o `wpa_cli` no máximo a cada 2 s e só enquanto está aberta.
 
 ## Protocolo
 

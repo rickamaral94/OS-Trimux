@@ -65,6 +65,11 @@ redimensione FAT32 sem formatar.
    reindexadas automaticamente; também há *Configurações › Biblioteca ›
    Reindexar*. Reindexar nunca apaga jogos nem saves.
 
+**Pelo Wi-Fi, sem tirar o cartão:** *Configurações › Rede e conexões ›
+Transferir arquivos (FTP)* mostra um endereço `ftp://…` para abrir no
+computador. O servidor só fica ligado enquanto a janela está aberta e, ao
+fechá-la, a biblioteca é reindexada. Detalhes e cuidados em [REDE.md](REDE.md).
+
 Jogos, BIOS e firmware de consoles **não são incluídos**. Use apenas cópias de
 mídias e aparelhos que você possui.
 

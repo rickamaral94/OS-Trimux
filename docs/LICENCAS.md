@@ -11,6 +11,8 @@ verificados pelo `scripts/fetch_sources.sh`.
 | Componente | Uso | Licença | Origem |
 |---|---|---|---|
 | RetroArch v1.22.2 | frontend dos emuladores | GPL-3.0-or-later | github.com/libretro/RetroArch |
+| rcheevos (dentro do RetroArch) | RetroAchievements | MIT | RetroArch `deps/rcheevos` |
+| mbedTLS (dentro do RetroArch) | HTTPS para RetroAchievements | Apache-2.0 | RetroArch `deps/mbedtls` |
 | FCEUmm | NES | GPL-2.0-or-later | libretro/libretro-fceumm |
 | Nestopia UE | NES | GPL-2.0-or-later | libretro/nestopia |
 | Snes9x 2005 Plus | SNES | **Licença Snes9x (não comercial)** | libretro/snes9x2005 |
@@ -51,6 +53,11 @@ compilação completo está neste repositório (`make all-docker`).
 | Debian bullseye (snapshot 2026-08-24): GCC 10, glibc 2.31, binutils, mtools, dosfstools, QEMU | contêiner de compilação | várias livres (GPL/LGPL) |
 | SDL 2.30.8 | cabeçalhos e biblioteca para *linkar* (no aparelho é usada a cópia do firmware) | Zlib |
 | Firmware oficial TrimUI v1.1.1 | auditoria de hardware e testes de ABI em QEMU; **não redistribuído** | proprietário (TrimUI) |
+
+Em tempo de execução, as funções de rede chamam ferramentas que **já estão no
+firmware do aparelho** e não vão na imagem: `wpa_supplicant`/`wpa_cli`,
+BusyBox (`ifconfig`, `udhcpc`, `tcpsvd`, `ftpd`), OpenSSH (`sshd`) e o
+`trimui_btmanager` da TrimUI.
 
 ## Não incluídos de propósito
 

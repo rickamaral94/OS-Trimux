@@ -8,6 +8,7 @@
 #include "../../src/core/leds.h"
 #include "../../src/core/library.h"
 #include "../../src/core/lists.h"
+#include "../../src/core/net.h"
 #include "../../src/core/log.h"
 #include "../../src/core/paths.h"
 #include "../../src/core/power.h"
@@ -109,7 +110,7 @@ static void test_ini(void)
 
 static void test_i18n(void)
 {
-    put("i18n/pt_BR.lang", "lang.name = Português (Brasil)\nhello = Olá\nonly.pt = só pt\n");
+    put("i18n/pt_BR.lang", "lang.name = Português (Brasil)\nhello = Olá\nonly.pt = só pt\nmulti = a\\nb\n");
     put("i18n/en_US.lang", "lang.name = English\nhello = Hello\n");
     char dir[1024];
     snprintf(dir, sizeof dir, "%s/i18n", T);
@@ -117,6 +118,7 @@ static void test_i18n(void)
     CHECK_STR(tm_tr("hello"), "Hello");
     CHECK_STR(tm_tr("only.pt"), "só pt"); /* falls back to pt_BR */
     CHECK_STR(tm_tr("missing.key"), "missing.key");
+    CHECK_STR(tm_tr("multi"), "a\nb"); /* "\\n" in a .lang file is a line break */
     tm_i18n_load(dir, "../../etc");
     CHECK_STR(tm_i18n_current(), "pt_BR");
     char codes[8][16];
@@ -525,6 +527,126 @@ static void test_buttons(void)
     unsetenv("TRIMUX_SYSFS_ROOT");
 }
 
+static void test_net(void)
+{
+    char out[512];
+    tm_wpa_unescape("caf\\xc3\\xa9 \\\"x\\\" \\\\", out, sizeof out);
+    CHECK_STR(out, "caf\xc3\xa9 \"x\" \\");
+    tm_wpa_unescape("bad\\xZZ", out, sizeof out);
+    CHECK_STR(out, "badxZZ");
+
+    const char *scan = "bssid / frequency / signal level / flags / ssid\n"
+                       "aa:bb:cc:dd:ee:01\t2437\t-71\t[WPA2-PSK-CCMP][ESS]\tCasa\n"
+                       "aa:bb:cc:dd:ee:02\t5180\t-48\t[WPA2-PSK-CCMP][ESS]\tCasa\n"
+                       "aa:bb:cc:dd:ee:03\t2412\t-60\t[ESS]\tCafe\\x20Livre\n"
+                       "aa:bb:cc:dd:ee:04\t2412\t-50\t[WPA2-EAP-CCMP][ESS]\tEmpresa\n"
+                       "aa:bb:cc:dd:ee:05\t2412\t-40\t[WPA2-PSK-CCMP][ESS]\t\n"
+                       "aa:bb:cc:dd:ee:06\t2412\t-85\t[RSN-SAE-CCMP][ESS]\tSo WPA3\n"
+                       "garbage line\n";
+    TmWifiAp aps[8];
+    size_t n = tm_wifi_parse_scan(scan, aps, 8);
+    CHECK(n == 4); /* hidden skipped, duplicate merged */
+    CHECK_STR(aps[0].ssid, "Casa");
+    CHECK(aps[0].signal == -48 && aps[0].security == TM_WIFI_PSK);
+    CHECK_STR(aps[1].ssid, "Empresa");
+    CHECK(aps[1].security == TM_WIFI_UNSUPPORTED);
+    CHECK_STR(aps[2].ssid, "Cafe Livre");
+    CHECK(aps[2].security == TM_WIFI_OPEN);
+    CHECK(aps[3].security == TM_WIFI_UNSUPPORTED);
+    CHECK(tm_wifi_parse_scan(scan, aps, 1) == 1);
+
+    TmWifiNet nets[4];
+    size_t nn = tm_wifi_parse_networks("network id / ssid / bssid / flags\n0\tCasa\tany\t[CURRENT]\n"
+                                       "1\tOutra\tany\t[DISABLED]\n",
+                                       nets, 4);
+    CHECK(nn == 2 && nets[0].id == 0 && nets[0].current && nets[1].id == 1 && !nets[1].current);
+    n = tm_wifi_parse_scan(scan, aps, 8);
+    tm_wifi_mark_saved(aps, n, nets, nn);
+    CHECK(aps[0].saved_id == 0 && aps[0].current && aps[2].saved_id == -1);
+
+    TmWifiStatus st;
+    tm_wifi_parse_status("bssid=aa:bb\nssid=Casa\nwpa_state=COMPLETED\nip_address=192.168.0.23\n", &st);
+    CHECK_STR(st.state, "COMPLETED");
+    CHECK_STR(st.ssid, "Casa");
+    CHECK_STR(st.ip, "192.168.0.23");
+
+    CHECK(tm_wifi_ssid_hex("Ab \"1", out, sizeof out) == 0);
+    CHECK_STR(out, "4162202231");
+    CHECK(tm_wifi_ssid_hex("", out, sizeof out) == -1);
+    CHECK(tm_wifi_ssid_hex("123456789012345678901234567890123", out, sizeof out) == -1);
+    CHECK(tm_wifi_psk_valid("12345678") && tm_wifi_psk_valid("com espaço") == 0 && !tm_wifi_psk_valid("1234567"));
+    CHECK(tm_wifi_psk_valid("a b\"c'd$e;f"));
+    CHECK(tm_wifi_bars(-50) == 3 && tm_wifi_bars(-65) == 2 && tm_wifi_bars(-75) == 1 && tm_wifi_bars(-90) == 0);
+
+    TmIni ini;
+    tm_ini_init(&ini);
+    char cfg[512];
+    CHECK(tm_cheevos_cfg(&ini, cfg, sizeof cfg) == 0 && cfg[0] == '\0');
+    tm_ini_set(&ini, "cheevos", "user", "jogador");
+    tm_ini_set(&ini, "cheevos", "password", "s3nh@ x");
+    CHECK(tm_cheevos_cfg(&ini, cfg, sizeof cfg) == 0 && cfg[0] == '\0'); /* not enabled */
+    tm_ini_set_long(&ini, "cheevos", "enable", 1);
+    CHECK(tm_cheevos_cfg(&ini, cfg, sizeof cfg) == 0);
+    CHECK(strstr(cfg, "cheevos_enable = \"true\"") && strstr(cfg, "cheevos_username = \"jogador\"") &&
+          strstr(cfg, "cheevos_password = \"s3nh@ x\"") && strstr(cfg, "cheevos_hardcore_mode_enable = \"false\""));
+    tm_ini_set(&ini, "cheevos", "password", "a\"b");
+    CHECK(tm_cheevos_cfg(&ini, cfg, sizeof cfg) == -1);
+    tm_ini_free(&ini);
+
+    /* command path, with fake firmware tools under TRIMUX_SYSFS_ROOT */
+    char root[600], log[700];
+    snprintf(root, sizeof root, "%s/netroot", T);
+    snprintf(log, sizeof log, "%s/net.log", T);
+    char script[1400];
+    snprintf(script, sizeof script,
+             "#!/bin/sh\necho \"cli $*\" >> '%s'\ncase \"$5\" in\n"
+             "add_network) echo 'Selected interface' ; echo 3;;\n"
+             "list_network) printf 'network id / ssid / bssid / flags\\n0\\tCasa\\tany\\t[CURRENT]\\n';;\n"
+             "status) printf 'wpa_state=COMPLETED\\nssid=Casa\\nip_address=10.0.0.5\\n';;\n"
+             "remove_network) [ \"$6\" = 9 ] && echo FAIL || echo OK;;\n*) echo OK;;\nesac\n",
+             log);
+    put("netroot/usr/sbin/wpa_cli", script);
+    snprintf(script, sizeof script, "#!/bin/sh\necho \"bb $*\" >> '%s'\n[ \"$1\" = pidof ] && exit 1\nexit 0\n", log);
+    put("netroot/bin/busybox", script);
+    put("netroot/usr/sbin/wpa_supplicant", "#!/bin/sh\nexit 0\n");
+    put("netroot/sys/class/net/wlan0/operstate", "up\n");
+    char p[800];
+    const char *bins[] = {"usr/sbin/wpa_cli", "bin/busybox", "usr/sbin/wpa_supplicant"};
+    for (size_t i = 0; i < 3; i++) {
+        snprintf(p, sizeof p, "%s/%s", root, bins[i]);
+        chmod(p, 0755);
+    }
+    setenv("TRIMUX_SYSFS_ROOT", root, 1);
+    CHECK(tm_wifi_available());
+    CHECK(!tm_bt_available() && !tm_ssh_available());
+    CHECK(tm_wifi_status(&st) == 0 && strcmp(st.ip, "10.0.0.5") == 0);
+    CHECK(tm_wifi_connect("Casa", NULL, 0) == 0);           /* saved: select only */
+    CHECK(tm_wifi_connect("Nova", "curta", 0) == -1);       /* invalid passphrase */
+    CHECK(tm_wifi_connect("Nova Rede", "senha segura", 0) == 0);
+    CHECK(tm_wifi_forget(9) == -1 && tm_wifi_forget(1) == 0);
+    CHECK(tm_wifi_set(0) == 0);
+    char *l = tm_read_file(log, 1 << 16, NULL);
+    CHECK(l && strstr(l, "cli -p /etc/wifi/sockets -i wlan0 select_network 0"));
+    CHECK(l && strstr(l, "set_network 3 ssid 4e6f76612052656465"));
+    CHECK(l && strstr(l, "set_network 3 psk \"senha segura\""));
+    CHECK(l && strstr(l, "save_config"));
+    CHECK(l && strstr(l, "bb ifconfig wlan0 down") && strstr(l, "bb killall -15 wpa_supplicant"));
+    CHECK(l && !strstr(l, "curta"));
+    free(l);
+    char pidfile[700];
+    snprintf(pidfile, sizeof pidfile, "%s/ftp.pid", T);
+    CHECK(tm_ftp_start("10.0.0.5; rm", 2121, T, pidfile) == -1); /* only digits and dots */
+    CHECK(tm_ftp_start("", 2121, T, pidfile) == -1);
+    unsetenv("TRIMUX_SYSFS_ROOT");
+    char argvbuf[] = "/bin/echo";
+    char *argv[] = {argvbuf, "ola", NULL};
+    CHECK(tm_run(argv, out, sizeof out, 2000) == 0 && strcmp(out, "ola\n") == 0);
+    char sl[] = "/bin/sleep";
+    char *argv2[] = {sl, "5", NULL};
+    uint64_t t0 = tm_now_ms();
+    CHECK(tm_run(argv2, NULL, 0, 200) == -1 && tm_now_ms() - t0 < 2000);
+}
+
 int main(void)
 {
     snprintf(T, sizeof T, "/tmp/trimux-unit-%d", (int)getpid());
@@ -542,6 +664,7 @@ int main(void)
     test_launch();
     test_sysinfo();
     test_buttons();
+    test_net();
     char cmd[600];
     snprintf(cmd, sizeof cmd, "rm -rf '%s'", T);
     if (system(cmd) != 0)

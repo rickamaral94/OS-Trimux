@@ -91,6 +91,7 @@ void app_rescan(void)
 
 void app_exit(int code)
 {
+    net_ftp_stop(); /* the file server never outlives the menu */
     app_save_all();
     A.exit_code = code;
     A.running = 0;
@@ -472,6 +473,8 @@ static void dialog_input(TmButton b)
             d->active = 0;
             if (d->id == DLG_IDLE)
                 A.idle_warned = 0;
+            if (d->id == DLG_FTP)
+                menu_dialog_result(DLG_FTP, 0, NULL, 1);
         }
         return;
     }
@@ -674,6 +677,11 @@ int app_main(int argc, char **argv)
                 gfx_screenshot(tok + 5);
                 continue;
             }
+            if (strncmp(tok, "wait=", 5) == 0) { /* let background polling run */
+                usleep((useconds_t)atoi(tok + 5) * 1000u);
+                net_tick();
+                continue;
+            }
             for (int b = 0; b < BTN_COUNT; b++)
                 if (strcmp(tok, input_button_name((TmButton)b)) == 0)
                     dispatch((TmButton)b);
@@ -712,8 +720,10 @@ int app_main(int argc, char **argv)
                 A.dirty = 1;
             check_idle();
             app_switch_tick();
+            net_tick();
         }
     }
+    net_ftp_stop();
     app_save_all();
     input_quit();
     gfx_quit();

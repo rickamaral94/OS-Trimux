@@ -32,6 +32,11 @@ cartão devolve o aparelho ao estado original.
   firmware sempre ativos.
   Opcional: mapear a chave lateral para liberar **2,0 GHz** (o máximo da
   tabela do firmware) só enquanto ela estiver ligada, com confirmação.
+* **Rede:** Wi-Fi com busca e senha pelo teclado na tela (mesmas redes do
+  sistema oficial), **RetroAchievements**, **transferência de arquivos por FTP**
+  que só fica ligada com a janela aberta, serviço Bluetooth da TrimUI e o
+  SSH/SFTP do firmware (desligado por padrão). Detalhes em
+  [docs/REDE.md](docs/REDE.md).
 * **LEDs** pelo driver oficial (barra superior, anéis dos analógicos, F1/F2,
   gatilhos), só se detectados e só se você ativar.
 * Assistente inicial curto, que pode ser pulado e reaberto.
@@ -42,6 +47,7 @@ cartão devolve o aparelho ao estado original.
 |---|---|
 | ![Energia](docs/img/06-energia.png) | ![Informações](docs/img/08-informacoes.png) |
 | ![Ports](docs/img/11-ports.png) | ![Botões extras](docs/img/12-botoes.png) |
+| ![Rede](docs/img/13-rede.png) | ![Senha do Wi-Fi](docs/img/15-senha-wifi.png) |
 
 <sub>Capturas renderizadas no computador (SDL offscreen) com um Brick Pro
 simulado; não são fotos do aparelho.</sub>
@@ -53,7 +59,8 @@ simulado; não são fotos do aparelho.</sub>
 2. No **Rufus**: Dispositivo = seu microSD → SELECIONAR → o `.img.xz` →
    INICIAR. (Cartão de 2 GB ou mais; recomendado 16 GB+. **Apaga o cartão.**)
 3. Coloque o cartão no Brick Pro desligado e ligue. Siga o assistente.
-4. Copie seus jogos para `Roms/<PLATAFORMA>` e BIOS para `Bios/`.
+4. Copie seus jogos para `Roms/<PLATAFORMA>` e BIOS para `Bios/` (pelo leitor
+   de cartão ou, com Wi-Fi, por *Rede e conexões › Transferir arquivos*).
 5. Opcional: *Configurações › Armazenamento › Expandir partição* para usar o
    cartão inteiro.
 
@@ -140,8 +147,9 @@ executa o mesmo processo e publica a imagem como artefato.
 
 ## Testes
 
-* 166 verificações unitárias em C (com AddressSanitizer/UBSan).
-* Testes Python: `trimuxctl` contra um Brick Pro simulado, scripts de boot com
+* 213 verificações unitárias em C (com AddressSanitizer/UBSan).
+* Testes Python: `trimuxctl` contra um Brick Pro simulado (inclusive
+  ferramentas de rede falsas do firmware), scripts de boot com
   comandos do firmware simulados, imagem/partição/expansão em arquivos de
   imagem, catálogo e traduções, e o menu com entradas roteirizadas.
 * Teste de fumaça em QEMU com as bibliotecas reais do firmware v1.1.1.
