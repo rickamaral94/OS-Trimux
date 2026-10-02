@@ -16,7 +16,7 @@ Como rodar: `make test` (A + partes S que não exigem Docker),
 `make docker-smoke` ou `scripts/smoke_qemu.sh` dentro do contêiner (S, QEMU),
 `python3 tools/screenshots.py` (S, capturas).
 
-## Resultado da execução desta versão (0.1.0)
+## Resultado da execução desta versão (0.2.0)
 
 | Conjunto | Categoria | Resultado |
 |---|---|---|

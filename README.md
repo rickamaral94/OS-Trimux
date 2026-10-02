@@ -8,7 +8,7 @@ cartão devolve o aparelho ao estado original.
 
 ![Tela inicial](docs/img/02-inicio.png)
 
-> **Estado: 0.1.0, pré-lançamento, ainda não testado em um aparelho físico.**
+> **Estado: 0.2.0, pré-lançamento, ainda não testado em um aparelho físico.**
 > Compilação, testes automáticos, testes em ambiente simulado e a verificação
 > de compatibilidade com as bibliotecas do firmware oficial v1.1.1 (em QEMU)
 > passaram. Inicialização real, imagem na tela, controles, som, suspensão e

@@ -1,10 +1,17 @@
-# Próxima versão (em desenvolvimento)
+# TriMux 0.2.0 (pré-lançamento)
+
+**Estado: não testado em um Brick Pro físico**, como a 0.1.0. Tudo da 0.1.0
+continua valendo (lista abaixo), mais:
 
 * Registros e desempenho ([DIAGNOSTICO.md](DIAGNOSTICO.md)): registro opcional
   de temperatura, CPU e bateria em cada jogo com resumo por perfil, FPS na
   tela, log detalhado do TriMux e log do RetroArch; tudo desligado por padrão.
 * Perguntas frequentes sobre instalação na memória interna
   ([INSTALACAO.md](INSTALACAO.md)).
+
+Arquivos desta versão: `TriMux-0.2.0-brickpro.img.xz` (Rufus/balenaEtcher),
+`TriMux-0.2.0-update.zip` (atualizar um cartão com TriMux, sem perder saves) e
+`TriMux-0.2.0-brickpro.sha256`.
 
 # TriMux 0.1.0 — primeira versão (pré-lançamento)
 
