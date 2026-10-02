@@ -1,3 +1,11 @@
+# Próxima versão (em desenvolvimento)
+
+* Registros e desempenho ([DIAGNOSTICO.md](DIAGNOSTICO.md)): registro opcional
+  de temperatura, CPU e bateria em cada jogo com resumo por perfil, FPS na
+  tela, log detalhado do TriMux e log do RetroArch; tudo desligado por padrão.
+* Perguntas frequentes sobre instalação na memória interna
+  ([INSTALACAO.md](INSTALACAO.md)).
+
 # TriMux 0.1.0 — primeira versão (pré-lançamento)
 
 **Estado: não testado em um Brick Pro físico.** Todo o código foi compilado,

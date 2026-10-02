@@ -581,6 +581,8 @@ static int load_everything(void)
     int created = tm_settings_load(&A.settings, &A.paths);
     if (created)
         A.settings_dirty = 1;
+    if (tm_ini_get_long(&A.settings, "diag", "verbose", 0))
+        tm_log_set_level(TM_LOG_DEBUG);
     tm_ini_init(&A.overrides);
     tm_ini_load(&A.overrides, A.paths.overrides);
     app_apply_language();

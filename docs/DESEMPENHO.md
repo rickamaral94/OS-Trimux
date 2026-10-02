@@ -35,10 +35,12 @@ o `wpa_cli` no máximo a cada 2 s e só enquanto está aberta.
 5. Jogo **legal** (homebrew/próprio), plataforma, emulador, resolução/escala.
 6. Duração mínima: **20 min** para jogabilidade, **60 min** para estabilidade
    térmica, **2 h** para teste prolongado. Um benchmark curto não prova nada.
-7. Registre temperatura da CPU no início e a cada 5 min (TriMux mostra em
-   *Configurações › Energia*; o log registra quando a proteção térmica atua),
-   bateria inicial/final, quedas de quadro perceptíveis, travamentos.
-8. Anexe `TriMuxData/logs/trimux.log` da sessão.
+7. Ligue *Configurações › Sistema › Registros e desempenho › Registro de
+   desempenho* e *Mostrar FPS*: o TriMux grava temperatura, CPU e bateria a
+   cada 10 s e um resumo por sessão ([DIAGNOSTICO.md](DIAGNOSTICO.md)). Anote à
+   parte quedas de quadro perceptíveis e travamentos.
+8. Anexe `TriMuxData/logs/perf/sessions.csv`, o arquivo de amostras da sessão e
+   `TriMuxData/logs/trimux.log`.
 
 ## Modelo de registro
 

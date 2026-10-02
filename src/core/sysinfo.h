@@ -17,6 +17,8 @@ typedef struct {
 
 /* sd_root: mount point of the card (e.g. /mnt/SDCARD). */
 void tm_sysinfo_read(TmSysInfo *si, const char *sd_root);
+/* Battery only (cheap: two sysfs reads). Returns -1 if unknown. */
+int tm_battery_read(int *pct, int *charging);
 /* 1 if the firmware identifies itself as a TrimUI Brick Pro (TG4040). */
 int tm_sysinfo_is_brick_pro(void);
 /* Formats a byte count as "12,3 GB" style text. */

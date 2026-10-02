@@ -37,6 +37,10 @@ cartão devolve o aparelho ao estado original.
   que só fica ligada com a janela aberta, serviço Bluetooth da TrimUI e o
   SSH/SFTP do firmware (desligado por padrão). Detalhes em
   [docs/REDE.md](docs/REDE.md).
+* **Registros e desempenho** (opcional, desligado por padrão): grava
+  temperatura, CPU e bateria em cada jogo e resume por perfil, para comparar
+  no aparelho o que cada opção custa; FPS na tela e logs técnicos.
+  [docs/DIAGNOSTICO.md](docs/DIAGNOSTICO.md).
 * **LEDs** pelo driver oficial (barra superior, anéis dos analógicos, F1/F2,
   gatilhos), só se detectados e só se você ativar.
 * Assistente inicial curto, que pode ser pulado e reaberto.
@@ -48,6 +52,7 @@ cartão devolve o aparelho ao estado original.
 | ![Energia](docs/img/06-energia.png) | ![Informações](docs/img/08-informacoes.png) |
 | ![Ports](docs/img/11-ports.png) | ![Botões extras](docs/img/12-botoes.png) |
 | ![Rede](docs/img/13-rede.png) | ![Senha do Wi-Fi](docs/img/15-senha-wifi.png) |
+| ![Registros e desempenho](docs/img/16-registros.png) | ![Sessões gravadas](docs/img/17-sessoes.png) |
 
 <sub>Capturas renderizadas no computador (SDL offscreen) com um Brick Pro
 simulado; não são fotos do aparelho.</sub>
@@ -150,7 +155,7 @@ testada do zero antes de ser anexada.
 
 ## Testes
 
-* 213 verificações unitárias em C (com AddressSanitizer/UBSan).
+* 241 verificações unitárias em C (com AddressSanitizer/UBSan).
 * Testes Python: `trimuxctl` contra um Brick Pro simulado (inclusive
   ferramentas de rede falsas do firmware), scripts de boot com
   comandos do firmware simulados, imagem/partição/expansão em arquivos de

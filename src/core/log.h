@@ -11,6 +11,8 @@ enum { TM_LOG_DEBUG, TM_LOG_INFO, TM_LOG_WARN, TM_LOG_ERROR };
 void tm_log_init(const char *path, size_t max_bytes, const char *tag);
 void tm_log(int level, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 void tm_log_close(void);
+/* TM_LOG_DEBUG enables detailed logging (setting [diag] verbose). */
+void tm_log_set_level(int min_level);
 
 #define LOGI(...) tm_log(TM_LOG_INFO, __VA_ARGS__)
 #define LOGW(...) tm_log(TM_LOG_WARN, __VA_ARGS__)

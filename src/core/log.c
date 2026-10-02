@@ -68,3 +68,8 @@ void tm_log(int level, const char *fmt, ...)
 }
 
 void tm_log_close(void) {}
+
+void tm_log_set_level(int min_level)
+{
+    g_min_level = min_level < TM_LOG_DEBUG ? TM_LOG_DEBUG : min_level > TM_LOG_ERROR ? TM_LOG_ERROR : min_level;
+}

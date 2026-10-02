@@ -4,6 +4,7 @@
 #include "../core/buttons.h"
 #include "../core/fatgrow.h"
 #include "../core/log.h"
+#include "../core/perf.h"
 #include "../core/util.h"
 
 #include <fcntl.h>
@@ -21,7 +22,7 @@ enum {
     ACT_MKDIRS, ACT_SET_PLAT_EMU, ACT_RESTORE_EMU, ACT_SET_GAME_EMU, ACT_INFO, ACT_WIZARD, ACT_STOCK,
     ACT_REBOOT, ACT_POWEROFF, ACT_GROW, ACT_PLAY, ACT_FAV, ACT_REMOVE_RECENT, ACT_FAV_ONLY, ACT_SEARCH,
     ACT_KEY_ACTION, ACT_SWITCH_ACTION, ACT_WIFI_TOGGLE, ACT_WIFI_RESCAN, ACT_WIFI_AP, ACT_WIFI_SAVED, ACT_BT_TOGGLE,
-    ACT_SSH_TOGGLE, ACT_FTP, ACT_CHEEVOS_USER, ACT_CHEEVOS_PASS,
+    ACT_SSH_TOGGLE, ACT_FTP, ACT_CHEEVOS_USER, ACT_CHEEVOS_PASS, ACT_CLEAR_LOGS,
 };
 
 static const struct {
@@ -497,7 +498,7 @@ static void page_system(Menu *m)
     add(m, ACT_INFO, tr("system.info"), "›", tr("system.info.desc"));
     add(m, ACT_WIZARD, tr("system.wizard"), "›", tr("system.wizard.desc"));
     add(m, ACT_STOCK, tr("system.stock"), "", tr("system.stock.desc"));
-    add_page(m, PAGE_LOG, tr("system.log"), tr("system.log.desc"));
+    add_page(m, PAGE_DIAG, tr("diag.title"), tr("diag.desc"));
     add_page(m, PAGE_ABOUT, tr("system.about"), tr("system.about.desc"));
     add(m, ACT_REBOOT, tr("system.reboot"), "", tr("system.reboot.desc"));
     add(m, ACT_POWEROFF, tr("system.poweroff"), "", tr("system.poweroff.desc"));
@@ -812,6 +813,138 @@ void menu_keyboard_done(int purpose, const char *ctx, const char *text, int canc
     menu_rebuild();
 }
 
+/* ------------------------------------------------------------ logs and performance */
+
+static void page_diag(Menu *m)
+{
+    tm_strlcpy(m->title, tr("diag.title"), sizeof m->title);
+    header_row(m, tr("diag.measure"));
+    MenuItem *it = add(m, ACT_TOGGLE, tr("diag.perf"), onoff((int)setting_long("diag", "perf", 0)), tr("diag.perf.desc"));
+    tm_strlcpy(it->sarg, "diag/perf", sizeof it->sarg);
+    it = add(m, ACT_TOGGLE, tr("diag.fps"), onoff((int)setting_long("diag", "show_fps", 0)), tr("diag.fps.desc"));
+    tm_strlcpy(it->sarg, "diag/show_fps", sizeof it->sarg);
+    char v[32];
+    snprintf(v, sizeof v, "%zu ›", tm_perf_recent_count(A.paths.logdir));
+    it = add(m, ACT_PAGE, tr("diag.sessions"), v, tr("diag.sessions.desc"));
+    it->arg = PAGE_PERF;
+    header_row(m, tr("diag.technical"));
+    it = add(m, ACT_TOGGLE, tr("diag.verbose"), onoff((int)setting_long("diag", "verbose", 0)), tr("diag.verbose.desc"));
+    tm_strlcpy(it->sarg, "diag/verbose", sizeof it->sarg);
+    it = add(m, ACT_TOGGLE, tr("diag.ralog"), onoff((int)setting_long("diag", "retroarch_log", 0)), tr("diag.ralog.desc"));
+    tm_strlcpy(it->sarg, "diag/retroarch_log", sizeof it->sarg);
+    add_page(m, PAGE_LOG, tr("diag.viewlog"), tr("system.log.desc"));
+    add(m, ACT_CLEAR_LOGS, tr("diag.clear"), "", tr("diag.clear.desc"));
+}
+
+static void temp_text(int c, char *out, size_t size)
+{
+    if (c < 0)
+        tm_strlcpy(out, "?", size);
+    else
+        snprintf(out, size, "%d °C", c);
+}
+
+#define PERF_SHOW 50
+
+static void page_perf(Menu *m)
+{
+    tm_strlcpy(m->title, tr("diag.sessions"), sizeof m->title);
+    static TmPerfSummary s[PERF_SHOW];
+    size_t n = tm_perf_recent(A.paths.logdir, s, PERF_SHOW);
+    if (!n) {
+        MenuItem *it = add(m, ACT_NONE, tr("diag.sessions.none"), "", "");
+        it->enabled = 0;
+        return;
+    }
+    /* per profile: what each limit costs in heat and battery */
+    header_row(m, tr("diag.by_profile"));
+    const char *seen[PERF_SHOW];
+    size_t nseen = 0;
+    for (size_t i = 0; i < n; i++) {
+        size_t k;
+        for (k = 0; k < nseen; k++)
+            if (strcmp(seen[k], s[i].profile) == 0)
+                break;
+        if (k < nseen)
+            continue;
+        seen[nseen++] = s[i].profile;
+        int count = 0, ntemp = 0, ndrain = 0, ncpu = 0;
+        long tsum = 0, dsum = 0, csum = 0;
+        for (size_t j = 0; j < n; j++) {
+            if (strcmp(s[j].profile, s[i].profile) != 0)
+                continue;
+            count++;
+            if (s[j].temp_max_c >= 0) {
+                tsum += s[j].temp_max_c;
+                ntemp++;
+            }
+            int d = tm_perf_drain_per_hour(&s[j]);
+            if (d >= 0) {
+                dsum += d;
+                ndrain++;
+            }
+            if (s[j].avg_mhz > 0) {
+                csum += s[j].avg_mhz;
+                ncpu++;
+            }
+        }
+        char val[64], desc[320], t[24], dr[32], cpu[32];
+        temp_text(ntemp ? (int)(tsum / ntemp) : -1, t, sizeof t);
+        if (ndrain)
+            snprintf(dr, sizeof dr, "%ld %%/h", dsum / ndrain);
+        else
+            tm_strlcpy(dr, "?", sizeof dr);
+        if (ncpu)
+            snprintf(cpu, sizeof cpu, "%ld MHz", csum / ncpu);
+        else
+            tm_strlcpy(cpu, "?", sizeof cpu);
+        snprintf(val, sizeof val, "%s · %s", t, dr);
+        snprintf(desc, sizeof desc, tr("diag.profile.desc"), count, t, dr, ndrain, cpu);
+        add(m, ACT_NONE, profile_name(s[i].profile), val, desc);
+    }
+    header_row(m, tr("diag.recent"));
+    for (size_t i = 0; i < n; i++) {
+        const TmPerfSummary *x = &s[i];
+        char label[96], val[64], desc[320], t0[24], tm[24], t1[24], b0[16], b1[16], extra[48], cpu[24], cpumax[24];
+        /* "2026-10-02 13:45" -> "02/10 13:45" */
+        char when[16] = "";
+        if (strlen(x->started) >= 16)
+            snprintf(when, sizeof when, "%.2s/%.2s %.5s", x->started + 8, x->started + 5, x->started + 11);
+        snprintf(label, sizeof label, "%s · %s · %s", when, x->system, x->game);
+        temp_text(x->temp_max_c, tm, sizeof tm);
+        snprintf(val, sizeof val, "%ld min · %s", (x->duration_s + 30) / 60, tm);
+        temp_text(x->temp_start_c, t0, sizeof t0);
+        temp_text(x->temp_end_c, t1, sizeof t1);
+        if (x->bat_start >= 0)
+            snprintf(b0, sizeof b0, "%d%%", x->bat_start);
+        else
+            tm_strlcpy(b0, "?", sizeof b0);
+        if (x->bat_end >= 0)
+            snprintf(b1, sizeof b1, "%d%%", x->bat_end);
+        else
+            tm_strlcpy(b1, "?", sizeof b1);
+        int d = tm_perf_drain_per_hour(x);
+        if (x->charged)
+            snprintf(extra, sizeof extra, " (%s)", tr("diag.charging"));
+        else if (d >= 0)
+            snprintf(extra, sizeof extra, " (%d %%/h)", d);
+        else
+            extra[0] = '\0';
+        if (x->avg_mhz > 0)
+            snprintf(cpu, sizeof cpu, "%ld MHz", x->avg_mhz);
+        else
+            tm_strlcpy(cpu, "?", sizeof cpu);
+        if (x->max_mhz > 0)
+            snprintf(cpumax, sizeof cpumax, "%ld MHz", x->max_mhz);
+        else
+            tm_strlcpy(cpumax, "?", sizeof cpumax);
+        snprintf(desc, sizeof desc, tr("diag.session.desc"), x->emulator, profile_name(x->profile), cpu, cpumax, t0,
+                 tm, t1, b0, b1, extra, x->throttles);
+        MenuItem *it = add(m, ACT_NONE, label, val, desc);
+        it->enabled = 1;
+    }
+}
+
 void menu_rebuild(void)
 {
     Menu *m = cur();
@@ -848,6 +981,8 @@ void menu_rebuild(void)
     case PAGE_WIFI_SCAN: page_wifi_scan(m); break;
     case PAGE_WIFI_SAVED: page_wifi_saved(m); break;
     case PAGE_CHEEVOS: page_cheevos(m); break;
+    case PAGE_DIAG: page_diag(m); break;
+    case PAGE_PERF: page_perf(m); break;
     }
     m->sel = sel < m->n ? sel : (m->n ? m->n - 1 : 0);
     m->top = top;
@@ -957,6 +1092,8 @@ static void toggle_key(const char *sk)
     *key++ = '\0';
     tm_ini_set_long(&A.settings, sec, key, !tm_ini_get_long(&A.settings, sec, key, 0));
     app_mark_settings();
+    if (strcmp(sec, "diag") == 0 && strcmp(key, "verbose") == 0)
+        tm_log_set_level(tm_ini_get_long(&A.settings, sec, key, 0) ? TM_LOG_DEBUG : TM_LOG_INFO);
     if (strcmp(key, "clean_names") == 0)
         app_rescan();
 }
@@ -1230,6 +1367,10 @@ static void activate(MenuItem *it, TmButton b)
         tm_ssh_set(0);
         break;
     case ACT_FTP: if (b == BTN_A) ftp_start(); return;
+    case ACT_CLEAR_LOGS:
+        if (b == BTN_A)
+            app_dialog(DLG_CLEAR_LOGS, tr("diag.clear"), tr("diag.clear.confirm"), 0, NULL, 0);
+        return;
     case ACT_CHEEVOS_USER:
         if (b == BTN_A)
             keyboard_open_text(KB_CHEEVOS_USER, tr("cheevos.user"), tm_ini_get(&A.settings, "cheevos", "user", ""), NULL);
@@ -1327,6 +1468,13 @@ void menu_dialog_result(int id, long arg, const char *sarg, int yes)
             app_toast(tr("ssh.failed"));
         menu_rebuild();
         break;
+    case DLG_CLEAR_LOGS: {
+        char msg[96];
+        snprintf(msg, sizeof msg, tr("diag.cleared"), tm_perf_clear(A.paths.logdir));
+        app_toast(msg);
+        menu_rebuild();
+        break;
+    }
     case DLG_WIFI_FORGET:
         app_toast(tr(tm_wifi_forget((int)arg) == 0 ? "wifi.forgotten" : "wifi.connect_error"));
         menu_rebuild();
