@@ -87,6 +87,7 @@ void app_rescan(void)
     char msg[128];
     snprintf(msg, sizeof msg, tr("library.found_n"), A.lib.count);
     app_toast(msg);
+    covers_start(1, 0); /* new games get covers if automatic covers are on */
 }
 
 void app_exit(int code)

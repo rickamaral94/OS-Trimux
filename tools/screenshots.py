@@ -36,6 +36,30 @@ SHOTS += [
     ("16-registros", DIAG, True),
     ("17-sessoes", DIAG + ",DOWN,DOWN,A,DOWN", True),
 ]
+SHOTS += [
+    ("18-capas", "DOWN,DOWN,DOWN,A,DOWN", True),
+    ("19-capas-opcoes", "UP,A" + ",DOWN" * 7 + ",A" + ",DOWN" * 5 + ",A", True),
+]
+
+
+def illustrative_cover(w=320, h=450):
+    """Generated art (a gradient with a frame), not a real cover."""
+    import struct
+    import zlib
+    rows = []
+    for y in range(h):
+        row = bytearray(b"\x00")
+        for x in range(w):
+            edge = x < 10 or y < 10 or x >= w - 10 or y >= h - 10
+            row += bytes((240, 240, 240)) if edge else bytes((40 + y * 150 // h, 70, 160 - y * 100 // h))
+        rows.append(bytes(row))
+    def chunk(tag, data):
+        c = struct.pack(">I", len(data)) + tag + data
+        return c + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)) +
+            chunk(b"IDAT", zlib.compress(b"".join(rows))) + chunk(b"IEND", b""))
+
+
 # example sessions for the screenshots (simulated numbers, not measurements)
 EXAMPLE_SESSIONS = (
     "inicio;plataforma;emulador;jogo;perfil;duracao_s;cpu_media_mhz;cpu_max_mhz;temp_inicio_c;temp_max_c;"
@@ -68,6 +92,12 @@ def main():
                 write(os.path.join(dev, "netstate/status"), "wpa_state=COMPLETED\nssid=Casa\nip_address=192.168.0.23\n")
                 write(os.path.join(dev, "netstate/networks"),
                       "network id / ssid / bssid / flags\n0\tCasa\tany\t[CURRENT]\n")
+            if name in ("18-capas", "19-capas-opcoes"):
+                write(os.path.join(sd, "Imgs/GBA/Celeste Classic (World).png"), illustrative_cover())
+                write(os.path.join(sd, "Imgs/GBA/Anguna (World).png"), illustrative_cover())
+            if name == "19-capas-opcoes":
+                write(os.path.join(dev, "../tmp/scrape.status"),
+                      "state=done\ndone=14\ntotal=14\nfound=11\nmissing=3\n")
             if name in ("16-registros", "17-sessoes"):
                 write(os.path.join(sd, "TriMuxData/logs/perf/sessions.csv"), EXAMPLE_SESSIONS)
             if wizard_done:

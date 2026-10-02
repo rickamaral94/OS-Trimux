@@ -38,6 +38,12 @@ int gfx_text_wrap(int font, int x, int y, int w, int max_lines, uint32_t rgb, co
 /* Badge with platform colour and short name. Returns width. */
 int gfx_badge(int x, int y, int h, uint32_t rgb, const char *label);
 
+/* Draws a PNG/JPEG scaled to fit max_w x max_h, horizontally centred in the
+ * box. Returns the drawn height, or 0 when there is no (valid) image. Small
+ * cache; a missing file is looked up again after a few seconds, so covers
+ * downloaded in the background show up. */
+int gfx_image(const char *path, int x, int y, int max_w, int max_h);
+
 /* Saves the current frame as BMP (host screenshots for documentation). */
 int gfx_screenshot(const char *path);
 

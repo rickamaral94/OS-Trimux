@@ -204,3 +204,62 @@ def test_sessions_page_and_clear(env, tmp_path):
     assert not os.path.exists(os.path.join(perf, "sessions.csv"))
     assert not os.path.exists(os.path.join(perf, "20261002-140000_PS.csv"))
     assert os.path.exists(os.path.join(perf, "minhas-notas.txt"))
+
+
+def bmp_pixel(path, x, y):
+    import struct
+    with open(path, "rb") as f:
+        data = f.read()
+    off, = struct.unpack_from("<I", data, 10)
+    w, h = struct.unpack_from("<ii", data, 18)
+    bpp, = struct.unpack_from("<H", data, 28)
+    stride = ((w * bpp // 8) + 3) & ~3
+    row = (h - 1 - y) if h > 0 else y
+    p = off + row * stride + x * (bpp // 8)
+    b, g, r = data[p], data[p + 1], data[p + 2]
+    return r, g, b
+
+
+def test_cover_shown_in_game_panel(env, tmp_path):
+    from conftest import png_bytes
+    sd = env["TRIMUX_SDCARD"]
+    write(os.path.join(sd, "Imgs/GBA/Celeste Classic (World).png"), png_bytes(320, 480, (200, 40, 40)))
+    on, off = str(tmp_path / "on.bmp"), str(tmp_path / "off.bmp")
+    assert ui(env, "DOWN,A,shot=%s" % on).returncode == 0          # "Todos os jogos", Celeste first
+    assert bmp_pixel(on, 811, 200) == (200, 40, 40)
+    write(os.path.join(sd, "TriMuxData/config/trimux.ini"), "[general]\nwizard_done = 1\n[covers]\nshow = 0\n")
+    assert ui(env, "DOWN,A,shot=%s" % off).returncode == 0
+    assert bmp_pixel(off, 811, 200) != (200, 40, 40)
+
+
+COVERS = "UP,A" + ",DOWN" * 7 + ",A" + ",DOWN" * 5 + ",A"   # Configurações -> Biblioteca -> Capas dos jogos
+
+
+def test_covers_download_from_menu(env):
+    import shutil
+    import time
+    from conftest import CTL
+    sd, dev = env["TRIMUX_SDCARD"], env["TRIMUX_SYSFS_ROOT"]
+    os.makedirs(os.path.join(sd, "TriMux/bin"), exist_ok=True)
+    shutil.copy(CTL, os.path.join(sd, "TriMux/bin/trimuxctl"))
+    # without Wi-Fi: explanation, nothing started
+    assert ui(env, COVERS + ",A,A,B,B,B").returncode == 0
+    assert "curl" not in net_log(env)
+    wifi_connected(env)
+    write(os.path.join(dev, "netstate/covers"),
+          "https://thumbnails.libretro.com/Nintendo%20-%20Game%20Boy%20Advance/Named_Boxarts/"
+          "Celeste%20Classic%20%28World%29.png\n")
+    assert ui(env, COVERS + ",A,B,B,B").returncode == 0
+    cover = os.path.join(sd, "Imgs/GBA/Celeste Classic (World).png")
+    for _ in range(100):
+        if os.path.exists(cover):
+            break
+        time.sleep(0.1)
+    assert os.path.exists(cover)
+
+
+def test_covers_options_saved(env):
+    # show off; type boxart -> snap; automatic on
+    assert ui(env, COVERS + ",DOWN,DOWN,DOWN,RIGHT,DOWN,A,DOWN,A,B,B,B").returncode == 0
+    cfg = read(os.path.join(env["TRIMUX_SDCARD"], "TriMuxData/config/trimux.ini"))
+    assert "[covers]" in cfg and "kind = snap" in cfg and "auto = 1" in cfg and "show = 0" in cfg

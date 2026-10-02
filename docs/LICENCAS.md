@@ -13,6 +13,9 @@ verificados pelo `scripts/fetch_sources.sh`.
 | RetroArch v1.22.2 | frontend dos emuladores | GPL-3.0-or-later | github.com/libretro/RetroArch |
 | rcheevos (dentro do RetroArch) | RetroAchievements | MIT | RetroArch `deps/rcheevos` |
 | mbedTLS (dentro do RetroArch) | HTTPS para RetroAchievements | Apache-2.0 | RetroArch `deps/mbedtls` |
+| stb_image, stb_image_resize2, stb_image_write | ler, reduzir e gravar capas | domínio público / MIT (à escolha) | github.com/nothings/stb (mesmo commit do stb_truetype) |
+| Certificados de CA da Mozilla (`cacert.pem`, pacote `ca-certificates` do Debian) | verificar HTTPS ao baixar capas | MPL-2.0 | Debian bullseye (snapshot fixado) |
+| Lista de títulos de arcade (`arcade-names.tsv`) | reconhecer `mslug.zip` como "Metal Slug" | **Licença FBNeo (não comercial)**, gerada do DAT do FinalBurn Neo | libretro/FBNeo `dats/` |
 | FCEUmm | NES | GPL-2.0-or-later | libretro/libretro-fceumm |
 | Nestopia UE | NES | GPL-2.0-or-later | libretro/nestopia |
 | Snes9x 2005 Plus | SNES | **Licença Snes9x (não comercial)** | libretro/snes9x2005 |
@@ -57,7 +60,8 @@ compilação completo está neste repositório (`make all-docker`).
 Em tempo de execução, as funções de rede chamam ferramentas que **já estão no
 firmware do aparelho** e não vão na imagem: `wpa_supplicant`/`wpa_cli`,
 BusyBox (`ifconfig`, `udhcpc`, `tcpsvd`, `ftpd`), OpenSSH (`sshd`) e o
-`trimui_btmanager` da TrimUI.
+`trimui_btmanager` da TrimUI. As capas usam o `curl` do firmware; as imagens
+do libretro-thumbnails **não vão na imagem**, são baixadas pelo usuário.
 
 ## Não incluídos de propósito
 

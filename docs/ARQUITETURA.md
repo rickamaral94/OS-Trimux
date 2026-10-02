@@ -38,6 +38,7 @@ ROM de boot (SoC) ── sem eGON.BT0 no cartão ──> boot pela eMMC (firmwar
 | ├ hardware | `power.c`, `leds.c`, `sysinfo.c` | cpufreq com teto de 1,8 GHz (2,0 GHz só pela chave, opt-in), LEDs detectados, bateria/memória/cartão |
 | ├ cartão | `fatgrow.c` | expansão FAT32 só por metadados |
 | ├ desempenho | `perf.c` | registro opcional por sessão (amostras a cada 10 s, resumo, limite de arquivos), lido pela tela *Sessões gravadas* |
+| ├ capas | `scrape.c`, `image.c` | nomes e endereços do libretro-thumbnails, títulos de arcade, download com o `curl` do firmware (HTTPS verificado), redução para 480×480 com stb_image, estado em `/tmp/trimux/scrape.status` |
 | └ rede | `net.c` | Wi-Fi via `wpa_cli` do firmware (parsers testados, SSID em hex), Bluetooth (`trimui_btmanager`), SSH (`/etc/init.d/sshd`), FTP (`tcpsvd`+`ftpd` do BusyBox); tudo com `execv`, sem shell, com tempo limite; conta do RetroAchievements para o RetroArch |
 | Menu (SDL2) | `src/ui/` | `gfx.c` (stb_truetype), `input.c`, telas `home.c`, `games.c`, `menus.c`, `wizard.c`, `keyboard.c` |
 | Ferramenta | `src/tools/trimuxctl.c` | comandos usados pelos scripts (energia, LEDs, rede, lançamento, boot, expansão) |

@@ -149,3 +149,72 @@ def test_net_without_wifi_hardware(env, tmp_path):
     st = ctl(dict(env, TRIMUX_SYSFS_ROOT=bare), "net", "status").stdout
     assert "wifi_available=0" in st and "bluetooth_available=0" in st and "ssh_available=0" in st
     ctl(dict(env, TRIMUX_SYSFS_ROOT=bare), "net", "apply")
+
+
+GBA = "https://thumbnails.libretro.com/Nintendo%20-%20Game%20Boy%20Advance/Named_Boxarts/"
+
+
+def connect(device):
+    write(os.path.join(device, "run/wpa_supplicant"), "")
+    write(os.path.join(device, "netstate/status"), "wpa_state=COMPLETED\nssid=Casa\nip_address=10.0.0.5\n")
+
+
+def curl_calls(device):
+    return [l for l in net_log(device).splitlines() if l.startswith("curl ")]
+
+
+def test_scrape_needs_wifi(env, device, card):
+    r = ctl(env, "scrape", "--wait", "0", check=False)
+    assert r.returncode == 2 and not curl_calls(device)
+    assert "state=nowifi" in ctl(env, "scrape", "--status").stdout
+
+
+def test_scrape_downloads_and_shrinks_covers(env, device, card):
+    connect(device)
+    write(os.path.join(device, "netstate/covers"), GBA + "Celeste%20Classic%20%28World%29.png\n")
+    ctl(env, "scrape")
+    cover = os.path.join(card, "Imgs/GBA/Celeste Classic (World).png")
+    assert os.path.exists(cover)
+    with open(cover, "rb") as f:
+        head = f.read(24)
+    import struct
+    w, h = struct.unpack(">II", head[16:24])
+    assert (w, h) == (320, 480)                      # 600x900 shrunk to fit 480x480
+    st = ctl(env, "scrape", "--status").stdout
+    assert "state=done" in st and "found=1" in st
+    calls = curl_calls(device)
+    assert any("Nintendo%20-%20Nintendo%20Entertainment%20System/Named_Boxarts/Micro%20Mages%20%28World%29.png" in c
+               for c in calls)
+    assert not any("notarom" in c for c in calls)    # not a game
+    # games not found are remembered: a second run asks nothing new
+    n = len(calls)
+    ctl(env, "scrape")
+    assert len(curl_calls(device)) == n
+    # --retry asks again
+    ctl(env, "scrape", "--retry")
+    assert len(curl_calls(device)) > n
+    assert os.path.exists(cover)
+
+
+def test_scrape_arcade_uses_titles_and_box_kind(env, device, card):
+    connect(device)
+    write(os.path.join(card, "Roms/ARCADE/mslug.zip"), "")
+    write(os.path.join(card, "TriMux/share/arcade-names.tsv"), "mslug\tMetal Slug - Super Vehicle-001\n")
+    write(os.path.join(card, "TriMuxData/config/trimux.ini"), "[covers]\nkind = snap\n")
+    url = "https://thumbnails.libretro.com/FBNeo%20-%20Arcade%20Games/Named_Snaps/Metal%20Slug%20-%20Super%20Vehicle-001.png"
+    write(os.path.join(device, "netstate/covers"), url + "\n")
+    ctl(env, "scrape")
+    assert os.path.exists(os.path.join(card, "Imgs/ARCADE/mslug.png"))
+
+
+def test_scrape_auto_respects_setting_and_network_errors(env, device, card):
+    connect(device)
+    ctl(env, "scrape", "--auto")
+    assert not curl_calls(device)                    # automatic covers are off by default
+    write(os.path.join(card, "TriMuxData/config/trimux.ini"), "[covers]\nauto = 1\n")
+    write(os.path.join(device, "netstate/offline"), "")
+    r = ctl(env, "scrape", "--auto", check=False)
+    assert r.returncode == 3 and "state=network" in ctl(env, "scrape", "--status").stdout
+    assert len(curl_calls(device)) == 3              # gives up after 3 network failures
+    missing = os.path.join(card, "TriMuxData/cache/covers-missing.txt")
+    assert not os.path.exists(missing) or read(missing) == ""   # network errors are not "not found"

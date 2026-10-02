@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "gfx.h"
+#include "../core/image.h"
 #include "../core/log.h"
 #include "../core/util.h"
 
@@ -227,8 +228,79 @@ int gfx_init(const char *font_path, const char *fallback_font, int want_w, int w
     return 0;
 }
 
+
+/* ------------------------------------------------------------ images (covers) */
+
+#define IMG_CACHE 6
+static struct {
+    char path[1024];
+    SDL_Texture *tex; /* NULL: file missing or unreadable */
+    int w, h;
+    uint32_t checked; /* SDL ticks of the last lookup */
+    uint32_t used;
+} g_img[IMG_CACHE];
+
+static void img_drop(int i)
+{
+    if (g_img[i].tex)
+        SDL_DestroyTexture(g_img[i].tex);
+    memset(&g_img[i], 0, sizeof g_img[i]);
+}
+
+int gfx_image(const char *path, int x, int y, int max_w, int max_h)
+{
+    if (!g_ren || !path || !path[0] || max_w <= 0 || max_h <= 0)
+        return 0;
+    uint32_t now = SDL_GetTicks();
+    int slot = -1, lru = 0;
+    for (int i = 0; i < IMG_CACHE; i++) {
+        if (strcmp(g_img[i].path, path) == 0)
+            slot = i;
+        if (g_img[i].used < g_img[lru].used)
+            lru = i;
+    }
+    if (slot >= 0 && !g_img[slot].tex && now - g_img[slot].checked > 5000) {
+        img_drop(slot); /* look for a missing file again */
+        slot = -1;
+    }
+    if (slot < 0) {
+        slot = lru;
+        img_drop(slot);
+        snprintf(g_img[slot].path, sizeof g_img[slot].path, "%s", path);
+        g_img[slot].checked = now;
+        int w, h;
+        unsigned char *px = tm_image_load_rgba(path, &w, &h);
+        if (px) {
+            SDL_Texture *t = SDL_CreateTexture(g_ren, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, w, h);
+            if (t && SDL_UpdateTexture(t, NULL, px, w * 4) == 0) {
+                SDL_SetTextureBlendMode(t, SDL_BLENDMODE_BLEND);
+                g_img[slot].tex = t;
+                g_img[slot].w = w;
+                g_img[slot].h = h;
+            } else if (t) {
+                SDL_DestroyTexture(t);
+            }
+            tm_image_free(px);
+        }
+    }
+    g_img[slot].used = now ? now : 1;
+    if (!g_img[slot].tex)
+        return 0;
+    double s = (double)max_w / g_img[slot].w;
+    if ((double)max_h / g_img[slot].h < s)
+        s = (double)max_h / g_img[slot].h;
+    if (s > 2.0)
+        s = 2.0; /* small images are not blown up into a blur */
+    SDL_Rect r = {0, y, (int)(g_img[slot].w * s), (int)(g_img[slot].h * s)};
+    r.x = x + (max_w - r.w) / 2;
+    SDL_RenderCopy(g_ren, g_img[slot].tex, NULL, &r);
+    return r.h;
+}
+
 void gfx_quit(void)
 {
+    for (int i = 0; i < IMG_CACHE; i++)
+        img_drop(i);
     for (int i = 0; i < FONT_COUNT; i++) {
         font_reset(&g_fonts[i]);
         if (g_fonts[i].atlas)

@@ -47,6 +47,13 @@ cp build/src/retroarch/deps/rcheevos/LICENSE "$TM/licenses/rcheevos.txt"
     cat /usr/share/common-licenses/Apache-2.0
 } > "$TM/licenses/mbedtls.txt"
 
+# Game covers: CA certificates for HTTPS (the firmware ships none) and the
+# arcade zip name -> title list from the FinalBurn Neo DAT.
+cp /etc/ssl/certs/ca-certificates.crt "$TM/share/cacert.pem"
+cp /usr/share/doc/ca-certificates/copyright "$TM/licenses/ca-certificates.txt"
+python3 scripts/arcade_names.py "build/src/fbneo/dats/FinalBurn Neo (ClrMame Pro XML, Arcade only).dat" \
+    "$TM/share/arcade-names.tsv"
+
 # One folder per platform (first name in systems.ini), so users see where
 # games go (except platforms marked create_folder = 0).
 python3 - "$TM/share/systems.ini" "$OUT/Roms" <<'EOF'

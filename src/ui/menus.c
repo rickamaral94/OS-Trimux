@@ -5,6 +5,7 @@
 #include "../core/fatgrow.h"
 #include "../core/log.h"
 #include "../core/perf.h"
+#include "../core/scrape.h"
 #include "../core/util.h"
 
 #include <fcntl.h>
@@ -22,7 +23,7 @@ enum {
     ACT_MKDIRS, ACT_SET_PLAT_EMU, ACT_RESTORE_EMU, ACT_SET_GAME_EMU, ACT_INFO, ACT_WIZARD, ACT_STOCK,
     ACT_REBOOT, ACT_POWEROFF, ACT_GROW, ACT_PLAY, ACT_FAV, ACT_REMOVE_RECENT, ACT_FAV_ONLY, ACT_SEARCH,
     ACT_KEY_ACTION, ACT_SWITCH_ACTION, ACT_WIFI_TOGGLE, ACT_WIFI_RESCAN, ACT_WIFI_AP, ACT_WIFI_SAVED, ACT_BT_TOGGLE,
-    ACT_SSH_TOGGLE, ACT_FTP, ACT_CHEEVOS_USER, ACT_CHEEVOS_PASS, ACT_CLEAR_LOGS,
+    ACT_SSH_TOGGLE, ACT_FTP, ACT_CHEEVOS_USER, ACT_CHEEVOS_PASS, ACT_CLEAR_LOGS, ACT_COVERS_RUN, ACT_COVERS_RETRY, ACT_COVERS_SHOW, ACT_COVERS_KIND,
 };
 
 static const struct {
@@ -310,6 +311,7 @@ static void page_library(Menu *m)
     add_page(m, PAGE_FOLDERS, tr("library.folders"), tr("library.folders.desc"));
     add(m, ACT_MKDIRS, tr("library.mkdirs"), "", tr("library.mkdirs.desc"));
     add_page(m, PAGE_BIOS, tr("library.bios"), tr("library.bios.desc"));
+    add_page(m, PAGE_COVERS, tr("covers.title"), tr("covers.desc"));
 }
 
 static void page_add_games(Menu *m)
@@ -768,6 +770,7 @@ void net_tick(void)
             A.connect_until = 0;
             snprintf(msg, sizeof msg, tr("wifi.connected_to"), A.wst.ssid, A.wst.ip);
             app_toast(msg);
+            covers_start(1, 0);
             A.naps = tm_wifi_scan_results(A.aps, TM_WIFI_MAX);
         } else if (now > A.connect_until) {
             A.connect_until = 0;
@@ -779,6 +782,8 @@ void net_tick(void)
     } else if (page == PAGE_NETWORK || page == PAGE_CHEEVOS) {
         refresh_wifi_status(0);
         menu_rebuild();
+    } else if (page == PAGE_COVERS) {
+        menu_rebuild(); /* download progress */
     }
 }
 
@@ -945,6 +950,71 @@ static void page_perf(Menu *m)
     }
 }
 
+/* ------------------------------------------------------------ covers */
+
+static void covers_status_text(char *out, size_t size)
+{
+    TmScrapeStatus st;
+    int running = tm_scrape_running(&A.paths);
+    if (tm_scrape_status_read(&A.paths, &st) != 0) {
+        tm_strlcpy(out, tr(running ? "covers.state.running" : "covers.state.none"), size);
+        return;
+    }
+    if (running || strcmp(st.state, "running") == 0)
+        snprintf(out, size, tr("covers.progress"), st.done, st.total, st.found);
+    else if (strcmp(st.state, "done") == 0)
+        snprintf(out, size, tr("covers.done"), st.found, st.missing);
+    else {
+        char k[48];
+        snprintf(k, sizeof k, "covers.state.%s", st.state);
+        tm_strlcpy(out, tr(k), size);
+    }
+}
+
+void covers_start(int autorun, int retry)
+{
+    if (autorun && !tm_ini_get_long(&A.settings, "covers", "auto", 0))
+        return;
+    if (tm_scrape_running(&A.paths))
+        return;
+    char ctl[TM_PATH_MAX];
+    if (tm_path_join(ctl, sizeof ctl, A.paths.sys, "bin/trimuxctl") != 0 || !tm_file_exists(ctl))
+        return;
+    app_save_all(); /* the downloader reads the image type from the settings file */
+    char *argv[7];
+    int n = 0;
+    argv[n++] = ctl;
+    argv[n++] = "scrape";
+    if (autorun)
+        argv[n++] = "--auto";
+    if (retry)
+        argv[n++] = "--retry";
+    argv[n++] = "--wait";
+    argv[n++] = autorun ? "30" : "5";
+    argv[n] = NULL;
+    tm_spawn(argv, "/", NULL);
+    LOGI("ui: cover download started (%s)", autorun ? "auto" : retry ? "retry" : "manual");
+}
+
+static void page_covers(Menu *m)
+{
+    tm_strlcpy(m->title, tr("covers.title"), sizeof m->title);
+    int running = tm_scrape_running(&A.paths);
+    char st[128];
+    covers_status_text(st, sizeof st);
+    MenuItem *it = add(m, ACT_COVERS_RUN, tr(running ? "covers.stop" : "covers.run"), "", tr("covers.run.desc"));
+    it = add(m, ACT_NONE, tr("covers.status"), st, tr("covers.status.desc"));
+    it = add(m, ACT_COVERS_RETRY, tr("covers.retry"), "", tr("covers.retry.desc"));
+    it->enabled = !running;
+    header_row(m, tr("covers.options"));
+    add(m, ACT_COVERS_SHOW, tr("covers.show"), onoff((int)setting_long("covers", "show", 1)), tr("covers.show.desc"));
+    char k[48];
+    snprintf(k, sizeof k, "covers.kind.%s", tm_thumb_kind_id(tm_thumb_kind_parse(tm_ini_get(&A.settings, "covers", "kind", "boxart"))));
+    add(m, ACT_COVERS_KIND, tr("covers.kind"), tr(k), tr("covers.kind.desc"));
+    it = add(m, ACT_TOGGLE, tr("covers.auto"), onoff((int)setting_long("covers", "auto", 0)), tr("covers.auto.desc"));
+    tm_strlcpy(it->sarg, "covers/auto", sizeof it->sarg);
+}
+
 void menu_rebuild(void)
 {
     Menu *m = cur();
@@ -983,6 +1053,7 @@ void menu_rebuild(void)
     case PAGE_CHEEVOS: page_cheevos(m); break;
     case PAGE_DIAG: page_diag(m); break;
     case PAGE_PERF: page_perf(m); break;
+    case PAGE_COVERS: page_covers(m); break;
     }
     m->sel = sel < m->n ? sel : (m->n ? m->n - 1 : 0);
     m->top = top;
@@ -1367,6 +1438,45 @@ static void activate(MenuItem *it, TmButton b)
         tm_ssh_set(0);
         break;
     case ACT_FTP: if (b == BTN_A) ftp_start(); return;
+    case ACT_COVERS_RUN:
+        if (b != BTN_A)
+            return;
+        if (tm_scrape_running(&A.paths)) {
+            tm_scrape_request_stop(&A.paths);
+            app_toast(tr("covers.stopping"));
+        } else {
+            refresh_wifi_status(1);
+            if (!wifi_connected()) {
+                app_dialog(DLG_INFO, tr("covers.title"), tr("covers.needs_wifi"), 0, NULL, 1);
+                return;
+            }
+            covers_start(0, 0);
+            app_toast(tr("covers.started"));
+        }
+        break;
+    case ACT_COVERS_RETRY:
+        if (b != BTN_A)
+            return;
+        refresh_wifi_status(1);
+        if (!wifi_connected()) {
+            app_dialog(DLG_INFO, tr("covers.title"), tr("covers.needs_wifi"), 0, NULL, 1);
+            return;
+        }
+        covers_start(0, 1);
+        app_toast(tr("covers.started"));
+        break;
+    case ACT_COVERS_SHOW:
+        tm_ini_set_long(&A.settings, "covers", "show", !setting_long("covers", "show", 1));
+        app_mark_settings();
+        break;
+    case ACT_COVERS_KIND: {
+        static const char *const kinds[] = {"boxart", "snap", "title"};
+        int i = (int)tm_thumb_kind_parse(tm_ini_get(&A.settings, "covers", "kind", "boxart"));
+        i = (i + dir + 3) % 3;
+        tm_ini_set(&A.settings, "covers", "kind", kinds[i]);
+        app_mark_settings();
+        break;
+    }
     case ACT_CLEAR_LOGS:
         if (b == BTN_A)
             app_dialog(DLG_CLEAR_LOGS, tr("diag.clear"), tr("diag.clear.confirm"), 0, NULL, 0);

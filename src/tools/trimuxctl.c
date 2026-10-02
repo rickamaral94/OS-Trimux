@@ -22,6 +22,7 @@
 #include "../core/log.h"
 #include "../core/net.h"
 #include "../core/perf.h"
+#include "../core/scrape.h"
 #include "../core/paths.h"
 #include "../core/power.h"
 #include "../core/sysinfo.h"
@@ -613,10 +614,60 @@ static int cmd_net(int argc, char **argv)
     return rc;
 }
 
+/* Game covers. --auto: only if [covers] auto = 1 (boot / after a rescan).
+ * --retry: also games that were not found before. --wait N: seconds to wait
+ * for Wi-Fi. --stop: ask a running scraper to stop. */
+static int cmd_scrape(int argc, char **argv)
+{
+    int autorun = 0, retry = 0, wait_s = 0;
+    for (int i = 0; i < argc; i++) {
+        if (strcmp(argv[i], "--auto") == 0)
+            autorun = 1;
+        else if (strcmp(argv[i], "--retry") == 0)
+            retry = 1;
+        else if (strcmp(argv[i], "--wait") == 0 && i + 1 < argc)
+            wait_s = atoi(argv[++i]);
+        else if (strcmp(argv[i], "--stop") == 0) {
+            tm_scrape_request_stop(&P);
+            return 0;
+        } else if (strcmp(argv[i], "--status") == 0) {
+            TmScrapeStatus st;
+            if (tm_scrape_status_read(&P, &st) != 0)
+                return 1;
+            printf("state=%s done=%d total=%d found=%d missing=%d running=%d\n", st.state, st.done, st.total,
+                   st.found, st.missing, tm_scrape_running(&P));
+            return 0;
+        }
+    }
+    TmIni ini;
+    tm_settings_load(&ini, &P);
+    TmScrapeOptions o = {tm_thumb_kind_parse(tm_ini_get(&ini, "covers", "kind", "boxart")), retry, wait_s};
+    int enabled = (int)tm_ini_get_long(&ini, "covers", "auto", 0);
+    int clean = (int)tm_ini_get_long(&ini, "general", "clean_names", 1);
+    tm_ini_free(&ini);
+    if (autorun && !enabled)
+        return 0;
+    TmCatalog cat;
+    if (load_catalog(&cat) != 0)
+        return 1;
+    TmLibrary lib;
+    tm_library_init(&lib);
+    if (tm_library_load(&lib, &cat, P.library) != 0 || tm_library_is_stale(&lib, &cat, P.sd)) {
+        tm_library_free(&lib);
+        tm_library_init(&lib);
+        tm_library_scan(&lib, &cat, P.sd, clean);
+        tm_library_save(&lib, &cat, P.library);
+    }
+    int rc = tm_scrape_run(&P, &cat, &lib, &o);
+    tm_library_free(&lib);
+    tm_catalog_free(&cat);
+    return rc;
+}
+
 int main(int argc, char **argv)
 {
     if (argc < 2) {
-        fprintf(stderr, "usage: trimuxctl power|leds|switch|net|sysinfo|device|scan|launch|boot|fat-grow|card-grow ...\n");
+        fprintf(stderr, "usage: trimuxctl power|leds|switch|net|scrape|sysinfo|device|scan|launch|boot|fat-grow|card-grow ...\n");
         return 1;
     }
     if (tm_paths_init(&P) != 0)
@@ -633,6 +684,8 @@ int main(int argc, char **argv)
         return cmd_switch();
     if (strcmp(c, "net") == 0)
         return cmd_net(argc - 2, argv + 2);
+    if (strcmp(c, "scrape") == 0)
+        return cmd_scrape(argc - 2, argv + 2);
     if (strcmp(c, "sysinfo") == 0)
         return cmd_sysinfo();
     if (strcmp(c, "device") == 0) /* 0 only on a TrimUI Brick Pro firmware */

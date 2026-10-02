@@ -27,6 +27,7 @@ typedef struct {
     int experimental; /* shown with a warning (e.g. ports) */
     int max_depth;    /* sub-folder levels scanned (1 = top level only) */
     char note_key[48];
+    char thumbs[160]; /* libretro-thumbnails repositories, '|' separated */
 } TmSystem;
 
 typedef struct {
