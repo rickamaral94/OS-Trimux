@@ -286,6 +286,19 @@ static void devnull_fd(int target, int flags)
     }
 }
 
+/* Children start with default signal handling: ignored signals and the
+ * blocked mask survive exec, and a server that ignores SIGTERM could not be
+ * stopped. */
+static void reset_signals(void)
+{
+    sigset_t none;
+    sigemptyset(&none);
+    sigprocmask(SIG_SETMASK, &none, NULL);
+    for (int sig = 1; sig < NSIG; sig++)
+        if (sig != SIGKILL && sig != SIGSTOP)
+            signal(sig, SIG_DFL);
+}
+
 /* Children must not keep the menu's descriptors (display, input, log). */
 static void close_from(int first)
 {
@@ -314,6 +327,7 @@ int tm_run(char *const argv[], char *out, size_t outsz, int timeout_ms)
         devnull_fd(STDIN_FILENO, O_RDONLY);
         devnull_fd(STDERR_FILENO, O_WRONLY);
         close_from(3);
+        reset_signals();
         execv(argv[0], argv);
         _exit(127);
     }
@@ -386,6 +400,7 @@ pid_t tm_spawn(char *const argv[], const char *cwd, const char *ld_path)
             devnull_fd(STDOUT_FILENO, O_WRONLY);
             devnull_fd(STDERR_FILENO, O_WRONLY);
             close_from(3);
+            reset_signals();
             execv(argv[0], argv);
             _exit(127);
         }
@@ -689,8 +704,14 @@ void tm_ftp_stop(const char *pidfile)
 {
     pid_t pid = read_pid(pidfile);
     if (pid > 0) {
-        kill(-pid, SIGTERM); /* tcpsvd and its ftpd children share the session */
+        kill(-pid, SIGTERM); /* tcpsvd and its ftpd children share the group */
         kill(pid, SIGTERM);
+        for (int i = 0; i < 20 && read_pid(pidfile) > 0; i++)
+            usleep(25000);
+        if (read_pid(pidfile) > 0) { /* still there after 0.5 s */
+            kill(-pid, SIGKILL);
+            kill(pid, SIGKILL);
+        }
         LOGI("net: ftp stopped (pid %d)", (int)pid);
     }
     if (pidfile)
