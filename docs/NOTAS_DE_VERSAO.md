@@ -27,6 +27,12 @@ e desempenho reais ainda precisam ser confirmados no aparelho
 * Opcional: chave lateral libera 2,0 GHz (máximo da tabela do firmware) só
   enquanto estiver ligada; exige confirmação; desligada, o teto é 1,8 GHz.
 * Controle de LEDs pelo driver oficial (opcional, desligado por padrão).
+* Rede ([REDE.md](REDE.md)): Wi-Fi (ligar/desligar, procurar, conectar com
+  senha, redes salvas compartilhadas com o sistema oficial), serviço Bluetooth
+  da TrimUI, RetroAchievements (RetroArch compilado com rede, HTTPS e
+  conquistas; sem atualizador online), transferência de arquivos por FTP só
+  enquanto a janela está aberta e SSH/SFTP do firmware desligado por padrão.
+* Teclado na tela com minúsculas, maiúsculas e símbolos para senhas.
 * Retorno automático ao sistema oficial em caso de falhas repetidas; SELECT ao
   ligar abre o sistema oficial.
 * Imagem `.img.xz` para Rufus (MBR + FAT32) com expansão segura da partição no
@@ -44,7 +50,12 @@ e desempenho reais ainda precisam ser confirmados no aparelho
   `[input]` em `trimux.ini` (menu) ou remapeie no menu do RetroArch (jogos).
 * Volume e brilho são controlados pelas teclas do firmware (sem indicador na
   tela dentro do TriMux, porque o serviço de OSD oficial não é iniciado).
-* Bluetooth e Wi-Fi não são gerenciados pelo TriMux (use o sistema oficial).
+* Bluetooth: parear continua sendo no sistema oficial; o TriMux só mantém o
+  serviço da TrimUI ativo. Áudio Bluetooth nos jogos não é garantido.
+* Wi-Fi: só redes abertas e WPA/WPA2 com senha (sem EAP, WEP ou só WPA3).
+* FTP sem senha (limite do BusyBox do firmware); a senha do RetroAchievements
+  fica no cartão sem criptografia.
+* Funções de rede testadas só em ambiente simulado.
 * PlayStation 2: removido (nenhum emulador viável; análise em docs/PS2.md).
 * N64, PSP, Dreamcast e outros sistemas mais pesados não estão incluídos.
 * Sem swap: jogos de arcade muito grandes podem não caber na memória.

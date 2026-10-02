@@ -30,7 +30,21 @@ static int load_one(TmIni *ini, const char *dir, const char *code)
         return -1;
     if (!tm_file_exists(path))
         return -1;
-    return tm_ini_load(ini, path);
+    int rc = tm_ini_load(ini, path);
+    /* "\n" in a translation is a line break (dialog texts) */
+    for (size_t i = 0; rc == 0 && i < ini->count; i++) {
+        char *r = ini->items[i].value, *w = r;
+        for (; *r; r++, w++) {
+            if (r[0] == '\\' && r[1] == 'n') {
+                *w = '\n';
+                r++;
+            } else {
+                *w = *r;
+            }
+        }
+        *w = '\0';
+    }
+    return rc;
 }
 
 int tm_i18n_load(const char *dir, const char *code)

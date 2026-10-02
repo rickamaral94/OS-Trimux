@@ -7,6 +7,7 @@ a substitute for booting the real device."""
 import os
 import shutil
 import subprocess
+import time
 
 import pytest
 
@@ -240,3 +241,34 @@ def test_switch_boost_off_keeps_1_8ghz_ceiling(rig, env):
 
 def test_switch_boost_requires_confirmation(rig, env):
     assert boost_rig(rig, env, "1", ack="0") == "1800000"
+
+
+def test_retroachievements_account_reaches_retroarch_only_when_enabled(rig):
+    os.makedirs(rig["tmp"], exist_ok=True)
+    req = "[launch]\nsystem = GBA\nrom = Roms/GBA/Celeste Classic (World).gba\nemulator = gpsp\n"
+    cfg = os.path.join(rig["card"], "TriMuxData/config/trimux.ini")
+    write(cfg, "[cheevos]\nenable = 0\nuser = jogador\npassword = segredo\n")
+    write(os.path.join(rig["tmp"], "launch.ini"), req)
+    scripted_ui(rig, [10, 20])
+    run_supervisor(rig)
+    assert "cheevos" not in read(os.path.join(rig["dir"], "ra_append"))
+    write(cfg, "[cheevos]\nenable = 1\nuser = jogador\npassword = segredo\nhardcore = 1\n")
+    write(os.path.join(rig["tmp"], "launch.ini"), req)
+    scripted_ui(rig, [10, 20])
+    run_supervisor(rig)
+    app = read(os.path.join(rig["dir"], "ra_append"))
+    assert 'cheevos_enable = "true"' in app and 'cheevos_username = "jogador"' in app
+    assert 'cheevos_password = "segredo"' in app and 'cheevos_hardcore_mode_enable = "true"' in app
+    assert "segredo" not in read(os.path.join(rig["card"], "TriMuxData/logs/trimux.log"))
+
+
+def test_supervisor_applies_network_settings(rig, env):
+    write(os.path.join(env["TRIMUX_SYSFS_ROOT"], "run/sshd"), "")
+    scripted_ui(rig, [20])
+    run_supervisor(rig)
+    log = os.path.join(env["TRIMUX_SYSFS_ROOT"], "net.log")
+    for _ in range(50):   # runs in the background
+        if os.path.exists(log) and "sshd stop" in read(log):
+            break
+        time.sleep(0.1)
+    assert "sshd stop" in read(log)

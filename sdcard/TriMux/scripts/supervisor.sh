@@ -47,8 +47,8 @@ log "TriMux $(cat "$TM/VERSION" 2>/dev/null) starting, firmware $(cat /etc/versi
 # hardwareservice: battery LED warnings, rumble.
 # Not started on purpose: trimui_scened (its scene scripts rewrite CPU limits
 # up to 2.0 GHz), trimui_osdd (in-game overlay that competes for buttons),
-# musicserver and trimui_btmanager (memory). Bluetooth stays available in the
-# stock launcher.
+# musicserver (memory) and trimui_btmanager (started by "trimuxctl net apply"
+# only when the user turns "TrimUI Bluetooth" on).
 start_service() {
     name=$1; dir=$2; bin=$3
     if ! pgrep "$name" >/dev/null 2>&1; then
@@ -69,6 +69,9 @@ fi
 "$CTL" leds apply >/dev/null 2>&1
 # Side switch: LEDs off / speaker mute, if the user assigned one of those.
 "$CTL" switch >/dev/null 2>&1
+# Network choices (Wi-Fi on/off, Bluetooth service, firmware SSH off unless
+# enabled). In the background: starting wpa_supplicant must not delay the menu.
+("$CTL" net apply >/dev/null 2>&1 &)
 
 # --- main loop ---------------------------------------------------------------
 crash_first=0

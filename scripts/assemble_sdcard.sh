@@ -38,6 +38,14 @@ grep -v '^#' sources/sources.lock | grep -v '^$' | while IFS='|' read -r name ur
     [ -f "$TM/licenses/$name.txt" ] || echo "$name: $license ($url @ $commit)" > "$TM/licenses/$name.txt"
 done
 cp src/ui/third_party/STB_COMMIT "$TM/licenses/stb_truetype-commit.txt"
+# Libraries bundled inside RetroArch for RetroAchievements and HTTPS.
+cp build/src/retroarch/deps/rcheevos/LICENSE "$TM/licenses/rcheevos.txt"
+{
+    echo "mbedTLS, bundled in RetroArch (deps/mbedtls), used for HTTPS (RetroAchievements)."
+    echo "SPDX-License-Identifier: Apache-2.0 (per its source headers)."
+    echo
+    cat /usr/share/common-licenses/Apache-2.0
+} > "$TM/licenses/mbedtls.txt"
 
 # One folder per platform (first name in systems.ini), so users see where
 # games go (except platforms marked create_folder = 0).

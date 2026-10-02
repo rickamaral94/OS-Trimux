@@ -1,5 +1,6 @@
 """trimuxctl against a simulated Brick Pro (see conftest.py)."""
 import os
+import time
 
 from conftest import POLICY, ctl, make_device, read, write
 
@@ -90,3 +91,61 @@ def test_atari_folders_are_found(env, card):
     idx = read(os.path.join(card, "TriMuxData/cache/library.tsv"))
     assert "A2600\tRoms/atari2600/Adventure (Homebrew).a26\tAdventure" in idx
     assert "A7800\tRoms/A7800/Homebrew.a78" in idx
+
+
+def net_log(device):
+    p = os.path.join(device, "net.log")
+    return read(p) if os.path.exists(p) else ""
+
+
+def test_net_apply_stops_firmware_ssh_by_default(env, device):
+    # init.d starts sshd on every boot; the stock MainUI stops it unless its
+    # "Enable SSH" switch is on. TriMux replaces MainUI, so it does the same.
+    write(os.path.join(device, "run/sshd"), "")
+    ctl(env, "net", "apply")
+    assert "sshd stop" in net_log(device)
+    assert not os.path.exists(os.path.join(device, "run/sshd"))
+    st = ctl(env, "net", "status").stdout
+    assert "ssh_on=0" in st and "wifi_available=1" in st and "bluetooth_on=0" in st
+
+
+def test_net_apply_leaves_wifi_alone_unless_chosen(env, device):
+    ctl(env, "net", "apply")
+    log = net_log(device)
+    assert "wpa_supplicant" not in log and "ifconfig" not in log
+    assert not os.path.exists(os.path.join(device, "run/trimui_btmanager"))   # bluetooth off by default
+
+
+def test_net_apply_user_choices(env, device, card):
+    write(os.path.join(card, "TriMuxData/config/trimux.ini"),
+          "[network]\nwifi = on\nbluetooth = 1\nssh = 1\n")
+    ctl(env, "net", "apply")
+    log = net_log(device)
+    # same command line as the firmware's /etc/init.d/wpa_supplicant (+ -B)
+    assert ("wpa_supplicant -B -iwlan0 -Dnl80211 -c/etc/wifi/wpa_supplicant.conf "
+            "-I/etc/wifi/wpa_supplicant_overlay.conf -O/etc/wifi/sockets") in log
+    assert "busybox ifconfig wlan0 up" in log and "sshd start" in log
+    for _ in range(50):   # detached processes
+        if "busybox udhcpc -i wlan0" in net_log(device) and os.path.exists(os.path.join(device, "run/trimui_btmanager")):
+            break
+        time.sleep(0.1)
+    assert "busybox udhcpc -i wlan0" in net_log(device)
+    assert "btmanager cwd=%s/usr/trimui/bin ld=%s/usr/trimui/lib" % (device, device) in net_log(device)
+    st = ctl(env, "net", "status").stdout
+    assert "wifi_on=1" in st and "bluetooth_on=1" in st and "ssh_on=1" in st
+
+
+def test_net_apply_wifi_off(env, device, card):
+    write(os.path.join(device, "run/wpa_supplicant"), "")
+    write(os.path.join(card, "TriMuxData/config/trimux.ini"), "[network]\nwifi = off\n")
+    ctl(env, "net", "apply")
+    log = net_log(device)
+    assert "busybox ifconfig wlan0 down" in log and "busybox killall -15 wpa_supplicant" in log
+    assert "busybox killall -9 udhcpc" in log
+
+
+def test_net_without_wifi_hardware(env, tmp_path):
+    bare = make_device(str(tmp_path / "bare"), net=False)
+    st = ctl(dict(env, TRIMUX_SYSFS_ROOT=bare), "net", "status").stdout
+    assert "wifi_available=0" in st and "bluetooth_available=0" in st and "ssh_available=0" in st
+    ctl(dict(env, TRIMUX_SYSFS_ROOT=bare), "net", "apply")

@@ -20,12 +20,17 @@ SHOTS = [
     ("05-configuracoes", "UP,A", True),
     ("06-energia", "UP,A,DOWN,DOWN,DOWN,A", True),
     ("07-leds", "UP,A,DOWN,DOWN,DOWN,DOWN,DOWN,A,DOWN,A", True),
-    ("08-informacoes", "UP,A,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,A,A", True),
+    ("08-informacoes", "UP,A" + ",DOWN" * 10 + ",A,A", True),
     ("09-busca", "Y,A", True),
     ("10-menu-rapido", "MENU", True),
     ("11-ports", "UP,UP", True),
     ("12-botoes", "UP,A,DOWN,DOWN,A,DOWN,DOWN,A,DOWN,DOWN", True),
+    # network shots use a simulated, connected Wi-Fi (see NET_SHOTS)
+    ("13-rede", "UP,A" + ",DOWN" * 6 + ",A", True),
+    ("14-wifi-redes", "UP,A" + ",DOWN" * 6 + ",A,DOWN,DOWN,A,wait=4200,DOWN,DOWN", True),
+    ("15-senha-wifi", "UP,A" + ",DOWN" * 6 + ",A,DOWN,DOWN,A,DOWN,A,A,RIGHT,A,RIGHT,A,R1,DOWN,A,RIGHT,A", True),
 ]
+NET_SHOTS = {"13-rede", "14-wifi-redes", "15-senha-wifi"}
 
 
 def main():
@@ -44,6 +49,13 @@ def main():
                         "Roms/GB/uCity (World).gb", "Roms/NGP/Homebrew (World).ngp",
                         "Roms/DOOM/freedoom1.wad", "Roms/PORTS/OpenTyrian.sh", "Roms/PORTS/SuperTux.sh"):
                 write(os.path.join(sd, rel), "")
+            if name == "15-senha-wifi":   # Wi-Fi on, nothing saved yet
+                write(os.path.join(dev, "run/wpa_supplicant"), "")
+            elif name in NET_SHOTS:
+                write(os.path.join(dev, "run/wpa_supplicant"), "")
+                write(os.path.join(dev, "netstate/status"), "wpa_state=COMPLETED\nssid=Casa\nip_address=192.168.0.23\n")
+                write(os.path.join(dev, "netstate/networks"),
+                      "network id / ssid / bssid / flags\n0\tCasa\tany\t[CURRENT]\n")
             if wizard_done:
                 write(os.path.join(sd, "TriMuxData/config/trimux.ini"), "[general]\nwizard_done = 1\n")
                 write(os.path.join(sd, "TriMuxData/config/recent.txt"), "Roms/GBA/Celeste Classic (World).gba\n")

@@ -27,7 +27,57 @@ def write(path, content, mode=None):
         os.chmod(path, mode)
 
 
-def make_device(root, leds=True, cpufreq=True, brick_pro=True):
+def make_net_tools(root):
+    """Fake firmware network tools. They log every call to <root>/net.log and
+    keep "running" state as files in <root>/run (read by the fake pidof)."""
+    run = os.path.join(root, "run")
+    log = os.path.join(root, "net.log")
+    os.makedirs(run, exist_ok=True)
+    os.makedirs(os.path.join(root, "sys/class/net/wlan0"), exist_ok=True)
+    write(os.path.join(root, "netstate/scan"),
+          "bssid / frequency / signal level / flags / ssid\n"
+          "aa:bb:cc:dd:ee:01\t2437\t-40\t[WPA2-PSK-CCMP][ESS]\tCasa\n"
+          "aa:bb:cc:dd:ee:02\t2412\t-62\t[ESS]\tCafe\n")
+    write(os.path.join(root, "netstate/networks"), "network id / ssid / bssid / flags\n")
+    write(os.path.join(root, "usr/sbin/wpa_cli"), textwrap.dedent("""\
+        #!/bin/sh
+        S=%(root)s/netstate
+        echo "wpa_cli $*" >> %(log)s
+        [ -f %(run)s/wpa_supplicant ] || { echo "Failed to connect"; exit 255; }
+        shift 4
+        case "$1" in
+        scan) echo OK ;;
+        scan_result) cat $S/scan ;;
+        list_network) cat $S/networks ;;
+        add_network) echo 0 ;;
+        set_network) [ "$3" = ssid ] && echo "$3" > $S/new_ssid; echo OK ;;
+        select_network) printf 'network id / ssid / bssid / flags\\n%%s\\tCasa\\tany\\t[CURRENT]\\n' "$2" > $S/networks
+                        printf 'wpa_state=COMPLETED\\nssid=Casa\\nip_address=127.0.0.1\\n' > $S/status; echo OK ;;
+        status) cat $S/status 2>/dev/null || echo wpa_state=DISCONNECTED ;;
+        *) echo OK ;;
+        esac
+        """) % {"root": root, "log": log, "run": run}, 0o755)
+    write(os.path.join(root, "usr/sbin/wpa_supplicant"),
+          '#!/bin/sh\necho "wpa_supplicant $*" >> %s\ntouch %s/wpa_supplicant\n' % (log, run), 0o755)
+    write(os.path.join(root, "bin/busybox"), textwrap.dedent("""\
+        #!/bin/sh
+        echo "busybox $*" >> %(log)s
+        case "$1" in
+        pidof) [ -f %(run)s/"$2" ] ;;
+        killall) rm -f %(run)s/"$3"; exit 0 ;;
+        tcpsvd) while :; do sleep 1; done ;;
+        *) exit 0 ;;
+        esac
+        """) % {"log": log, "run": run}, 0o755)
+    write(os.path.join(root, "usr/trimui/bin/trimui_btmanager"),
+          '#!/bin/sh\necho "btmanager cwd=$(pwd) ld=$LD_LIBRARY_PATH" >> %s\ntouch %s/trimui_btmanager\n' % (log, run), 0o755)
+    write(os.path.join(root, "usr/sbin/sshd"), "#!/bin/sh\n", 0o755)
+    write(os.path.join(root, "etc/init.d/sshd"),
+          '#!/bin/sh\necho "sshd $1" >> %s\n[ "$1" = start ] && touch %s/sshd\n[ "$1" = stop ] && rm -f %s/sshd\nexit 0\n'
+          % (log, run, run), 0o755)
+
+
+def make_device(root, leds=True, cpufreq=True, brick_pro=True, net=True):
     if cpufreq:
         for name, val in {
             "scaling_available_frequencies": FREQS + " \n",
@@ -55,6 +105,8 @@ def make_device(root, leds=True, cpufreq=True, brick_pro=True):
     write(os.path.join(root, "sys/class/speaker/mute"), "0\n")
     model = b"Trimui Brick Pro\x00" if brick_pro else b"Trimui Brick\x00"
     write(os.path.join(root, "usr/trimui/bin/MainUI"), b"\x7fELF....." + model + b"....")
+    if net:
+        make_net_tools(root)
     return root
 
 

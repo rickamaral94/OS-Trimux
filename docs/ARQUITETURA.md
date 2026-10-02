@@ -13,7 +13,8 @@ ROM de boot (SoC) ── sem eGON.BT0 no cartão ──> boot pela eMMC (firmwar
             │         ├─ trimuxctl device         → não é Brick Pro? volta ao oficial
             │         ├─ trimuxctl boot begin     → 3 boots sem menu? modo seguro (oficial)
             │         ├─ inicia keymon, trimui_inputd, hardwareservice (binários oficiais)
-            │         ├─ trimuxctl power default; trimuxctl leds apply
+            │         ├─ trimuxctl power default; trimuxctl leds apply; trimuxctl switch
+            │         ├─ trimuxctl net apply (em segundo plano: Wi-Fi, Bluetooth, SSH)
             │         └─ laço: trimux-ui ──código de saída──┐
             │               10 jogar  → trimuxctl launch (valida, aplica limites, RetroArch, guarda térmica)
             │               20 oficial→ /tmp/trimux/to_stock
@@ -35,9 +36,10 @@ ROM de boot (SoC) ── sem eGON.BT0 no cartão ──> boot pela eMMC (firmwar
 | ├ biblioteca | `library.c`, `lists.c` | varredura de pastas conhecidas, índice, `.m3u`, favoritos/recentes |
 | ├ lançamento | `launch.c` | pedido de lançamento em RAM, validação de caminho, máquina de estados térmica |
 | ├ hardware | `power.c`, `leds.c`, `sysinfo.c` | cpufreq com teto de 1,8 GHz (2,0 GHz só pela chave, opt-in), LEDs detectados, bateria/memória/cartão |
-| └ cartão | `fatgrow.c` | expansão FAT32 só por metadados |
+| ├ cartão | `fatgrow.c` | expansão FAT32 só por metadados |
+| └ rede | `net.c` | Wi-Fi via `wpa_cli` do firmware (parsers testados, SSID em hex), Bluetooth (`trimui_btmanager`), SSH (`/etc/init.d/sshd`), FTP (`tcpsvd`+`ftpd` do BusyBox); tudo com `execv`, sem shell, com tempo limite; conta do RetroAchievements para o RetroArch |
 | Menu (SDL2) | `src/ui/` | `gfx.c` (stb_truetype), `input.c`, telas `home.c`, `games.c`, `menus.c`, `wizard.c`, `keyboard.c` |
-| Ferramenta | `src/tools/trimuxctl.c` | comandos usados pelos scripts (energia, LEDs, lançamento, boot, expansão) |
+| Ferramenta | `src/tools/trimuxctl.c` | comandos usados pelos scripts (energia, LEDs, rede, lançamento, boot, expansão) |
 | Scripts do cartão | `sdcard/` | ponto de entrada `trimui/app`, supervisor, configuração do RetroArch |
 | Build | `docker/`, `scripts/`, `Makefile` | contêiner fixado, fontes fixadas, núcleos, imagem, testes |
 

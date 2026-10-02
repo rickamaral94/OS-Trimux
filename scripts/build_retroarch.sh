@@ -23,9 +23,9 @@ export PKG_CONFIG_PATH=/opt/aarch64/lib/pkgconfig:/usr/lib/aarch64-linux-gnu/pkg
     --disable-x11 --disable-wayland --disable-kms --disable-vulkan --disable-mali_fbdev \
     --enable-alsa --disable-pulse --disable-jack --disable-oss --disable-tinyalsa \
     --disable-udev --disable-libusb --disable-dbus --disable-systemd --disable-hid \
-    --disable-networking --disable-online_updater --disable-update_cores \
-    --disable-update_core_info --disable-update_assets --disable-ssl \
-    --disable-builtinmbedtls --disable-builtinbearssl --disable-discord --disable-cheevos \
+    --enable-networking --disable-netplaydiscovery --disable-online_updater --disable-update_cores \
+    --disable-update_core_info --disable-update_assets --enable-ssl \
+    --enable-builtinmbedtls --disable-builtinbearssl --disable-discord --enable-cheevos \
     --disable-qt --disable-ffmpeg --disable-v4l2 --disable-freetype --disable-microphone \
     --disable-cdrom --disable-bluetooth --disable-materialui --disable-xmb --disable-ozone \
     --enable-rgui --enable-7zip --enable-zlib --enable-builtinzlib --enable-threads
