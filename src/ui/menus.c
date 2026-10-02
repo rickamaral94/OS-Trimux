@@ -6,6 +6,7 @@
 #include "../core/log.h"
 #include "../core/perf.h"
 #include "../core/scrape.h"
+#include "../core/update.h"
 #include "../core/util.h"
 
 #include <fcntl.h>
@@ -24,6 +25,7 @@ enum {
     ACT_REBOOT, ACT_POWEROFF, ACT_GROW, ACT_PLAY, ACT_FAV, ACT_REMOVE_RECENT, ACT_FAV_ONLY, ACT_SEARCH,
     ACT_KEY_ACTION, ACT_SWITCH_ACTION, ACT_WIFI_TOGGLE, ACT_WIFI_RESCAN, ACT_WIFI_AP, ACT_WIFI_SAVED, ACT_BT_TOGGLE,
     ACT_SSH_TOGGLE, ACT_FTP, ACT_CHEEVOS_USER, ACT_CHEEVOS_PASS, ACT_CLEAR_LOGS, ACT_COVERS_RUN, ACT_COVERS_RETRY, ACT_COVERS_SHOW, ACT_COVERS_KIND,
+    ACT_UPDATE_CHECK, ACT_UPDATE_INSTALL, ACT_UPDATE_ROLLBACK, ACT_UPDATE_REBOOT,
 };
 
 static const struct {
@@ -500,6 +502,7 @@ static void page_system(Menu *m)
     add(m, ACT_INFO, tr("system.info"), "›", tr("system.info.desc"));
     add(m, ACT_WIZARD, tr("system.wizard"), "›", tr("system.wizard.desc"));
     add(m, ACT_STOCK, tr("system.stock"), "", tr("system.stock.desc"));
+    add_page(m, PAGE_UPDATE, tr("update.title"), tr("update.desc"));
     add_page(m, PAGE_DIAG, tr("diag.title"), tr("diag.desc"));
     add_page(m, PAGE_ABOUT, tr("system.about"), tr("system.about.desc"));
     add(m, ACT_REBOOT, tr("system.reboot"), "", tr("system.reboot.desc"));
@@ -752,6 +755,8 @@ static void ftp_start(void)
     app_dialog(DLG_FTP, tr("ftp.title"), msg, 0, NULL, 1);
 }
 
+static void update_tick(int page);
+
 void net_tick(void)
 {
     uint64_t now = tm_now_ms();
@@ -785,6 +790,7 @@ void net_tick(void)
     } else if (page == PAGE_COVERS) {
         menu_rebuild(); /* download progress */
     }
+    update_tick(page);
 }
 
 void menu_keyboard_done(int purpose, const char *ctx, const char *text, int cancelled)
@@ -1015,6 +1021,130 @@ static void page_covers(Menu *m)
     tm_strlcpy(it->sarg, "covers/auto", sizeof it->sarg);
 }
 
+/* ------------------------------------------------------------ online update */
+
+/* A busy state whose process is gone was interrupted (power loss, crash). */
+static int update_state(TmUpdateStatus *st)
+{
+    if (tm_update_status_read(&A.paths, st) != 0) {
+        tm_strlcpy(st->state, "none", sizeof st->state);
+        return 0;
+    }
+    int busy = strcmp(st->state, "checking") == 0 || strcmp(st->state, "downloading") == 0 ||
+               strcmp(st->state, "installing") == 0;
+    if (busy && !tm_update_running(&A.paths)) {
+        tm_strlcpy(st->state, "error", sizeof st->state);
+        tm_strlcpy(st->error, "interrupted", sizeof st->error);
+    }
+    return busy && strcmp(st->state, "error") != 0;
+}
+
+/* 1 while an installation runs or waits for the reboot: no games then. */
+int update_blocks_launch(void)
+{
+    TmUpdateStatus st;
+    update_state(&st);
+    return strcmp(st.state, "downloading") == 0 || strcmp(st.state, "installing") == 0 ||
+           strcmp(st.state, "ready") == 0;
+}
+
+static void update_status_text(const TmUpdateStatus *st, char *out, size_t size)
+{
+    char k[64];
+    if (strcmp(st->state, "downloading") == 0)
+        snprintf(out, size, tr("update.state.downloading"), st->percent);
+    else if (strcmp(st->state, "available") == 0 || strcmp(st->state, "ready") == 0) {
+        snprintf(k, sizeof k, "update.state.%s", st->state);
+        snprintf(out, size, tr(k), st->version);
+    } else if (strcmp(st->state, "error") == 0) {
+        snprintf(k, sizeof k, "update.err.%s", st->error[0] ? st->error : "unknown");
+        tm_strlcpy(out, tr(k), size);
+    } else {
+        snprintf(k, sizeof k, "update.state.%s", st->state);
+        tm_strlcpy(out, tr(k), size);
+    }
+}
+
+static void update_spawn(const char *sub)
+{
+    char ctl[TM_PATH_MAX];
+    if (tm_path_join(ctl, sizeof ctl, A.paths.sys, "bin/trimuxctl") != 0 || !tm_file_exists(ctl))
+        return;
+    app_save_all(); /* the checker reads [update] prerelease from the settings file */
+    char *argv[] = {ctl, "update", (char *)sub, "--wait", "5", NULL};
+    if (strcmp(sub, "check") != 0)
+        argv[3] = NULL;
+    tm_spawn(argv, "/", NULL);
+    LOGI("ui: update %s started", sub);
+}
+
+static void update_tick(int page)
+{
+    static char last[16];
+    static int announced, seeded;
+    TmUpdateStatus st;
+    update_state(&st);
+    if (!seeded) { /* an install finished before this menu started is not news; a boot check result is */
+        seeded = 1;
+        if (strcmp(st.state, "available") != 0)
+            tm_strlcpy(last, st.state, sizeof last);
+    }
+    if (strcmp(st.state, last) != 0) {
+        int was_busy = strcmp(last, "ready") != 0;
+        if (strcmp(st.state, "available") == 0 && !announced && page != PAGE_UPDATE) {
+            char msg[128];
+            snprintf(msg, sizeof msg, tr("update.toast"), st.version);
+            app_toast(msg);
+            announced = 1;
+        } else if (strcmp(st.state, "ready") == 0 && was_busy && !A.dlg.active) {
+            char msg[256];
+            snprintf(msg, sizeof msg, tr("update.ready.text"), st.version);
+            app_dialog(DLG_UPDATE_READY, tr("update.title"), msg, 0, NULL, 0);
+        }
+        tm_strlcpy(last, st.state, sizeof last);
+        if (page == PAGE_UPDATE)
+            menu_rebuild();
+    } else if (page == PAGE_UPDATE && strcmp(st.state, "downloading") == 0) {
+        menu_rebuild(); /* progress */
+    }
+}
+
+static void page_update(Menu *m)
+{
+    tm_strlcpy(m->title, tr("update.title"), sizeof m->title);
+    char cur[32], text[128];
+    tm_update_current(&A.paths, cur, sizeof cur);
+    TmUpdateStatus st;
+    int busy = update_state(&st);
+    add(m, ACT_NONE, tr("update.installed"), cur, tr("update.installed.desc"))->enabled = 1;
+    update_status_text(&st, text, sizeof text);
+    add(m, ACT_NONE, tr("update.status"), text, tr("update.status.desc"))->enabled = 1;
+    MenuItem *it;
+    TmRelease r;
+    if (strcmp(st.state, "ready") == 0) {
+        add(m, ACT_UPDATE_REBOOT, tr("update.reboot"), "", tr("update.reboot.desc"));
+    } else if (strcmp(st.state, "available") == 0 && tm_update_info_read(&A.paths, &r) == 0 &&
+               tm_version_cmp(r.version, cur) > 0) {
+        it = add(m, ACT_UPDATE_INSTALL, tr("update.install"), r.version, "");
+        snprintf(it->desc, sizeof it->desc, "%s%s%s", r.prerelease ? tr("update.prerelease_note") : "",
+                 r.prerelease ? " " : "", r.notes[0] ? r.notes : tr("update.no_notes"));
+        if (strlen(it->desc) == sizeof it->desc - 1)
+            memcpy(it->desc + sizeof it->desc - 4, "...", 3);
+    }
+    it = add(m, ACT_UPDATE_CHECK, tr("update.check"), "", tr("update.check.desc"));
+    it->enabled = !busy;
+    header_row(m, tr("update.options"));
+    it = add(m, ACT_TOGGLE, tr("update.prerelease"), onoff((int)setting_long("update", "prerelease", 1)),
+             tr("update.prerelease.desc"));
+    tm_strlcpy(it->sarg, "update/prerelease", sizeof it->sarg);
+    it = add(m, ACT_TOGGLE, tr("update.auto"), onoff((int)setting_long("update", "auto_check", 0)), tr("update.auto.desc"));
+    tm_strlcpy(it->sarg, "update/auto_check", sizeof it->sarg);
+    if (tm_update_has_backup(&A.paths)) {
+        it = add(m, ACT_UPDATE_ROLLBACK, tr("update.rollback"), "", tr("update.rollback.desc"));
+        it->enabled = !busy && strcmp(st.state, "ready") != 0;
+    }
+}
+
 void menu_rebuild(void)
 {
     Menu *m = cur();
@@ -1054,6 +1184,7 @@ void menu_rebuild(void)
     case PAGE_DIAG: page_diag(m); break;
     case PAGE_PERF: page_perf(m); break;
     case PAGE_COVERS: page_covers(m); break;
+    case PAGE_UPDATE: page_update(m); break;
     }
     m->sel = sel < m->n ? sel : (m->n ? m->n - 1 : 0);
     m->top = top;
@@ -1477,6 +1608,37 @@ static void activate(MenuItem *it, TmButton b)
         app_mark_settings();
         break;
     }
+    case ACT_UPDATE_CHECK:
+        if (b != BTN_A)
+            return;
+        refresh_wifi_status(1);
+        if (!wifi_connected()) {
+            app_dialog(DLG_INFO, tr("update.title"), tr("update.needs_wifi"), 0, NULL, 1);
+            return;
+        }
+        update_spawn("check");
+        break;
+    case ACT_UPDATE_INSTALL: {
+        if (b != BTN_A)
+            return;
+        refresh_wifi_status(1);
+        if (!wifi_connected()) {
+            app_dialog(DLG_INFO, tr("update.title"), tr("update.needs_wifi"), 0, NULL, 1);
+            return;
+        }
+        char text[512];
+        snprintf(text, sizeof text, tr("update.install.confirm"), it->value);
+        app_dialog(DLG_UPDATE_INSTALL, tr("update.install"), text, 0, NULL, 0);
+        return;
+    }
+    case ACT_UPDATE_ROLLBACK:
+        if (b == BTN_A)
+            app_dialog(DLG_UPDATE_ROLLBACK, tr("update.rollback"), tr("update.rollback.confirm"), 0, NULL, 0);
+        return;
+    case ACT_UPDATE_REBOOT:
+        if (b == BTN_A)
+            app_exit(EXIT_REBOOT);
+        return;
     case ACT_CLEAR_LOGS:
         if (b == BTN_A)
             app_dialog(DLG_CLEAR_LOGS, tr("diag.clear"), tr("diag.clear.confirm"), 0, NULL, 0);
@@ -1589,6 +1751,19 @@ void menu_dialog_result(int id, long arg, const char *sarg, int yes)
         app_toast(tr(tm_wifi_forget((int)arg) == 0 ? "wifi.forgotten" : "wifi.connect_error"));
         menu_rebuild();
         break;
+    case DLG_UPDATE_INSTALL:
+        update_spawn("install");
+        menu_rebuild();
+        break;
+    case DLG_UPDATE_ROLLBACK:
+        if (tm_update_rollback(&A.paths) == 0) {
+            LOGI("ui: previous version restored, rebooting");
+            app_exit(EXIT_REBOOT);
+        } else {
+            app_toast(tr("update.rollback.failed"));
+        }
+        break;
+    case DLG_UPDATE_READY: app_exit(EXIT_REBOOT); break;
     case DLG_WIZ_SKIP:
         tm_ini_set_long(&A.settings, "general", "wizard_done", 1);
         app_mark_settings();

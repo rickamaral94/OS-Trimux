@@ -14,6 +14,8 @@
 #include "../../src/core/perf.h"
 #include "../../src/core/image.h"
 #include "../../src/core/scrape.h"
+#include "../../src/core/sha256.h"
+#include "../../src/core/update.h"
 #include "../../src/core/power.h"
 #include "../../src/core/sysinfo.h"
 #include "../../src/core/util.h"
@@ -797,6 +799,94 @@ static void test_scrape(void)
     CHECK(tm_image_fit_png(src, dst, 480, 480) == -1);
 }
 
+static void test_update(void)
+{
+    /* SHA-256 test vectors (FIPS 180-2) */
+    char hex[65];
+    TmSha256 c;
+    unsigned char d[32];
+    const char *msgs[] = {"", "abc", "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"};
+    const char *want[] = {"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                          "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+                          "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1"};
+    for (int i = 0; i < 3; i++) {
+        tm_sha256_init(&c);
+        tm_sha256_update(&c, msgs[i], strlen(msgs[i]));
+        tm_sha256_final(&c, d);
+        for (int k = 0; k < 32; k++)
+            snprintf(hex + 2 * k, 3, "%02x", d[k]);
+        CHECK_STR(hex, want[i]);
+    }
+    /* a million "a", through the file helper */
+    char path[512];
+    snprintf(path, sizeof path, "%s/million", T);
+    FILE *f = fopen(path, "wb");
+    for (int i = 0; i < 1000000; i++)
+        fputc('a', f);
+    fclose(f);
+    CHECK(tm_sha256_file(path, hex) == 0);
+    CHECK_STR(hex, "cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0");
+
+    CHECK(tm_version_cmp("0.4.0", "0.3.0") > 0);
+    CHECK(tm_version_cmp("v0.10.0", "0.9.3") > 0);
+    CHECK(tm_version_cmp("0.3", "0.3.0") == 0);
+    CHECK(tm_version_cmp("0.3.1", "0.3") > 0);
+    CHECK(tm_version_cmp("1.0.0", "v1.0.0") == 0);
+    CHECK(tm_version_cmp("0.4.0-rc1", "0.4.0") == 0);
+    CHECK(tm_version_cmp("0.2.9", "0.3.0") < 0);
+
+    const char *json =
+        "[{\"tag_name\":\"v0.6.0\",\"draft\":true,\"prerelease\":false,\"body\":\"x\",\"assets\":["
+        "{\"name\":\"TriMux-0.6.0-update.tar.gz\",\"browser_download_url\":\"https://e/6.tgz\",\"size\":9},"
+        "{\"name\":\"TriMux-0.6.0-brickpro.sha256\",\"browser_download_url\":\"https://e/6.sha\",\"size\":1}]},"
+        "{\"tag_name\":\"v0.5.0\",\"draft\":false,\"prerelease\":true,\"body\":\"pre\",\"assets\":["
+        "{\"name\":\"TriMux-0.5.0-update.tar.gz\",\"browser_download_url\":\"https://e/5.tgz\",\"size\":5},"
+        "{\"name\":\"TriMux-0.5.0-brickpro.sha256\",\"browser_download_url\":\"https://e/5.sha\",\"size\":1}]},"
+        "{\"tag_name\":\"v0.4.1\",\"draft\":false,\"prerelease\":false,\"assets\":["
+        "{\"name\":\"TriMux-0.4.1-update.zip\",\"browser_download_url\":\"https://e/41.zip\",\"size\":5}]},"
+        "{\"tag_name\":\"v0.4.0\",\"draft\":false,\"prerelease\":false,\"author\":{\"login\":\"a\",\"n\":[1,{\"x\":2}]},"
+        "\"body\":\"# TriMux 0.4.0\\r\\n\\r\\n**Novo:** atualiza\\u00e7\\u00e3o [online](docs/A.md) `trimuxctl`\\n"
+        "## Detalhes\\nfim\\n# 0.3.0\\nantigo\",\"assets\":["
+        "{\"name\":\"TriMux-0.4.0-brickpro.sha256\",\"browser_download_url\":\"https://e/4.sha\",\"size\":1},"
+        "{\"name\":\"TriMux-0.4.0-update.tar.gz\",\"browser_download_url\":\"https://e/4.tgz\",\"size\":1234}]},"
+        "{\"tag_name\":\"v0.9.0\",\"draft\":false,\"prerelease\":false,\"assets\":["
+        "{\"name\":\"TriMux-0.9.0-update.tar.gz\",\"browser_download_url\":\"http://e/9.tgz\",\"size\":5},"
+        "{\"name\":\"TriMux-0.9.0-brickpro.sha256\",\"browser_download_url\":\"https://e/9.sha\",\"size\":1}]},"
+        "{\"tag_name\":\"v1.0/../x\",\"draft\":false,\"prerelease\":false,\"assets\":[]}]";
+    TmRelease r;
+    /* stable only: drafts, pre-releases, releases without the tar.gz and plain-http assets are skipped */
+    CHECK(tm_update_pick(json, strlen(json), "0.3.0", 0, &r) == 1);
+    CHECK_STR(r.version, "0.4.0");
+    CHECK_STR(r.tag, "v0.4.0");
+    CHECK_STR(r.pkg_url, "https://e/4.tgz");
+    CHECK_STR(r.sha_url, "https://e/4.sha");
+    CHECK_STR(r.pkg_name, "TriMux-0.4.0-update.tar.gz");
+    CHECK(r.pkg_size == 1234 && !r.prerelease);
+    /* notes: first part only, markdown removed, \uXXXX decoded */
+    CHECK(strstr(r.notes, "Novo: atualização online trimuxctl") != NULL);
+    CHECK(strstr(r.notes, "Detalhes") != NULL);
+    CHECK(strstr(r.notes, "antigo") == NULL && strchr(r.notes, '#') == NULL && strchr(r.notes, '\r') == NULL);
+    /* with pre-releases, the newest wins */
+    CHECK(tm_update_pick(json, strlen(json), "0.3.0", 1, &r) == 1);
+    CHECK_STR(r.version, "0.5.0");
+    CHECK(r.prerelease == 1);
+    /* nothing newer */
+    CHECK(tm_update_pick(json, strlen(json), "0.5.0", 1, &r) == 0);
+    CHECK(tm_update_pick(json, strlen(json), "0.4.0", 0, &r) == 0);
+    /* broken replies */
+    CHECK(tm_update_pick("{\"message\":\"rate limited\"}", 26, "0.3.0", 1, &r) == -1);
+    CHECK(tm_update_pick("[{\"tag_name\":", 13, "0.3.0", 1, &r) == -1);
+    CHECK(tm_update_pick("[]", 2, "0.3.0", 1, &r) == 0);
+
+    const char *sums = "1111111111111111111111111111111111111111111111111111111111111111  TriMux-0.4.0-brickpro.img.xz\n"
+                       "ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789 *TriMux-0.4.0-update.tar.gz\n"
+                       "zz  bad\n";
+    CHECK(tm_update_sha_lookup(sums, "TriMux-0.4.0-update.tar.gz", hex) == 0);
+    CHECK_STR(hex, "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789");
+    CHECK(tm_update_sha_lookup(sums, "TriMux-0.4.0-update.zip", hex) == -1);
+    CHECK(tm_update_sha_lookup("g111111111111111111111111111111111111111111111111111111111111111  a\n", "a", hex) == -1);
+}
+
 int main(void)
 {
     snprintf(T, sizeof T, "/tmp/trimux-unit-%d", (int)getpid());
@@ -817,6 +907,7 @@ int main(void)
     test_net();
     test_perf();
     test_scrape();
+    test_update();
     char cmd[600];
     snprintf(cmd, sizeof cmd, "rm -rf '%s'", T);
     if (system(cmd) != 0)

@@ -33,6 +33,42 @@ if [ "$count" -ge 3 ]; then
     exit 0
 fi
 
+# Online update safety net: TriMux/ was just replaced by "trimuxctl update
+# install" (the previous version is kept in TriMux.old and trimui.old). The menu
+# clears update_pending once it is on screen; if that does not happen within 3
+# attempts, the previous version is put back. This runs before any TriMux
+# binary, so it works even if the new version is broken.
+ST=$SD/TriMuxData/state
+# Power lost in the middle of the folder swap: put the previous version back.
+if [ ! -d "$SD/TriMux" ] && [ -d "$SD/TriMux.old" ]; then
+    mv "$SD/TriMux.old" "$SD/TriMux"
+    rm -f "$ST/update_pending" "$ST/update_tries"
+fi
+if [ -f "$ST/update_pending" ]; then
+    tries=$(cat "$ST/update_tries" 2>/dev/null || echo 0)
+    case $tries in ''|*[!0-9]*) tries=0 ;; esac
+    tries=$((tries + 1))
+    echo "$tries" > "$ST/update_tries"
+    if [ "$tries" -gt 3 ]; then
+        if [ -d "$SD/TriMux.old" ] && [ -d "$SD/trimui.old" ]; then
+            rm -rf "$SD/TriMux.bad" "$SD/trimui.bad"
+            if mv "$SD/TriMux" "$SD/TriMux.bad" && mv "$SD/TriMux.old" "$SD/TriMux"; then
+                mv "$SD/trimui" "$SD/trimui.bad" && mv "$SD/trimui.old" "$SD/trimui"
+                msg="update failed to start $((tries - 1)) times; previous version $(cat "$ST/update_pending") restored"
+            else
+                [ -d "$SD/TriMux" ] || mv "$SD/TriMux.bad" "$SD/TriMux"
+                msg="update failed to start and the previous version could not be restored"
+            fi
+        else
+            msg="update failed to start and there is no previous version to restore"
+        fi
+        rm -f "$ST/update_pending" "$ST/update_tries"
+        mkdir -p "$SD/TriMuxData/logs"
+        echo "$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null) boot[W] $msg" >> "$SD/TriMuxData/logs/trimux.log"
+        sync
+    fi
+fi
+
 if [ ! -x "$SD/TriMux/scripts/supervisor.sh" ] && [ ! -f "$SD/TriMux/scripts/supervisor.sh" ]; then
     echo "TriMux files missing" > "$TMP/to_stock"
     exit 0

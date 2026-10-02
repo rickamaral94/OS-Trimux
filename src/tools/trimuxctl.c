@@ -10,6 +10,7 @@
  *   trimuxctl boot begin|ok|status   crash-loop protection counter
  *   trimuxctl fat-grow plan|apply <device-or-image>
  *   trimuxctl card-grow              grow the mounted SD card (remounts read-only first)
+ *   trimuxctl update check|install|rollback|status   online updates from the GitHub releases
  */
 #define _GNU_SOURCE
 #include "../core/buttons.h"
@@ -26,6 +27,7 @@
 #include "../core/paths.h"
 #include "../core/power.h"
 #include "../core/sysinfo.h"
+#include "../core/update.h"
 #include "../core/util.h"
 
 #include <errno.h>
@@ -497,8 +499,10 @@ static int cmd_boot(int argc, char **argv)
         }
         return 0;
     }
-    if (strcmp(sub, "ok") == 0)
+    if (strcmp(sub, "ok") == 0) {
+        tm_update_confirm(&P); /* a freshly installed update reached the menu */
         return tm_atomic_write(path, "0\n", 2) == 0 ? 0 : 1;
+    }
     printf("bootcount=%ld\n", n);
     return 0;
 }
@@ -664,10 +668,71 @@ static int cmd_scrape(int argc, char **argv)
     return rc;
 }
 
+/* Online updates. check [--auto] [--wait N]: --auto only if [update]
+ * auto_check = 1 (boot). install: the release found by the last check.
+ * Exit status: check 0 = up to date, 2 = update available, 1 = error. */
+static int cmd_update(int argc, char **argv)
+{
+    const char *sub = argc > 0 ? argv[0] : "status";
+    TmIni ini;
+    tm_settings_load(&ini, &P);
+    int allow_pre = (int)tm_ini_get_long(&ini, "update", "prerelease", 1);
+    int auto_check = (int)tm_ini_get_long(&ini, "update", "auto_check", 0);
+    tm_ini_free(&ini);
+    if (strcmp(sub, "check") == 0) {
+        int autorun = 0, wait_s = 0;
+        for (int i = 1; i < argc; i++) {
+            if (strcmp(argv[i], "--auto") == 0)
+                autorun = 1;
+            else if (strcmp(argv[i], "--wait") == 0 && i + 1 < argc)
+                wait_s = atoi(argv[++i]);
+        }
+        if ((autorun && !auto_check) || tm_update_running(&P))
+            return 0;
+        TmRelease r;
+        int rc = tm_update_check(&P, allow_pre, wait_s, &r);
+        if (rc > 0)
+            printf("available=%s\n", r.version);
+        else if (rc == 0)
+            printf("uptodate\n");
+        return rc < 0 ? 1 : rc > 0 ? 2 : 0;
+    }
+    if (strcmp(sub, "install") == 0) {
+        TmRelease r;
+        if (tm_update_info_read(&P, &r) != 0) {
+            fprintf(stderr, "no update found; run: trimuxctl update check\n");
+            return 1;
+        }
+        int rc = tm_update_install(&P, &r);
+        if (rc == 1)
+            fprintf(stderr, "an update is already running\n");
+        return rc == 0 ? 0 : 1;
+    }
+    if (strcmp(sub, "rollback") == 0) {
+        if (tm_update_rollback(&P) != 0) {
+            fprintf(stderr, "no previous version to go back to\n");
+            return 1;
+        }
+        printf("previous version restored; reboot to use it\n");
+        return 0;
+    }
+    if (strcmp(sub, "status") == 0) {
+        char cur[32];
+        TmUpdateStatus st;
+        tm_update_current(&P, cur, sizeof cur);
+        printf("installed=%s\nbackup=%d\nrunning=%d\n", cur, tm_update_has_backup(&P), tm_update_running(&P));
+        if (tm_update_status_read(&P, &st) == 0)
+            printf("state=%s\nversion=%s\nerror=%s\npercent=%d\n", st.state, st.version, st.error, st.percent);
+        return 0;
+    }
+    fprintf(stderr, "usage: trimuxctl update check [--auto] [--wait N]|install|rollback|status\n");
+    return 1;
+}
+
 int main(int argc, char **argv)
 {
     if (argc < 2) {
-        fprintf(stderr, "usage: trimuxctl power|leds|switch|net|scrape|sysinfo|device|scan|launch|boot|fat-grow|card-grow ...\n");
+        fprintf(stderr, "usage: trimuxctl power|leds|switch|net|scrape|update|sysinfo|device|scan|launch|boot|fat-grow|card-grow ...\n");
         return 1;
     }
     if (tm_paths_init(&P) != 0)
@@ -686,6 +751,8 @@ int main(int argc, char **argv)
         return cmd_net(argc - 2, argv + 2);
     if (strcmp(c, "scrape") == 0)
         return cmd_scrape(argc - 2, argv + 2);
+    if (strcmp(c, "update") == 0)
+        return cmd_update(argc - 2, argv + 2);
     if (strcmp(c, "sysinfo") == 0)
         return cmd_sysinfo();
     if (strcmp(c, "device") == 0) /* 0 only on a TrimUI Brick Pro firmware */

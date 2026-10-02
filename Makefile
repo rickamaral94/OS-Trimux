@@ -99,7 +99,7 @@ sdcard:
 image: sdcard
 	python3 scripts/make_image.py --version $(VERSION) --tree build/sdcard --out build/out
 	python3 scripts/make_update_zip.py --version $(VERSION) --tree build/sdcard --out build/out
-	cd build/out && sha256sum TriMux-$(VERSION)-update.zip >> TriMux-$(VERSION)-brickpro.sha256
+	cd build/out && sha256sum TriMux-$(VERSION)-update.zip TriMux-$(VERSION)-update.tar.gz >> TriMux-$(VERSION)-brickpro.sha256
 
 # Full reproducible pipeline: sources and firmware are fetched on the host
 # (pinned commits / SHA-256); everything else runs in the pinned container.

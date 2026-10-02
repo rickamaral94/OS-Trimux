@@ -1,5 +1,5 @@
 /* Cover images: decode (PNG/JPEG), shrink to fit, write PNG. Wraps the
- * public-domain stb_image libraries (src/core/third_party). */
+ * public-domain stb_image / stb_image_write (src/core/third_party). */
 #ifndef TRIMUX_IMAGE_H
 #define TRIMUX_IMAGE_H
 

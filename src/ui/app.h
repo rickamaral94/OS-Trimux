@@ -192,6 +192,7 @@ void net_tick(void);
 void net_ftp_stop(void);
 /* Starts the cover downloader in the background (auto: only if enabled). */
 void covers_start(int autorun, int retry);
+int update_blocks_launch(void);
 void keyboard_draw(void);
 void keyboard_input(TmButton b);
 
@@ -201,14 +202,14 @@ enum {
     PAGE_LIBRARY, PAGE_FOLDERS, PAGE_BIOS, PAGE_EMULATORS, PAGE_EMU_PLATFORM, PAGE_STORAGE, PAGE_SYSTEM,
     PAGE_QUICK, PAGE_GAME_OPTIONS, PAGE_EMU_CHOOSE, PAGE_HOTKEYS, PAGE_DISPLAY, PAGE_ABOUT, PAGE_LOG,
     PAGE_ADD_GAMES, PAGE_BUTTONS, PAGE_NETWORK, PAGE_WIFI_SCAN, PAGE_WIFI_SAVED, PAGE_CHEEVOS,
-    PAGE_DIAG, PAGE_PERF, PAGE_COVERS,
+    PAGE_DIAG, PAGE_PERF, PAGE_COVERS, PAGE_UPDATE,
 };
 
 /* dialog ids */
 enum {
     DLG_NONE = 0, DLG_STOCK, DLG_POWEROFF, DLG_REBOOT, DLG_MKDIRS, DLG_RESTORE_EMU, DLG_GROW, DLG_EXPERIMENTAL,
     DLG_WIZ_SKIP, DLG_POWER_DEFAULT, DLG_INFO, DLG_IDLE, DLG_BOOST,
-    DLG_FTP, DLG_SSH, DLG_WIFI_FORGET, DLG_CLEAR_LOGS,
+    DLG_FTP, DLG_SSH, DLG_WIFI_FORGET, DLG_CLEAR_LOGS, DLG_UPDATE_INSTALL, DLG_UPDATE_ROLLBACK, DLG_UPDATE_READY,
 };
 
 #endif

@@ -52,6 +52,7 @@ jobs:
           path: |
             build/out/*.img.xz
             build/out/*-update.zip
+            build/out/*-update.tar.gz
             build/out/*.sha256
           if-no-files-found: error
           retention-days: 30

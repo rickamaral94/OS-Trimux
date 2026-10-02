@@ -78,6 +78,7 @@ def make_net_tools(root):
         pidof) [ -f %(run)s/"$2" ] ;;
         killall) rm -f %(run)s/"$3"; exit 0 ;;
         tcpsvd) while :; do sleep 1; done ;;
+        tar) shift; exec tar "$@" ;;
         *) exit 0 ;;
         esac
         """) % {"log": log, "run": run}, 0o755)
@@ -85,9 +86,11 @@ def make_net_tools(root):
           '#!/bin/sh\necho "btmanager cwd=$(pwd) ld=$LD_LIBRARY_PATH" >> %s\ntouch %s/trimui_btmanager\n' % (log, run), 0o755)
     write(os.path.join(root, "usr/sbin/sshd"), "#!/bin/sh\n", 0o755)
     # fake curl: serves netstate/cover.png for URLs listed in netstate/covers,
-    # 404 (exit 22) for anything else, or a network error if netstate/offline exists
+    # files mapped in netstate/serve ("url<TAB>file" lines), 404 (exit 22) for
+    # anything else, or a network error if netstate/offline exists
     write(os.path.join(root, "netstate/cover.png"), png_bytes(600, 900))
     write(os.path.join(root, "netstate/covers"), "")
+    write(os.path.join(root, "netstate/serve"), "")
     write(os.path.join(root, "usr/bin/curl"), textwrap.dedent("""\
         #!/bin/sh
         S=%(root)s/netstate
@@ -102,6 +105,8 @@ def make_net_tools(root):
         echo "curl $url" >> %(log)s
         [ -f $S/offline ] && exit 6
         if grep -qxF "$url" $S/covers; then cp $S/cover.png "$out"; exit 0; fi
+        f=$(awk -F '\t' -v u="$url" '$1 == u { print $2 }' $S/serve)
+        if [ -n "$f" ]; then cp "$f" "$out"; exit 0; fi
         exit 22
         """) % {"root": root, "log": log}, 0o755)
     write(os.path.join(root, "etc/init.d/sshd"),

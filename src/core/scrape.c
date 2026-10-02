@@ -14,10 +14,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#ifndef TRIMUX_VERSION
-#define TRIMUX_VERSION "dev"
-#endif
-#define CURL "/usr/bin/curl"
 #define BASE_URL "https://thumbnails.libretro.com"
 #define MAX_DOWNLOAD (8L * 1024 * 1024)
 
@@ -299,16 +295,10 @@ static void set_free(StrSet *s)
 /* curl exit codes: 22 = HTTP error (e.g. 404, not found). */
 static int download(const TmPaths *p, const char *url, const char *dst)
 {
-    char curl[TM_PATH_MAX], ca[TM_PATH_MAX], ua[64];
-    if (tm_fw_path(curl, sizeof curl, CURL) != 0 || tm_path_join(ca, sizeof ca, p->share, "cacert.pem") != 0)
+    char ca[TM_PATH_MAX];
+    if (tm_path_join(ca, sizeof ca, p->share, "cacert.pem") != 0)
         return -1;
-    snprintf(ua, sizeof ua, "TriMux/%s", TRIMUX_VERSION);
-    char maxsize[24];
-    snprintf(maxsize, sizeof maxsize, "%ld", MAX_DOWNLOAD);
-    /* -f: HTTP errors fail; TLS is always verified against the bundled CA list */
-    char *argv[] = {curl, "-fsSL", "--proto", "=https", "--max-time", "30", "--connect-timeout", "10",
-                    "--max-filesize", maxsize, "--cacert", ca, "-A", ua, "-o", (char *)dst, (char *)url, NULL};
-    return tm_run(argv, NULL, 0, 40000);
+    return tm_https_get(url, dst, ca, MAX_DOWNLOAD, 30, "image/png,image/jpeg");
 }
 
 static int is_image(const char *path)

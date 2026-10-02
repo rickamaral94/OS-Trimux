@@ -1,3 +1,24 @@
+# TriMux 0.4.0 (pré-lançamento)
+
+**Estado: não testado em um Brick Pro físico.** Tudo das versões anteriores
+continua valendo (listas abaixo), mais:
+
+* Atualização online ([ATUALIZACAO.md](ATUALIZACAO.md)): em *Configurações ›
+  Sistema › Atualização*, procura no GitHub e instala versões novas pelo
+  Wi-Fi, sem gravar o cartão de novo. O pacote é conferido por SHA-256 antes
+  de qualquer mudança e só as pastas `TriMux` e `trimui` são trocadas. A
+  versão anterior fica guardada: dá para voltar pelo menu, e ela volta
+  sozinha se a nova não chegar ao menu em 3 tentativas. A busca ao ligar é
+  opcional, e nada é instalado sem confirmação.
+* Esta é a primeira versão com o atualizador. Para chegar nela vindo da 0.3.0
+  ou anterior, use uma vez o `update.zip` ([INSTALACAO.md](INSTALACAO.md),
+  seção 4).
+
+Arquivos desta versão: `TriMux-0.4.0-brickpro.img.xz` (Rufus/balenaEtcher),
+`TriMux-0.4.0-update.zip` (atualizar pelo computador, sem perder saves),
+`TriMux-0.4.0-update.tar.gz` (usado pela atualização online) e
+`TriMux-0.4.0-brickpro.sha256`.
+
 # TriMux 0.3.0 (pré-lançamento)
 
 **Estado: não testado em um Brick Pro físico.** Tudo das versões anteriores

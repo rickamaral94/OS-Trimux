@@ -38,6 +38,7 @@ grep -v '^#' sources/sources.lock | grep -v '^$' | while IFS='|' read -r name ur
     [ -f "$TM/licenses/$name.txt" ] || echo "$name: $license ($url @ $commit)" > "$TM/licenses/$name.txt"
 done
 cp src/ui/third_party/STB_COMMIT "$TM/licenses/stb_truetype-commit.txt"
+{ cat src/core/third_party/JSMN_LICENSE; echo; echo "commit $(cat src/core/third_party/JSMN_COMMIT)"; } > "$TM/licenses/jsmn.txt"
 # Libraries bundled inside RetroArch for RetroAchievements and HTTPS.
 cp build/src/retroarch/deps/rcheevos/LICENSE "$TM/licenses/rcheevos.txt"
 {

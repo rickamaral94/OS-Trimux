@@ -39,9 +39,10 @@ ROM de boot (SoC) ── sem eGON.BT0 no cartão ──> boot pela eMMC (firmwar
 | ├ cartão | `fatgrow.c` | expansão FAT32 só por metadados |
 | ├ desempenho | `perf.c` | registro opcional por sessão (amostras a cada 10 s, resumo, limite de arquivos), lido pela tela *Sessões gravadas* |
 | ├ capas | `scrape.c`, `image.c` | nomes e endereços do libretro-thumbnails, títulos de arcade, download com o `curl` do firmware (HTTPS verificado), redução para 480×480 com stb_image, estado em `/tmp/trimux/scrape.status` |
+| ├ atualização | `update.c`, `sha256.c` | lista de lançamentos do GitHub (JSON com jsmn), escolha da versão, download HTTPS com o `curl` do firmware, SHA-256, extração com o `tar` do BusyBox, troca de pastas com `TriMux.old`; volta automática no `trimui/app/MainUI` ([ATUALIZACAO.md](ATUALIZACAO.md)) |
 | └ rede | `net.c` | Wi-Fi via `wpa_cli` do firmware (parsers testados, SSID em hex), Bluetooth (`trimui_btmanager`), SSH (`/etc/init.d/sshd`), FTP (`tcpsvd`+`ftpd` do BusyBox); tudo com `execv`, sem shell, com tempo limite; conta do RetroAchievements para o RetroArch |
 | Menu (SDL2) | `src/ui/` | `gfx.c` (stb_truetype), `input.c`, telas `home.c`, `games.c`, `menus.c`, `wizard.c`, `keyboard.c` |
-| Ferramenta | `src/tools/trimuxctl.c` | comandos usados pelos scripts (energia, LEDs, rede, lançamento, boot, expansão) |
+| Ferramenta | `src/tools/trimuxctl.c` | comandos usados pelos scripts (energia, LEDs, rede, capas, atualização, lançamento, boot, expansão) |
 | Scripts do cartão | `sdcard/` | ponto de entrada `trimui/app`, supervisor, configuração do RetroArch |
 | Build | `docker/`, `scripts/`, `Makefile` | contêiner fixado, fontes fixadas, núcleos, imagem, testes |
 
