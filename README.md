@@ -20,8 +20,9 @@ cartão devolve o aparelho ao estado original.
   Brasil** (inglês incluído; novos idiomas são um arquivo de texto).
 * Poucos passos até jogar: **Continuar**, Recentes, Favoritos, Todos os jogos,
   plataformas com contagem, busca com teclado na tela, filtros.
-* **19 plataformas, 17 emuladores** (RetroArch 1.22.2 + núcleos libretro
-  compilados para Cortex-A53). Troca de emulador **por jogo** ou **por
+* **22 plataformas, 20 núcleos** (RetroArch 1.22.2 + núcleos libretro
+  compilados para Cortex-A53), incluindo **ports**: DOOM (PrBoom), Quake
+  (TyrQuake), Cave Story (NXEngine) e scripts `.sh` no estilo PortMaster. Troca de emulador **por jogo** ou **por
   plataforma** com o botão SELECT.
 * Encontra jogos em pastas conhecidas (cartão oficial TrimUI, MinUI/NextUI,
   Batocera/Knulli) **sem mover ou renomear nada**.
@@ -38,6 +39,7 @@ cartão devolve o aparelho ao estado original.
 | ![Plataforma](docs/img/03-plataforma.png) | ![Emulador por jogo](docs/img/04-emulador.png) |
 |---|---|
 | ![Energia](docs/img/06-energia.png) | ![Informações](docs/img/08-informacoes.png) |
+| ![Seção PS2](docs/img/11-ps2.png) | ![Ports](docs/img/13-ports.png) |
 
 <sub>Capturas renderizadas no computador (SDL offscreen) com um Brick Pro
 simulado; não são fotos do aparelho.</sub>
@@ -88,7 +90,9 @@ firmware oficial: **[docs/INSTALACAO.md](docs/INSTALACAO.md)**.
 | PlayStation | PCSX ReARMed | — | incluído, não medido |
 | Arcade / Neo Geo | FinalBurn Neo | — | incluído, não medido |
 | Neo Geo Pocket, WonderSwan, Lynx, Atari 2600/7800 | RACE, Beetle WS, Handy, Stella 2014, ProSystem | — | incluído, não medido |
-| **PlayStation 2** | — | — | **não suportado** — sem emulador viável e validado ([docs/PS2.md](docs/PS2.md)) |
+| Ports: DOOM, Quake, Cave Story | PrBoom, TyrQuake, NXEngine | — | incluído, não medido ([docs/PORTS.md](docs/PORTS.md)) |
+| Ports por script (`.sh`, PortMaster) | shell do firmware | — | experimental, depende de cada port |
+| **PlayStation 2** | — | — | **não suportado** — seção visível no menu explicando a situação ([docs/PS2.md](docs/PS2.md)) |
 
 Formatos, nomes de pastas e BIOS: [docs/ESTRUTURA_CARTAO.md](docs/ESTRUTURA_CARTAO.md).
 Jogos, BIOS e firmware de consoles **não são incluídos**.

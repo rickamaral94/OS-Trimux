@@ -167,3 +167,24 @@ def test_scripts_are_posix_and_lf():
             if shutil.which("shellcheck"):
                 r = subprocess.run(["shellcheck", "-s", "sh", "-S", "error", path], capture_output=True, text=True)
                 assert r.returncode == 0, r.stdout
+
+
+def test_port_script_runs_from_its_folder_with_limits(rig, env):
+    os.makedirs(rig["tmp"], exist_ok=True)
+    write(os.path.join(rig["card"], "Roms/PORTS/My Port.sh"),
+          '#!/bin/sh\npwd > "$RIG_DIR/port_cwd"\necho "$TRIMUX_DEVICE" > "$RIG_DIR/port_env"\n'
+          'cat "%s/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq" > "$RIG_DIR/port_freq"\n'
+          % env["TRIMUX_SYSFS_ROOT"])
+    write(os.path.join(rig["card"], "Roms/PORTS/myport/helper.sh"), "#!/bin/sh\n")
+    write(os.path.join(rig["tmp"], "launch.ini"),
+          "[launch]\nsystem = PORTS\nrom = Roms/PORTS/My Port.sh\nemulator = shell\n")
+    scripted_ui(rig, [10, 20])
+    run_supervisor(rig)
+    assert read(os.path.join(rig["dir"], "port_cwd")).endswith("Roms/PORTS")
+    assert read(os.path.join(rig["dir"], "port_env")) == "brickpro"
+    assert read(os.path.join(rig["dir"], "port_freq")) == "1608000"      # shell -> balanced
+    # helper scripts inside port folders are not listed as games
+    from conftest import ctl
+    ctl(rig["env"], "scan")
+    idx = read(os.path.join(rig["card"], "TriMuxData/cache/library.tsv"))
+    assert "Roms/PORTS/My Port.sh" in idx and "helper.sh" not in idx

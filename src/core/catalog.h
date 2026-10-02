@@ -25,14 +25,15 @@ typedef struct {
     int nemus;
     unsigned color;   /* 0xRRGGBB badge color */
     int experimental; /* shown with a warning (e.g. PS2) */
+    int max_depth;    /* sub-folder levels scanned (1 = top level only) */
     char note_key[48];
 } TmSystem;
 
 typedef struct {
     char id[32];
     char name[64];
-    char type[16];        /* "retroarch" */
-    char core[64];        /* file name inside the cores directory */
+    char type[16];        /* "retroarch", or "script" (game is a shell script, e.g. ports) */
+    char core[64];        /* file name inside the cores directory (retroarch only) */
     char config_name[64]; /* RetroArch library name (config/<name>/) */
     char profile[16];     /* recommended power profile id */
     int experimental;

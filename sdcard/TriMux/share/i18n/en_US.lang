@@ -240,7 +240,7 @@ emu.pce_fast.note = PC Engine and CD (CD needs syscard3.pce in /Bios).
 emu.pcsx.note = PlayStation with recompiler. Works without BIOS (HLE), but a real BIOS improves compatibility.
 emu.fbneo.note = Use ROM sets matching FinalBurn Neo (see docs). Neo Geo needs neogeo.zip.
 emu.play.note = Experimental PS2: not included and not validated on this device. With 1 GB RAM and a GE8300 GPU, performance is expected to be insufficient for most games.
-sys.ps2.note = PS2 is experimental. No PS2 emulator is included. See docs/PS2.md.
+sys.ps2.note = PlayStation 2 is not supported on this device: no PS2 emulator compatible with the Brick Pro's Linux (Cortex-A53 CPU, 1 GB RAM, GE8300 GPU with OpenGL ES) has been validated, and speed is expected to be insufficient. This section shows the status; if a compatible core (play_libretro.so) is added it appears as experimental. Details in docs/PS2.md.
 
 game.options = Game options
 game.play = Play
@@ -303,7 +303,7 @@ about.license = TriMux license
 about.license.desc = TriMux code under the MIT license. Third-party components have their own licenses (docs/LICENCAS.md).
 about.retroarch = RetroArch is distributed under GPL-3.0; the exact source is pinned in sources/sources.lock.
 about.cores = libretro cores
-about.cores.value = 17
+about.cores.value = 20
 about.cores.desc = GPL, MPL, zlib and non-commercial licenses (Snes9x, Genesis Plus GX, PicoDrive, FinalBurn Neo). Non-commercial use and redistribution only for those.
 about.no_roms = No games or BIOS
 about.no_roms.desc = TriMux ships no games, BIOS, console firmware or keys. Use only your own copies.
@@ -356,3 +356,13 @@ wizard.step4.title = Power
 wizard.step4.text = Automatic uses the minimum each emulator needs, never above the manufacturer's limit. The device's thermal limits are always active.
 wizard.step5.title = All set
 wizard.step5.text = Shortcuts: HOME = game menu · MENU + START = quit game · MENU + R1/L1 = save/load state · POWER = sleep · Hold SELECT at power-on = stock system.
+
+home.experimental = EXPERIMENTAL
+games.experimental_folder = Folder on the card: Roms/%s
+sys.doom.note = Put your .wad files (DOOM, DOOM II or the free Freedoom) in Roms/DOOM. prboom.wad is already in /Bios.
+sys.quake.note = Put the game folder with pak0.pak in Roms/QUAKE (the shareware version only has pak0.pak).
+sys.cavestory.note = Put Cave Story's Doukutsu.exe and data folder (freeware) in Roms/CAVESTORY/<folder>.
+sys.ports.note = Ports are adapted PC games that run directly on the device's Linux, opened by a .sh script (for example installed by PortMaster). Put the scripts in Roms/PORTS. Each port has its own requirements and none was validated on this device; they may not work.
+emu.prboom.note = Free DOOM engine. Works with DOOM, DOOM II, Final DOOM and Freedoom.
+emu.tyrquake.note = Quake engine. Needs more CPU; uses the Safe performance profile.
+emu.shell.note = Runs the port's script with the firmware shell. Experimental: the port may need extra libraries or PortMaster installed.

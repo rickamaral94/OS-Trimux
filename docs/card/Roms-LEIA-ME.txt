@@ -6,7 +6,8 @@ Copie seus jogos para a pasta da plataforma:
   SEGACD    .cue .chd          PCE        .pce .cue .chd    PS  .cue .chd .pbp .m3u
   ARCADE    .zip (FinalBurn Neo)            NEOGEO .zip     NGP .ngp .ngc
   WS        .ws .wsc           LYNX       .lnx              A2600 .a26 .bin
-  A7800     .a78
+  A7800     .a78               DOOM .wad (PrBoom)          QUAKE pak0.pak
+  CAVESTORY Doukutsu.exe+data  PORTS scripts .sh (experimental, estilo PortMaster)
 
 Subpastas são aceitas (até 3 níveis). Jogos de vários discos: crie um .m3u.
 Pastas de um cartão TrimUI/MinUI/NextUI existentes são reconhecidas.

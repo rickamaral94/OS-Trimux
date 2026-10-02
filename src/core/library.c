@@ -184,7 +184,7 @@ static void scan_dir(TmLibrary *lib, const TmSystem *sys, int sys_index, const c
         if (stat(abs, &st) != 0)
             continue;
         if (S_ISDIR(st.st_mode)) {
-            if (depth < SCAN_MAX_DEPTH && !skip_dir_name(nm)) {
+            if (depth < sys->max_depth && depth < SCAN_MAX_DEPTH && !skip_dir_name(nm)) {
                 scan_dir(lib, sys, sys_index, sd_root, rel, depth + 1, clean);
                 /* the recursive call reused the static buffer */
                 nhidden = collect_m3u_hidden(abs_dir, hidden, M3U_MAX_HIDE);

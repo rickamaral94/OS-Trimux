@@ -76,7 +76,9 @@ def test_catalog_references():
         for e in systems.get(s, "emulators").split(","):
             assert emus.has_section(e.strip()), "%s -> %s" % (s, e)
     for e in emus.sections():
-        core = emus.get(e, "core")
+        core = emus.get(e, "core", fallback="")
+        if emus.get(e, "type", fallback="retroarch") == "script":
+            continue
         if emus.get(e, "experimental", fallback="0") != "1":
             assert core in built, "%s core %s is not built by build_cores.sh" % (e, core)
         assert emus.get(e, "profile") in ("economy", "balanced", "performance")

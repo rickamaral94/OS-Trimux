@@ -16,8 +16,8 @@ compilação cruzada não contam como prova de desempenho.
 | CPU | Perfis com teto de 1,8 GHz; "Automático" usa Economia (≤ 1,2 GHz) para 8/16 bits. | `src/core/power.c`, `emulators.ini` |
 
 Tamanhos da versão 0.1.0 (medidos no build): `trimux-ui` 171 KB,
-`trimuxctl` 81 KB, RetroArch 13,7 MB, 17 núcleos 126 MB (FinalBurn Neo 81 MB),
-árvore do cartão 138 MB, imagem 1 GiB (21 MB em `.img.xz`).
+`trimuxctl` 81 KB, RetroArch 13,7 MB, 20 núcleos ~131 MB (FinalBurn Neo 81 MB),
+árvore do cartão ~143 MB, imagem 1 GiB (21 MB em `.img.xz`).
 
 ## Protocolo
 

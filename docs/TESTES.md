@@ -22,11 +22,11 @@ Como rodar: `make test` (A + partes S que não exigem Docker),
 |---|---|---|
 | `tests/unit/test_core.c` — 148 verificações (INI, gravação atômica, caminhos, idiomas, catálogo, varredura da biblioteca, `.m3u`, índice, favoritos/recentes, perfis de energia, LEDs, proteção térmica, validação do pedido de lançamento, migração de configurações, sysinfo), com ASan/UBSan | A | **passou** |
 | `tests/py/test_ctl.py` — `trimuxctl` com Brick Pro simulado: perfis ≤ 1,8 GHz e sem governador `performance`, arquivos térmicos intocados, LEDs só quando ativados, contador de boot/modo seguro, varredura | A/S | **passou** |
-| `tests/py/test_supervisor.py` — scripts de boot com comandos do firmware simulados: modelo errado → oficial, laço de falhas → oficial, modo seguro, lançamento aplica limite **antes** do emulador e restaura depois, perfil automático por emulador, pedido adulterado recusado, desligar, `preload.sh`, guarda de reinício do `MainUI`, POSIX/LF/`sh -n` | S | **passou** |
+| `tests/py/test_supervisor.py` — scripts de boot com comandos do firmware simulados: port `.sh` roda da própria pasta com limite de energia e scripts auxiliares não aparecem; modelo errado → oficial, laço de falhas → oficial, modo seguro, lançamento aplica limite **antes** do emulador e restaura depois, perfil automático por emulador, pedido adulterado recusado, desligar, `preload.sh`, guarda de reinício do `MainUI`, POSIX/LF/`sh -n` | S | **passou** |
 | `tests/py/test_image.py` — imagem: MBR, partição 0x0C em 2048, área de boot zerada (sem `eGON.BT0`), FAT32 válido (`fsck.fat`), nomes longos; expansão para cartão de 8 GiB com `fsck` limpo e escrita de 200 MB no espaço novo; recusa de cartões com 2 partições ou sem FAT; limite de 1 TiB; imagem final sem ROMs/BIOS/firmware | A (contêiner) | **passou** |
 | `tests/py/test_data.py` — todas as chaves de tradução usadas existem em pt_BR, especificadores de formato iguais entre idiomas, catálogo consistente, nenhum arquivo de ROM/imagem no repositório | A | **passou** |
 | `tests/py/test_ui.py` — menu com entradas roteirizadas: assistente, lançamento grava pedido válido e recentes, favorito e emulador por jogo persistem, confirmação para sistema oficial/desligar, configuração corrompida não trava | S | **passou** (no computador com SDL; ignorado no contêiner, que não tem SDL nativo) |
-| `scripts/smoke_qemu.sh` — com bibliotecas do firmware v1.1.1 e `LD_BIND_NOW=1`: `trimuxctl` identifica o Brick Pro; `trimux-ui` resolve todos os símbolos da libSDL2/glibc do firmware (o SDL do firmware só tem o driver de vídeo "mali", por isso a janela não abre em QEMU); `retroarch --features`; os 17 núcleos carregam e o nome/extensões batem com o catálogo | S | **passou** (5/5) |
+| `scripts/smoke_qemu.sh` — com bibliotecas do firmware v1.1.1 e `LD_BIND_NOW=1`: `trimuxctl` identifica o Brick Pro; `trimux-ui` resolve todos os símbolos da libSDL2/glibc do firmware (o SDL do firmware só tem o driver de vídeo "mali", por isso a janela não abre em QEMU); `retroarch --features`; os 20 núcleos carregam e o nome/extensões batem com o catálogo | S | **passou** (5/5) |
 | `scripts/check_abi.py` — RetroArch, núcleos e binários exigem no máximo GLIBC 2.33 / GLIBCXX 3.4.28 e só bibliotecas presentes no firmware | A | **passou** |
 | Reprodutibilidade — duas gerações da imagem a partir da mesma árvore produziram o mesmo SHA-256 do `.img` | A | **passou** |
 
@@ -65,4 +65,5 @@ Marque com data, firmware, versão do TriMux e observações ao executar.
 | H21 | Uso de RAM no menu e em jogo (`/proc/meminfo` via *Informações*) | pendente |
 | H22 | Sessões longas (60 min e 2 h) por plataforma com registro térmico ([DESEMPENHO.md](DESEMPENHO.md)) | pendente |
 | H23 | Bateria: consumo no menu, em jogo leve e pesado, suspensão por 8 h | pendente |
-| H24 | PS2: não aplicável (nenhum emulador incluído) | — |
+| H24 | PS2: seção visível e explicativa; nenhum emulador incluído | pendente (apenas visual) |
+| H25 | Ports: DOOM com Freedoom, Quake shareware, Cave Story freeware; um script `.sh` simples | pendente |

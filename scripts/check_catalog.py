@@ -25,7 +25,7 @@ def main(probe):
     systems.read(os.path.join(SHARE, "systems.ini"), encoding="utf-8")
     errors = []
     for e in emus.sections():
-        core = emus.get(e, "core")
+        core = emus.get(e, "core", fallback="")
         if core not in cores:
             if emus.get(e, "experimental", fallback="0") != "1":
                 errors.append("%s: core %s not built/probed" % (e, core))
@@ -35,7 +35,7 @@ def main(probe):
     for s in systems.sections():
         exts = {x.strip() for x in systems.get(s, "extensions").split(",")} - ARCHIVES
         for e in (x.strip() for x in systems.get(s, "emulators").split(",")):
-            core = emus.get(e, "core")
+            core = emus.get(e, "core", fallback="")
             if core not in cores:
                 continue
             missing = exts - cores[core][1]

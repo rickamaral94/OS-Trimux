@@ -47,8 +47,8 @@ int tm_launch_read(const TmPaths *p, const TmCatalog *cat, TmLaunch *l, char *er
     l->emu = tm_catalog_emulator(cat, tm_ini_get(&ini, "launch", "emulator", ""));
     if (!l->emu || !tm_system_supports_emu(l->system, l->emu->id))
         ERR("launch.err.emulator");
-    if (tm_path_join(l->core_abs, sizeof l->core_abs, p->cores, l->emu->core) != 0 ||
-        !tm_file_exists(l->core_abs))
+    if (strcmp(l->emu->type, "script") != 0 &&
+        (tm_path_join(l->core_abs, sizeof l->core_abs, p->cores, l->emu->core) != 0 || !tm_file_exists(l->core_abs)))
         ERR("launch.err.core_missing");
     const char *rel = tm_ini_get(&ini, "launch", "rom", "");
     if (tm_strlcpy(l->rom_rel, rel, sizeof l->rom_rel) != 0 || !*rel || rel[0] == '/')

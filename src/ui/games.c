@@ -121,6 +121,19 @@ void games_draw(void)
     int row = S(54);
     int listw = gfx_w() * 60 / 100;
     if (A.nview == 0) {
+        if (!A.query[0] && A.view_system >= 0 && A.cat.systems[A.view_system].experimental &&
+            A.cat.systems[A.view_system].note_key[0]) {
+            const TmSystem *sys = &A.cat.systems[A.view_system];
+            int y = top + S(30);
+            gfx_badge(S(40), y, S(34), t->warn, tr("home.experimental"));
+            y += S(60);
+            y += gfx_text_wrap(FONT_M, S(40), y, gfx_w() - S(80), 8, t->text, tr(sys->note_key)) + S(24);
+            char buf[160];
+            snprintf(buf, sizeof buf, tr("games.experimental_folder"), sys->folders[0]);
+            gfx_text_wrap(FONT_S, S(40), y, gfx_w() - S(80), 4, t->dim, buf);
+            app_footer(tr("games.hints_empty"));
+            return;
+        }
         const char *msg = A.query[0] ? tr("games.no_results")
                           : A.view_system == VIEW_FAVORITES ? tr("games.no_favorites")
                           : A.view_system == VIEW_RECENT ? tr("games.no_recent")

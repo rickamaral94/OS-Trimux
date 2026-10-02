@@ -68,6 +68,9 @@ int tm_catalog_load(TmCatalog *cat, const char *systems_ini, const char *emulato
                                 sizeof sys->emulators[0], TM_MAX_SYS_EMUS);
         sys->bios_required = (int)tm_ini_get_long(&s, id, "bios_required", 0);
         sys->experimental = (int)tm_ini_get_long(&s, id, "experimental", 0);
+        sys->max_depth = (int)tm_ini_get_long(&s, id, "max_depth", 3);
+        if (sys->max_depth < 1 || sys->max_depth > 3)
+            sys->max_depth = 3;
         sys->color = (unsigned)strtoul(tm_ini_get(&s, id, "color", "607080"), NULL, 16) & 0xFFFFFFu;
         tm_strlcpy(sys->note_key, tm_ini_get(&s, id, "note", ""), sizeof sys->note_key);
         /* folder names become path components: reject unsafe ones */
@@ -97,7 +100,8 @@ int tm_catalog_load(TmCatalog *cat, const char *systems_ini, const char *emulato
         tm_strlcpy(em->profile, tm_ini_get(&e, id, "profile", "balanced"), sizeof em->profile);
         tm_strlcpy(em->note_key, tm_ini_get(&e, id, "note", ""), sizeof em->note_key);
         em->experimental = (int)tm_ini_get_long(&e, id, "experimental", 0);
-        if (strcmp(em->type, "retroarch") != 0 || !tm_name_is_safe(em->core) ||
+        int is_script = strcmp(em->type, "script") == 0;
+        if ((!is_script && strcmp(em->type, "retroarch") != 0) || (!is_script && !tm_name_is_safe(em->core)) ||
             !tm_name_is_safe(em->config_name)) {
             LOGW("catalog: emulator %s rejected (type/core/config_name)", id);
             continue;
@@ -164,6 +168,8 @@ int tm_system_supports_emu(const TmSystem *sys, const char *emu_id)
 int tm_emulator_available(const TmEmulator *emu, const char *cores_dir)
 {
     char path[TM_PATH_MAX];
+    if (emu && strcmp(emu->type, "script") == 0)
+        return 1; /* runs with the firmware's /bin/sh */
     if (!emu || tm_path_join(path, sizeof path, cores_dir, emu->core) != 0)
         return 0;
     return tm_file_exists(path);

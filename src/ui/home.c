@@ -44,8 +44,9 @@ void home_build(void)
     int show_empty = (int)tm_ini_get_long(&A.settings, "general", "show_empty", 0);
     for (size_t s = 0; s < A.cat.nsystems && g_n < TM_ARRAY_LEN(g_entries) - 1; s++) {
         size_t n = tm_library_count_system(&A.lib, (int)s);
-        /* experimental platforms appear only when the user has games for them */
-        if (n == 0 && (!show_empty || A.cat.systems[s].experimental))
+        /* experimental platforms (PS2, ports) are always listed so their status
+         * is visible; others only with games unless "show empty" is on */
+        if (n == 0 && !show_empty && !A.cat.systems[s].experimental)
             continue;
         g_entries[g_n++] = (HomeEntry){H_SYSTEM, (int)s, -1};
     }
@@ -105,7 +106,9 @@ static void draw_panel(const HomeEntry *e, int x, int y, int w, int h)
     }
     case H_SYSTEM: {
         const TmSystem *sys = &A.cat.systems[e->system];
-        gfx_badge(px, py, S(34), sys->color, sys->short_name);
+        int bw = gfx_badge(px, py, S(34), sys->color, sys->short_name);
+        if (sys->experimental)
+            gfx_badge(px + bw + S(10), py, S(34), t->warn, tr("home.experimental"));
         py += S(52);
         py += gfx_text_wrap(FONT_L, px, py, pw, 2, t->text, sys->name) + S(10);
         size_t ng = tm_library_count_system(&A.lib, e->system);
@@ -127,7 +130,7 @@ static void draw_panel(const HomeEntry *e, int x, int y, int w, int h)
             py += gfx_text_wrap(FONT_S, px, py, pw, 3, nm == 0 ? t->ok : (sys->bios_required ? t->warn : t->dim), buf) + S(8);
         }
         if (sys->note_key[0])
-            gfx_text_wrap(FONT_S, px, py, pw, 6, t->warn, tr(sys->note_key));
+            gfx_text_wrap(FONT_S, px, py, pw, 12, t->warn, tr(sys->note_key));
         break;
     }
     default: {

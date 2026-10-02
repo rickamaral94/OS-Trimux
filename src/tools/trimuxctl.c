@@ -219,6 +219,23 @@ static int run_retroarch(const char *ra, const char *cfg, const char *append, co
         return -1;
     }
     if (pid == 0) {
+        if (strcmp(l->emu->type, "script") == 0) {
+            /* Ports: the game is a launcher script on the card. It runs with
+             * the firmware's shell from its own folder; no shell parsing of
+             * the path happens here (execv). */
+            char dir[TM_PATH_MAX];
+            tm_strlcpy(dir, l->rom_abs, sizeof dir);
+            char *slash = strrchr(dir, '/');
+            if (slash)
+                *slash = '\0';
+            setenv("TRIMUX", "1", 1);
+            setenv("TRIMUX_DEVICE", "brickpro", 1);
+            if (chdir(dir) != 0)
+                _exit(127);
+            char *args[] = {"/bin/sh", (char *)l->rom_abs, NULL};
+            execv("/bin/sh", args);
+            _exit(127);
+        }
         setenv("HOME", P.ra_home, 1);
         if (chdir(P.retroarch) != 0)
             _exit(127);
@@ -302,7 +319,7 @@ static int cmd_launch(void)
 
     uint64_t elapsed = 0;
     int code = run_retroarch(ra, cfg, append, &l, &caps, have_power, guard_on, prof, &elapsed);
-    if (code != 0 && elapsed < 5000) {
+    if (code != 0 && elapsed < 5000 && strcmp(l.emu->type, "retroarch") == 0) {
         /* Failed right away: retry once with RetroArch's SDL2 renderer, in
          * case the GLES context could not be created on this firmware. */
         LOGW("launch: RetroArch failed in %llu ms (status %d); retrying with video_driver=sdl2",

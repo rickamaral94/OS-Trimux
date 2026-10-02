@@ -33,7 +33,10 @@ handy|.|Makefile|platform=unix|handy_libretro.so
 stella2014|.|Makefile|platform=unix|stella2014_libretro.so
 prosystem|.|Makefile|platform=unix|prosystem_libretro.so
 fbneo|src/burner/libretro|Makefile|platform=unix|fbneo_libretro.so
-mgba|cmake|-|-|mgba_libretro.so'
+mgba|cmake|-|-|mgba_libretro.so
+prboom|.|Makefile|platform=unix|prboom_libretro.so
+tyrquake|.|Makefile|platform=unix|tyrquake_libretro.so
+nxengine|.|Makefile|platform=unix|nxengine_libretro.so'
 
 want="$*"
 failed=""

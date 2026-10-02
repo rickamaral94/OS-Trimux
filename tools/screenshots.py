@@ -23,6 +23,9 @@ SHOTS = [
     ("08-informacoes", "UP,A,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,A,A", True),
     ("09-busca", "Y,A", True),
     ("10-menu-rapido", "MENU", True),
+    ("11-ps2", "UP,UP", True),
+    ("12-ps2-lista", "UP,UP,A", True),
+    ("13-ports", "UP,UP,UP", True),
 ]
 
 
@@ -39,7 +42,8 @@ def main():
             sd = make_card(os.path.join(t, "sd"))
             for rel in ("Roms/SFC/Super Boss Gaiden (World).sfc", "Roms/MD/Old Towers (World).bin",
                         "Roms/GBA/Anguna (World).gba", "Roms/FC/Alter Ego (World).nes",
-                        "Roms/GB/uCity (World).gb", "Roms/NGP/Homebrew (World).ngp"):
+                        "Roms/GB/uCity (World).gb", "Roms/NGP/Homebrew (World).ngp",
+                        "Roms/DOOM/freedoom1.wad", "Roms/PORTS/OpenTyrian.sh", "Roms/PORTS/SuperTux.sh"):
                 write(os.path.join(sd, rel), "")
             if wizard_done:
                 write(os.path.join(sd, "TriMuxData/config/trimux.ini"), "[general]\nwizard_done = 1\n")

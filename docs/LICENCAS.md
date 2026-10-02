@@ -28,6 +28,9 @@ verificados pelo `scripts/fetch_sources.sh`.
 | Stella 2014 | Atari 2600 | GPL-2.0-or-later | libretro/stella2014-libretro |
 | ProSystem | Atari 7800 | GPL-2.0-only | libretro/prosystem-libretro |
 | FinalBurn Neo | Arcade/Neo Geo | **Licença FBNeo (não comercial)** | libretro/FBNeo |
+| PrBoom (+ `prboom.wad`) | DOOM | GPL-2.0-or-later | libretro/libretro-prboom |
+| TyrQuake | Quake | GPL-2.0-or-later | libretro/tyrquake |
+| NXEngine | Cave Story | GPL-3.0-only | libretro/nxengine-libretro |
 | stb_truetype v1.26 | renderização de fonte no menu | MIT / domínio público | github.com/nothings/stb (commit em `src/ui/third_party/STB_COMMIT`) |
 | DejaVu Sans | fonte do menu | Bitstream Vera / DejaVu (livre) | pacote Debian `fonts-dejavu-core` |
 

@@ -78,9 +78,10 @@ Detalhes que importam:
 ## 4. PlayStation 2
 
 Conclusão: **não há emulador de PS2 compatível e utilizável neste aparelho**.
-Detalhes e critérios em [PS2.md](PS2.md). A plataforma existe no catálogo como
-"experimental", sem emulador incluído, aparece só se o usuário tiver jogos de
-PS2 e explica a limitação na própria interface.
+Detalhes e critérios em [PS2.md](PS2.md). A seção "PlayStation 2
+(experimental)" fica sempre visível no menu, sem emulador incluído, e explica a
+limitação na própria interface; um núcleo compatível adicionado depois é
+reconhecido e marcado como experimental.
 
 ## 5. LEDs
 

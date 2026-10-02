@@ -53,6 +53,10 @@ formato `Nome Longo (TAG)` de cartões MinUI/NextUI.
 | Atari Lynx | LYNX | lnx o zip | Handy | `lynxboot.img` |
 | Atari 2600 | A2600, atari2600 | a26 bin zip 7z | Stella 2014 | — |
 | Atari 7800 | A7800, atari7800 | a78 bin zip 7z | ProSystem | `7800 BIOS (U).rom` (opcional) |
+| DOOM | DOOM, PRBOOM | wad iwad pwad | PrBoom | `prboom.wad` (incluído, GPL) |
+| Quake | QUAKE | pak | TyrQuake | — |
+| Cave Story | CAVESTORY, NXENGINE | exe | NXEngine | — |
+| Ports (scripts) | PORTS | sh (só 1º nível) | shell do firmware (experimental) | — ver [PORTS.md](PORTS.md) |
 | PlayStation 2 (experimental) | PS2 | iso chd cso cue elf | nenhum incluído | `scph39001.bin` — veja [PS2.md](PS2.md) |
 
 Notas:

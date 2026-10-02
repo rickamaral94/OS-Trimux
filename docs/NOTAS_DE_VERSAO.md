@@ -11,8 +11,11 @@ e desempenho reais ainda precisam ser confirmados no aparelho
 * Menu próprio em português do Brasil (inglês incluído), feito para os botões
   do aparelho, com assistente inicial, continuar, recentes, favoritos, busca,
   filtros e informações por plataforma.
-* 19 plataformas com 17 núcleos libretro compilados para Cortex-A53 e RetroArch
+* 22 plataformas com 20 núcleos libretro compilados para Cortex-A53 e RetroArch
   1.22.2 (GLES via SDL2 do firmware, ALSA, controle via `/dev/input/js*`).
+* Ports: DOOM (PrBoom), Quake (TyrQuake), Cave Story (NXEngine) e scripts `.sh`
+  no estilo PortMaster (experimental).
+* Seção PlayStation 2 sempre visível, explicando por que não há emulador.
 * Troca de emulador por jogo ou por plataforma; restauração da configuração
   recomendada (arquiva, não apaga).
 * Perfis de energia com teto de 1,8 GHz, aplicados antes de cada jogo,

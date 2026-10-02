@@ -40,18 +40,21 @@ done
 cp src/ui/third_party/STB_COMMIT "$TM/licenses/stb_truetype-commit.txt"
 
 # One folder per platform (first name in systems.ini), so users see where
-# games go. Experimental platforms get no folder by default.
+# games go (except platforms marked create_folder = 0, e.g. PS2).
 python3 - "$TM/share/systems.ini" "$OUT/Roms" <<'EOF'
 import configparser, os, sys
 cp = configparser.ConfigParser(interpolation=None, strict=False)
 cp.read(sys.argv[1], encoding="utf-8")
 for sec in cp.sections():
-    if cp.get(sec, "experimental", fallback="0") == "1":
+    if cp.get(sec, "create_folder", fallback="1") == "0":
         continue
     first = cp.get(sec, "folders", fallback=sec).split(",")[0].strip()
     os.makedirs(os.path.join(sys.argv[2], first), exist_ok=True)
 EOF
 mkdir -p "$OUT/Bios"
+# prboom.wad is PrBoom's own GPL resource file (not game data); the core
+# looks for it in the system (Bios) folder.
+cp build/src/prboom/prboom.wad "$OUT/Bios/prboom.wad"
 cp docs/card/LEIA-ME.txt "$OUT/LEIA-ME.txt"
 cp docs/card/Bios-LEIA-ME.txt "$OUT/Bios/LEIA-ME.txt"
 cp docs/card/Roms-LEIA-ME.txt "$OUT/Roms/LEIA-ME.txt"

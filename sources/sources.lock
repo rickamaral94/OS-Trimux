@@ -18,3 +18,6 @@ handy|https://github.com/libretro/libretro-handy|bc55d462f0b2d6b073ea93dc552ebd7
 stella2014|https://github.com/libretro/stella2014-libretro|7d1361e407e63f29e52892655069e5fb4096e691|GPL-2.0-or-later
 prosystem|https://github.com/libretro/prosystem-libretro|8a88014287c7a01cd568067e5a557d0a2b2a051f|GPL-2.0-only
 fbneo|https://github.com/libretro/FBNeo|a4012b161e48b33b94940f07987323574c237448|FBNeo license (non-commercial)
+prboom|https://github.com/libretro/libretro-prboom|e5db549b6c85fc500b3a559efe2dc00870521c5d|GPL-2.0-or-later
+tyrquake|https://github.com/libretro/tyrquake|e57bb11597e8a00380f30f2627d219da960cf69a|GPL-2.0-or-later
+nxengine|https://github.com/libretro/nxengine-libretro|fd1c0686f8b4c0aea9b5addbc077e3ad7da23bb7|GPL-3.0-only

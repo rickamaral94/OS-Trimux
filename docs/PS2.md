@@ -1,8 +1,12 @@
 # PlayStation 2 no TrimUI Brick Pro
 
-**Situação: não suportado. Nenhum emulador de PS2 está incluído.** A plataforma
-aparece como *experimental* apenas se houver jogos em `Roms/PS2`, e a interface
-explica o motivo ao tentar abrir um jogo.
+**Situação: não suportado. Nenhum emulador de PS2 está incluído.** A seção
+**PlayStation 2 (experimental)** fica sempre visível no menu inicial, com o selo
+EXPERIMENTAL e o texto abaixo resumido; abri-la mostra a explicação completa e a
+pasta (`Roms/PS2`) onde jogos seriam reconhecidos.
+
+![Seção PS2 no menu](img/11-ps2.png)
+![Seção PS2 aberta](img/12-ps2-lista.png)
 
 ## Requisitos e o que o aparelho oferece
 
