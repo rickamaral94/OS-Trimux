@@ -143,7 +143,10 @@ QEMU e gera em `build/out/`:
 Comandos individuais: `make test` (testes no computador), `make ui-native`
 (menu no computador; rode com `TRIMUX_SDCARD=<pasta>`), `make docker-cross`,
 `make docker-cores`, `make docker-image`. O CI (`.github/workflows/build.yml`)
-executa o mesmo processo e publica a imagem como artefato.
+executa o mesmo processo e publica a imagem como artefato. Para publicar uma
+versão em *Releases*: envie uma tag `v*` ou, em *Actions › build › Run workflow*
+na `main`, preencha `release_tag` (por exemplo `v0.1.0`); a imagem é gerada e
+testada do zero antes de ser anexada.
 
 ## Testes
 
