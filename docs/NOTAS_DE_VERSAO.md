@@ -56,7 +56,7 @@ e desempenho reais ainda precisam ser confirmados no aparelho
 * FTP sem senha (limite do BusyBox do firmware); a senha do RetroAchievements
   fica no cartão sem criptografia.
 * Funções de rede testadas só em ambiente simulado.
-* PlayStation 2: removido (nenhum emulador viável; análise em docs/PS2.md).
+* PlayStation 2: removido (nenhum emulador viável; análise em [PS2.md](PS2.md)).
 * N64, PSP, Dreamcast e outros sistemas mais pesados não estão incluídos.
 * Sem swap: jogos de arcade muito grandes podem não caber na memória.
 * Snes9x 2005, PicoDrive, Genesis Plus GX e FinalBurn Neo têm licenças não
