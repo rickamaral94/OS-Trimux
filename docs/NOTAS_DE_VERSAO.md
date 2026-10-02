@@ -1,3 +1,18 @@
+# TriMux 0.3.0 (pré-lançamento)
+
+**Estado: não testado em um Brick Pro físico.** Tudo das versões anteriores
+continua valendo (listas abaixo), mais:
+
+* Capas dos jogos ([CAPAS.md](CAPAS.md)): download pelo Wi-Fi a partir do
+  libretro-thumbnails (gratuito, sem conta), manual ou automático para jogos
+  novos, em segundo plano e pausando durante os jogos; capa no painel da
+  lista; arcade reconhecido pelos títulos do FinalBurn Neo; imagens em
+  `Imgs/`, a mesma pasta do sistema oficial.
+
+Arquivos desta versão: `TriMux-0.3.0-brickpro.img.xz` (Rufus/balenaEtcher),
+`TriMux-0.3.0-update.zip` (atualizar um cartão com TriMux, sem perder saves) e
+`TriMux-0.3.0-brickpro.sha256`.
+
 # TriMux 0.2.0 (pré-lançamento)
 
 **Estado: não testado em um Brick Pro físico**, como a 0.1.0. Tudo da 0.1.0

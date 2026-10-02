@@ -15,15 +15,16 @@
 │   └── licenses/         licenças de cada componente
 ├── TriMuxData/           seus dados — nunca substituído
 │   ├── config/           trimux.ini, overrides.ini, favorites.txt, recent.txt
-│   ├── cache/            library.tsv (índice da biblioteca; pode ser apagado)
-│   ├── logs/             trimux.log (máx. 256 KiB + 1 arquivo antigo)
+│   ├── cache/            library.tsv (índice da biblioteca), covers-missing.txt (podem ser apagados)
+│   ├── logs/             trimux.log (máx. 256 KiB + 1 arquivo antigo), perf/, retroarch/
 │   ├── state/            contador de boot, marcador de jogo aberto
 │   └── retroarch/        retroarch.cfg, config/<núcleo>/ (opções), remaps/
 ├── Roms/<PLATAFORMA>/    seus jogos (subpastas até 3 níveis)
 ├── Bios/                 suas BIOS
 ├── Saves/<PLATAFORMA>/   saves (SRAM) — criados ao jogar
 ├── States/<PLATAFORMA>/  estados salvos
-└── Screenshots/
+├── Screenshots/
+└── Imgs/<PASTA>/         capas (<nome do jogo>.png), as mesmas do sistema oficial
 ```
 
 ## Plataformas, pastas e formatos

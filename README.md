@@ -8,7 +8,7 @@ cartão devolve o aparelho ao estado original.
 
 ![Tela inicial](docs/img/02-inicio.png)
 
-> **Estado: 0.2.0, pré-lançamento, ainda não testado em um aparelho físico.**
+> **Estado: 0.3.0, pré-lançamento, ainda não testado em um aparelho físico.**
 > Compilação, testes automáticos, testes em ambiente simulado e a verificação
 > de compatibilidade com as bibliotecas do firmware oficial v1.1.1 (em QEMU)
 > passaram. Inicialização real, imagem na tela, controles, som, suspensão e
@@ -37,6 +37,10 @@ cartão devolve o aparelho ao estado original.
   que só fica ligada com a janela aberta, serviço Bluetooth da TrimUI e o
   SSH/SFTP do firmware (desligado por padrão). Detalhes em
   [docs/REDE.md](docs/REDE.md).
+* **Capas dos jogos**: baixa capas pelo Wi-Fi (libretro-thumbnails, sem
+  conta), manualmente ou automaticamente para jogos novos, e mostra no painel
+  da lista. Salva em `Imgs/`, a mesma pasta do sistema oficial.
+  [docs/CAPAS.md](docs/CAPAS.md).
 * **Registros e desempenho** (opcional, desligado por padrão): grava
   temperatura, CPU e bateria em cada jogo e resume por perfil, para comparar
   no aparelho o que cada opção custa; FPS na tela e logs técnicos.
@@ -53,6 +57,7 @@ cartão devolve o aparelho ao estado original.
 | ![Ports](docs/img/11-ports.png) | ![Botões extras](docs/img/12-botoes.png) |
 | ![Rede](docs/img/13-rede.png) | ![Senha do Wi-Fi](docs/img/15-senha-wifi.png) |
 | ![Registros e desempenho](docs/img/16-registros.png) | ![Sessões gravadas](docs/img/17-sessoes.png) |
+| ![Capa no painel](docs/img/18-capas.png) | ![Capas dos jogos](docs/img/19-capas-opcoes.png) |
 
 <sub>Capturas renderizadas no computador (SDL offscreen) com um Brick Pro
 simulado; não são fotos do aparelho.</sub>
@@ -155,7 +160,7 @@ testada do zero antes de ser anexada.
 
 ## Testes
 
-* 241 verificações unitárias em C (com AddressSanitizer/UBSan).
+* 269 verificações unitárias em C (com AddressSanitizer/UBSan).
 * Testes Python: `trimuxctl` contra um Brick Pro simulado (inclusive
   ferramentas de rede falsas do firmware), scripts de boot com
   comandos do firmware simulados, imagem/partição/expansão em arquivos de

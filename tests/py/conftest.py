@@ -27,6 +27,18 @@ def write(path, content, mode=None):
         os.chmod(path, mode)
 
 
+def png_bytes(w, h, rgb=(200, 40, 40)):
+    """A small valid PNG (no PIL needed)."""
+    import struct
+    import zlib
+    raw = b"".join(b"\x00" + bytes(rgb) * w for _ in range(h))
+    def chunk(tag, data):
+        c = struct.pack(">I", len(data)) + tag + data
+        return c + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)) +
+            chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
+
+
 def make_net_tools(root):
     """Fake firmware network tools. They log every call to <root>/net.log and
     keep "running" state as files in <root>/run (read by the fake pidof)."""
@@ -72,6 +84,26 @@ def make_net_tools(root):
     write(os.path.join(root, "usr/trimui/bin/trimui_btmanager"),
           '#!/bin/sh\necho "btmanager cwd=$(pwd) ld=$LD_LIBRARY_PATH" >> %s\ntouch %s/trimui_btmanager\n' % (log, run), 0o755)
     write(os.path.join(root, "usr/sbin/sshd"), "#!/bin/sh\n", 0o755)
+    # fake curl: serves netstate/cover.png for URLs listed in netstate/covers,
+    # 404 (exit 22) for anything else, or a network error if netstate/offline exists
+    write(os.path.join(root, "netstate/cover.png"), png_bytes(600, 900))
+    write(os.path.join(root, "netstate/covers"), "")
+    write(os.path.join(root, "usr/bin/curl"), textwrap.dedent("""\
+        #!/bin/sh
+        S=%(root)s/netstate
+        out=""; url=""
+        while [ $# -gt 0 ]; do
+            case "$1" in
+            -o) out="$2"; shift 2 ;;
+            https://*) url="$1"; shift ;;
+            *) shift ;;
+            esac
+        done
+        echo "curl $url" >> %(log)s
+        [ -f $S/offline ] && exit 6
+        if grep -qxF "$url" $S/covers; then cp $S/cover.png "$out"; exit 0; fi
+        exit 22
+        """) % {"root": root, "log": log}, 0o755)
     write(os.path.join(root, "etc/init.d/sshd"),
           '#!/bin/sh\necho "sshd $1" >> %s\n[ "$1" = start ] && touch %s/sshd\n[ "$1" = stop ] && rm -f %s/sshd\nexit 0\n'
           % (log, run, run), 0o755)

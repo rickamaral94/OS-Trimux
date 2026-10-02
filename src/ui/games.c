@@ -1,6 +1,7 @@
 /* Game list: per platform, all, favorites or recent; search and filters. */
 #define _GNU_SOURCE
 #include "app.h"
+#include "../core/scrape.h"
 #include "../core/log.h"
 #include "../core/util.h"
 
@@ -94,11 +95,19 @@ static void draw_panel(const TmGame *g, int x, int y, int w, int h)
     const TmSystem *sys = &A.cat.systems[g->system];
     gfx_round_rect(x, y, w, h, S(14), t->panel);
     int px = x + S(22), py = y + S(20), pw = w - S(44);
+    /* cover (Imgs/<folder>/<game>.png, downloaded or copied by the user) */
+    int cover_h = 0;
+    char cover[TM_PATH_MAX];
+    if (tm_ini_get_long(&A.settings, "covers", "show", 1) &&
+        tm_scrape_cover_path(A.paths.sd, g->relpath, sys->id, cover, sizeof cover) == 0)
+        cover_h = gfx_image(cover, px, py, pw, h * 45 / 100);
+    if (cover_h)
+        py += cover_h + S(14);
     gfx_badge(px, py, S(34), sys->color, sys->short_name);
     if (tm_list_index(&A.fav, g->relpath) >= 0)
         gfx_star(x + w - S(40), py + S(17), S(15), t->warn);
     py += S(50);
-    py += gfx_text_wrap(FONT_L, px, py, pw, 3, t->text, g->name) + S(12);
+    py += gfx_text_wrap(cover_h ? FONT_M : FONT_L, px, py, pw, cover_h ? 2 : 3, t->text, g->name) + S(12);
     gfx_text(FONT_S, px, py, t->dim, ALIGN_LEFT, pw, sys->name);
     py += S(40);
     int ov = 0;

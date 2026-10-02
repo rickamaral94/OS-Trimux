@@ -72,6 +72,9 @@ fi
 # Network choices (Wi-Fi on/off, Bluetooth service, firmware SSH off unless
 # enabled). In the background: starting wpa_supplicant must not delay the menu.
 ("$CTL" net apply >/dev/null 2>&1 &)
+# Automatic covers (only if turned on): waits up to 90 s for Wi-Fi, pauses while
+# a game runs, and stops on its own when everything is downloaded.
+("$CTL" scrape --auto --wait 90 >/dev/null 2>&1 &)
 
 # --- main loop ---------------------------------------------------------------
 crash_first=0

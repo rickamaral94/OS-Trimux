@@ -12,6 +12,8 @@
 #include "../../src/core/log.h"
 #include "../../src/core/paths.h"
 #include "../../src/core/perf.h"
+#include "../../src/core/image.h"
+#include "../../src/core/scrape.h"
 #include "../../src/core/power.h"
 #include "../../src/core/sysinfo.h"
 #include "../../src/core/util.h"
@@ -730,6 +732,71 @@ static void test_perf(void)
     CHECK(!tm_file_exists(p));
 }
 
+static void test_scrape(void)
+{
+    char out[1024];
+    tm_scrape_sanitize("Street Fighter II: The World Warrior / A&B?", out, sizeof out);
+    CHECK_STR(out, "Street Fighter II_ The World Warrior _ A_B_");
+    CHECK(tm_scrape_url("Nintendo - Game Boy Advance", TM_THUMB_BOXART, "Celeste Classic (World)", out, sizeof out) == 0);
+    CHECK_STR(out, "https://thumbnails.libretro.com/Nintendo%20-%20Game%20Boy%20Advance/Named_Boxarts/"
+                   "Celeste%20Classic%20%28World%29.png");
+    CHECK(tm_scrape_url("Sony - PlayStation", TM_THUMB_SNAP, "Café: Edição", out, sizeof out) == 0);
+    CHECK(strstr(out, "/Named_Snaps/Caf%C3%A9_%20Edi%C3%A7%C3%A3o.png") != NULL);
+    CHECK(tm_scrape_url("", TM_THUMB_TITLE, "x", out, sizeof out) == -1);
+    CHECK(tm_scrape_url("R", TM_THUMB_TITLE, "x", out, 20) == -1);
+
+    char c[8][256];
+    size_t n = tm_scrape_candidates("Final Fantasy VII (USA) (Disc 1)", c, 8);
+    CHECK(n == 2 && strcmp(c[1], "Final Fantasy VII (USA)") == 0);
+    n = tm_scrape_candidates("Celeste", c, 8);
+    CHECK(n == 5 && strcmp(c[1], "Celeste (USA)") == 0 && strcmp(c[4], "Celeste (Japan)") == 0);
+    CHECK(tm_scrape_candidates("Micro Mages (World)", c, 8) == 1);
+    CHECK(tm_scrape_candidates("", c, 8) == 0);
+
+    CHECK(tm_scrape_cover_path("/sd", "Roms/NES/Micro Mages (World).nes", "FC", out, sizeof out) == 0);
+    CHECK_STR(out, "/sd/Imgs/NES/Micro Mages (World).png");
+    CHECK(tm_scrape_cover_path("/sd", "Games/x.gba", "GBA", out, sizeof out) == 0);
+    CHECK_STR(out, "/sd/Imgs/GBA/x.png");
+    CHECK(tm_scrape_cover_path("/sd", "Roms/../x.gba", "GBA", out, sizeof out) == -1);
+    CHECK(tm_thumb_kind_parse("snap") == TM_THUMB_SNAP && tm_thumb_kind_parse("x") == TM_THUMB_BOXART);
+    CHECK_STR(tm_thumb_kind_id(TM_THUMB_TITLE), "title");
+
+    put("arcade.tsv", "sf2\tStreet Fighter II: The World Warrior (World 910522)\nmslug\tMetal Slug - Super Vehicle-001\r\n"
+                      "lixo\n\tsem nome\n");
+    char ap[700];
+    snprintf(ap, sizeof ap, "%s/arcade.tsv", T);
+    TmArcadeNames a;
+    CHECK(tm_arcade_load(&a, ap) == 0 && a.count == 2);
+    const char *t = tm_arcade_title(&a, "mslug");
+    CHECK(t && strcmp(t, "Metal Slug - Super Vehicle-001") == 0);
+    CHECK(tm_arcade_title(&a, "kof98") == NULL);
+    tm_arcade_free(&a);
+    CHECK(tm_arcade_load(&a, "/nonexistent") == -1);
+
+    /* image: shrink keeps aspect ratio and never enlarges */
+    char src[700], dst[700];
+    snprintf(src, sizeof src, "%s/big.png", T);
+    snprintf(dst, sizeof dst, "%s/small.png", T);
+    unsigned char *px = calloc((size_t)600 * 900 * 4, 1);
+    for (int i = 0; px && i < 600 * 900; i++)
+        px[i * 4 + 3] = 255, px[i * 4] = (unsigned char)(i % 251);
+    extern int tm_test_write_png(const char *, int, int, const unsigned char *);
+    CHECK(px && tm_test_write_png(src, 600, 900, px) == 0);
+    free(px);
+    CHECK(tm_image_fit_png(src, dst, 480, 480) == 0);
+    int w, h;
+    unsigned char *r = tm_image_load_rgba(dst, &w, &h);
+    CHECK(r && w == 320 && h == 480);
+    tm_image_free(r);
+    CHECK(tm_image_fit_png(dst, src, 1000, 1000) == 0); /* small stays small */
+    r = tm_image_load_rgba(src, &w, &h);
+    CHECK(r && w == 320 && h == 480);
+    tm_image_free(r);
+    put("notimage.png", "<html>404</html>");
+    snprintf(src, sizeof src, "%s/notimage.png", T);
+    CHECK(tm_image_fit_png(src, dst, 480, 480) == -1);
+}
+
 int main(void)
 {
     snprintf(T, sizeof T, "/tmp/trimux-unit-%d", (int)getpid());
@@ -749,6 +816,7 @@ int main(void)
     test_buttons();
     test_net();
     test_perf();
+    test_scrape();
     char cmd[600];
     snprintf(cmd, sizeof cmd, "rm -rf '%s'", T);
     if (system(cmd) != 0)

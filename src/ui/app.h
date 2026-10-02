@@ -190,6 +190,8 @@ void menu_keyboard_done(int purpose, const char *ctx, const char *text, int canc
 /* menus.c: Wi-Fi scan/connection polling and the FTP server lifetime */
 void net_tick(void);
 void net_ftp_stop(void);
+/* Starts the cover downloader in the background (auto: only if enabled). */
+void covers_start(int autorun, int retry);
 void keyboard_draw(void);
 void keyboard_input(TmButton b);
 
@@ -199,7 +201,7 @@ enum {
     PAGE_LIBRARY, PAGE_FOLDERS, PAGE_BIOS, PAGE_EMULATORS, PAGE_EMU_PLATFORM, PAGE_STORAGE, PAGE_SYSTEM,
     PAGE_QUICK, PAGE_GAME_OPTIONS, PAGE_EMU_CHOOSE, PAGE_HOTKEYS, PAGE_DISPLAY, PAGE_ABOUT, PAGE_LOG,
     PAGE_ADD_GAMES, PAGE_BUTTONS, PAGE_NETWORK, PAGE_WIFI_SCAN, PAGE_WIFI_SAVED, PAGE_CHEEVOS,
-    PAGE_DIAG, PAGE_PERF,
+    PAGE_DIAG, PAGE_PERF, PAGE_COVERS,
 };
 
 /* dialog ids */
