@@ -75,6 +75,9 @@ fi
 # Automatic covers (only if turned on): waits up to 90 s for Wi-Fi, pauses while
 # a game runs, and stops on its own when everything is downloaded.
 ("$CTL" scrape --auto --wait 90 >/dev/null 2>&1 &)
+# Update check (only if "Verificar ao ligar" is on): asks GitHub for a newer
+# release and tells the menu. Nothing is downloaded or installed by itself.
+("$CTL" update check --auto --wait 60 >/dev/null 2>&1 &)
 
 # --- main loop ---------------------------------------------------------------
 crash_first=0

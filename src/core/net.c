@@ -457,6 +457,29 @@ static int fw_exists(const char *abs)
     return tm_fw_path(p, sizeof p, abs) == 0 && access(p, X_OK) == 0;
 }
 
+/* ------------------------------------------------------------ HTTPS */
+
+#ifndef TRIMUX_VERSION
+#define TRIMUX_VERSION "dev"
+#endif
+
+int tm_https_get(const char *url, const char *dst, const char *ca_file, long max_bytes, int timeout_s,
+                 const char *accept)
+{
+    char curl[TM_PATH_MAX], maxsize[24], tmo[16], hdr[160], ua[64];
+    if (!url || strncmp(url, "https://", 8) != 0 || tm_fw_path(curl, sizeof curl, "/usr/bin/curl") != 0)
+        return -1;
+    snprintf(maxsize, sizeof maxsize, "%ld", max_bytes);
+    snprintf(tmo, sizeof tmo, "%d", timeout_s);
+    snprintf(ua, sizeof ua, "TriMux/%s", TRIMUX_VERSION);
+    snprintf(hdr, sizeof hdr, "Accept: %s", accept ? accept : "*/*");
+    /* -f: HTTP errors fail; --proto =https also for redirects; TLS always verified */
+    char *argv[] = {curl, "-fsSL", "--proto", "=https", "--proto-redir", "=https", "--max-time", tmo,
+                    "--connect-timeout", "15", "--max-filesize", maxsize, "--cacert", (char *)ca_file, "-A", ua,
+                    "-H", hdr, "-o", (char *)dst, (char *)url, NULL};
+    return tm_run(argv, NULL, 0, (timeout_s + 10) * 1000);
+}
+
 /* ------------------------------------------------------------ Wi-Fi */
 
 static int wpa_cli(char *out, size_t outsz, const char *c1, const char *c2, const char *c3, const char *c4)

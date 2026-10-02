@@ -75,6 +75,8 @@ int tm_settings_load(TmIni *ini, const TmPaths *p)
     def(ini, "input", "swap_ab", "0");
     def(ini, "power", "profile", "auto");
     def(ini, "power", "thermal_guard", "1");
+    def(ini, "update", "prerelease", "1"); /* every TriMux release so far is a pre-release */
+    def(ini, "update", "auto_check", "0");
     return created;
 }
 

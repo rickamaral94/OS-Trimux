@@ -75,6 +75,13 @@ mídias e aparelhos que você possui.
 
 ## 4. Atualizar o TriMux sem perder nada
 
+**Da 0.4.0 em diante:** *Configurações › Sistema › Atualização*, pelo Wi-Fi,
+sem computador. A versão anterior fica guardada e volta sozinha se a nova não
+abrir. Detalhes em [ATUALIZACAO.md](ATUALIZACAO.md).
+
+**Vindo da 0.3.0 ou anterior** (sem o atualizador), ou sem Wi-Fi, atualize
+pelo computador como abaixo.
+
 O TriMux guarda tudo do usuário fora da pasta do sistema:
 
 | Pasta | Conteúdo | Na atualização |

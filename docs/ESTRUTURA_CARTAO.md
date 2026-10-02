@@ -4,20 +4,21 @@
 /                         partição FAT32 "TRIMUX" (ou seu cartão FAT32/exFAT)
 ├── LEIA-ME.txt
 ├── trimui/app/           ponto de entrada lido pelo firmware oficial (não apague)
-│   ├── MainUI            inicia o TriMux (proteção contra reinícios em laço)
+│   ├── MainUI            inicia o TriMux (proteção contra reinícios em laço, volta de atualização que falhou)
 │   ├── preload.sh        decide entre TriMux e lançador oficial
 │   └── premainui.sh
 ├── TriMux/               sistema — substituído nas atualizações
 │   ├── bin/              trimux-ui (menu), trimuxctl (energia, LEDs, lançamento…)
 │   ├── retroarch/        RetroArch, cores/, autoconfig/, retroarch.base.cfg
 │   ├── scripts/          supervisor.sh, premenu.sh
-│   ├── share/            systems.ini, emulators.ini, i18n/*.lang, fonts/
+│   ├── share/            systems.ini, emulators.ini, update.ini, i18n/*.lang, fonts/
 │   └── licenses/         licenças de cada componente
+├── TriMux.old/, trimui.old/  versão anterior, guardada pela atualização online (podem ser apagadas)
 ├── TriMuxData/           seus dados — nunca substituído
 │   ├── config/           trimux.ini, overrides.ini, favorites.txt, recent.txt
 │   ├── cache/            library.tsv (índice da biblioteca), covers-missing.txt (podem ser apagados)
 │   ├── logs/             trimux.log (máx. 256 KiB + 1 arquivo antigo), perf/, retroarch/
-│   ├── state/            contador de boot, marcador de jogo aberto
+│   ├── state/            contador de boot, marcador de jogo aberto, atualização a confirmar
 │   └── retroarch/        retroarch.cfg, config/<núcleo>/ (opções), remaps/
 ├── Roms/<PLATAFORMA>/    seus jogos (subpastas até 3 níveis)
 ├── Bios/                 suas BIOS

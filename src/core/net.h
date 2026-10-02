@@ -74,6 +74,12 @@ pid_t tm_spawn(char *const argv[], const char *cwd, const char *ld_path);
 int tm_fw_path(char *out, size_t size, const char *abs);
 int tm_proc_running(const char *name);
 
+/* HTTPS download with the firmware's curl, TLS verified against ca_file.
+ * accept may be NULL. Returns curl's exit code (0 ok, 22 HTTP error such as
+ * 404, others network/TLS), or -1. */
+int tm_https_get(const char *url, const char *dst, const char *ca_file, long max_bytes, int timeout_s,
+                 const char *accept);
+
 /* ---- Wi-Fi ---- */
 
 int tm_wifi_available(void); /* wpa_cli present and wlan0 exists */

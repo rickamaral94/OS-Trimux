@@ -4,6 +4,7 @@
 #include "../core/buttons.h"
 #include "../core/launch.h"
 #include "../core/log.h"
+#include "../core/update.h"
 #include "../core/util.h"
 
 #include <stdio.h>
@@ -182,6 +183,10 @@ void app_launch(long gi)
     const TmSystem *sys = &A.cat.systems[g->system];
     const TmEmulator *em = app_resolve_emu(g, NULL);
     char msg[512];
+    if (update_blocks_launch()) { /* the card is being rewritten or waits for the reboot */
+        app_dialog(DLG_INFO, tr("update.title"), tr("update.launch_blocked"), 0, NULL, 1);
+        return;
+    }
     if (!em) {
         snprintf(msg, sizeof msg, tr("launch.no_emu"), sys->name);
         app_dialog(DLG_INFO, tr("launch.cannot"), msg, 0, NULL, 1);
@@ -609,6 +614,7 @@ static void boot_ok(void)
     char p[TM_PATH_MAX];
     if (tm_path_join(p, sizeof p, A.paths.state, "bootcount") == 0)
         tm_atomic_write(p, "0\n", 2);
+    tm_update_confirm(&A.paths); /* a freshly installed update works */
 }
 
 int app_main(int argc, char **argv)

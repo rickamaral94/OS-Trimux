@@ -31,7 +31,7 @@ SHOTS = [
     ("15-senha-wifi", "UP,A" + ",DOWN" * 6 + ",A,DOWN,DOWN,A,DOWN,A,A,RIGHT,A,RIGHT,A,R1,DOWN,A,RIGHT,A", True),
 ]
 NET_SHOTS = {"13-rede", "14-wifi-redes", "15-senha-wifi"}
-DIAG = "UP,A" + ",DOWN" * 10 + ",A" + ",DOWN" * 3 + ",A"
+DIAG = "UP,A" + ",DOWN" * 10 + ",A" + ",DOWN" * 4 + ",A"
 SHOTS += [
     ("16-registros", DIAG, True),
     ("17-sessoes", DIAG + ",DOWN,DOWN,A,DOWN", True),
@@ -39,6 +39,9 @@ SHOTS += [
 SHOTS += [
     ("18-capas", "DOWN,DOWN,DOWN,A,DOWN", True),
     ("19-capas-opcoes", "UP,A" + ",DOWN" * 7 + ",A" + ",DOWN" * 5 + ",A", True),
+]
+SHOTS += [
+    ("20-atualizacao", "UP,A" + ",DOWN" * 10 + ",A" + ",DOWN" * 3 + ",A,DOWN,DOWN", True),
 ]
 
 
@@ -76,7 +79,10 @@ def main():
         sys.exit("pip install pillow")
     out = os.path.join(ROOT, "docs", "img")
     os.makedirs(out, exist_ok=True)
+    only = set(sys.argv[1:])   # optional: names of the shots to redo
     for name, script, wizard_done in SHOTS:
+        if only and name not in only:
+            continue
         with tempfile.TemporaryDirectory() as t:
             dev = make_device(os.path.join(t, "dev"))
             sd = make_card(os.path.join(t, "sd"))
@@ -98,6 +104,17 @@ def main():
             if name == "19-capas-opcoes":
                 write(os.path.join(dev, "../tmp/scrape.status"),
                       "state=done\ndone=14\ntotal=14\nfound=11\nmissing=3\n")
+            if name == "20-atualizacao":   # illustrative: a release newer than the card
+                write(os.path.join(sd, "TriMux/VERSION"), "0.4.0\n")
+                os.makedirs(os.path.join(sd, "TriMux.old"))
+                os.makedirs(os.path.join(sd, "trimui.old"))
+                write(os.path.join(dev, "../tmp/update.status"), "state=available\nversion=0.5.0\nerror=\npercent=0\n")
+                write(os.path.join(dev, "../tmp/update.ini"),
+                      "[release]\ntag = v0.5.0\nversion = 0.5.0\nprerelease = 1\n"
+                      "pkg_name = TriMux-0.5.0-update.tar.gz\npkg_url = https://example.invalid/p.tar.gz\n"
+                      "pkg_size = 30000000\nsha_url = https://example.invalid/p.sha256\n")
+                write(os.path.join(dev, "../tmp/update-notes.txt"),
+                      "TriMux 0.5.0 (exemplo)\n\nNotas da versão aparecem aqui, tiradas da página de lançamentos.")
             if name in ("16-registros", "17-sessoes"):
                 write(os.path.join(sd, "TriMuxData/logs/perf/sessions.csv"), EXAMPLE_SESSIONS)
             if wizard_done:
