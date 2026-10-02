@@ -9,7 +9,7 @@
 
 static const char *const k_keys[TM_KEY_COUNT] = {"none", "quick", "favorite", "search",
                                                  "random", "recent", "power", "leds"};
-static const char *const k_switch[TM_SWITCH_COUNT] = {"none", "economy", "leds_off", "mute"};
+static const char *const k_switch[TM_SWITCH_COUNT] = {"none", "economy", "leds_off", "mute", "boost"};
 
 const char *tm_key_action_id(TmKeyAction a)
 {
@@ -57,7 +57,11 @@ int tm_switch_on(const TmIni *s)
 
 TmSwitchAction tm_switch_action(const TmIni *s)
 {
-    return tm_switch_action_parse(tm_ini_get(s, "buttons", "switch", "none"));
+    TmSwitchAction a = tm_switch_action_parse(tm_ini_get(s, "buttons", "switch", "none"));
+    /* boost only counts after the user confirmed the warning in the menu */
+    if (a == TM_SWITCH_BOOST && !tm_ini_get_long(s, "power", "boost_ack", 0))
+        return TM_SWITCH_NONE;
+    return a;
 }
 
 TmSwitchAction tm_switch_active(const TmIni *s)

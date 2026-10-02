@@ -165,6 +165,9 @@ static int cmd_switch(void)
     printf("switch_raw=%d switch_on=%d action=%s active=%s\n", tm_switch_raw(), tm_switch_on(&ini),
            tm_switch_action_id(tm_switch_action(&ini)), tm_switch_action_id(a));
     switch_effects(&ini, a, TM_SWITCH_NONE);
+    TmPowerCaps caps;
+    if ((a == TM_SWITCH_ECONOMY || a == TM_SWITCH_BOOST) && tm_power_detect(&caps) == 0)
+        tm_power_apply(&caps, tm_power_profile(a == TM_SWITCH_BOOST ? "boost" : "economy"));
     tm_ini_free(&ini);
     return 0;
 }
@@ -245,6 +248,17 @@ static int ensure_ra_config(char *cfg, size_t size)
     return tm_copy_file(base, cfg);
 }
 
+/* CPU profile while the side switch action is active: Economy or the opt-in
+ * 2.0 GHz boost; otherwise the game's normal profile. */
+static const TmPowerProfile *switch_profile(TmSwitchAction sw, const TmPowerProfile *normal)
+{
+    if (sw == TM_SWITCH_ECONOMY)
+        return tm_power_profile("economy");
+    if (sw == TM_SWITCH_BOOST)
+        return tm_power_profile("boost");
+    return normal;
+}
+
 /* Runs RetroArch once and supervises temperature until it exits. */
 static int run_retroarch(const char *ra, const char *cfg, const char *append, const TmLaunch *l, TmPowerCaps *caps,
                          int have_power, int guard_on, const TmPowerProfile *prof, uint64_t *elapsed_ms)
@@ -301,13 +315,14 @@ static int run_retroarch(const char *ra, const char *cfg, const char *append, co
         if (now != sw) {
             switch_effects(&ini, now, sw);
             if (have_power && !g.throttled)
-                tm_power_apply(caps, now == TM_SWITCH_ECONOMY ? economy : prof);
+                tm_power_apply(caps, switch_profile(now, prof));
             sw = now;
         }
         if (++tick < 10)
             continue;
         tick = 0; /* every 10 s: temperature and CPU limit enforcement */
-        const TmPowerProfile *want = (g.throttled || sw == TM_SWITCH_ECONOMY) ? economy : prof;
+        /* thermal protection wins over everything, including boost */
+        const TmPowerProfile *want = g.throttled ? economy : switch_profile(sw, prof);
         if (guard_on) {
             long t = tm_power_temp_mc(caps);
             int act = tm_thermal_step(&g, t);
@@ -316,7 +331,7 @@ static int run_retroarch(const char *ra, const char *cfg, const char *append, co
                 tm_power_apply(caps, economy);
                 continue;
             } else if (act == TM_THERMAL_RESTORE && have_power) {
-                want = sw == TM_SWITCH_ECONOMY ? economy : prof;
+                want = switch_profile(sw, prof);
                 LOGI("thermal: %ld mC, restoring profile %s", t, want->id);
                 tm_power_apply(caps, want);
                 continue;
@@ -373,7 +388,7 @@ static int cmd_launch(void)
     int have_power = tm_power_detect(&caps) == 0;
     const TmPowerProfile *prof = tm_power_profile(chosen_profile(l.emu));
     if (have_power)
-        tm_power_apply(&caps, tm_switch_active(&ini) == TM_SWITCH_ECONOMY ? tm_power_profile("economy") : prof);
+        tm_power_apply(&caps, switch_profile(tm_switch_active(&ini), prof));
     int guard_on = (int)tm_ini_get_long(&ini, "power", "thermal_guard", 1) && caps.has_temp;
     tm_ini_free(&ini);
 
@@ -395,8 +410,12 @@ static int cmd_launch(void)
             code = run_retroarch(ra, cfg, append, &l, &caps, have_power, guard_on, prof, &elapsed);
     }
     unlink(marker);
-    if (have_power)
-        tm_power_apply(&caps, tm_power_profile(TM_POWER_DEFAULT));
+    if (have_power) { /* menu profile, still honouring the side switch */
+        TmIni after;
+        tm_settings_load(&after, &P);
+        tm_power_apply(&caps, switch_profile(tm_switch_active(&after), tm_power_profile(TM_POWER_DEFAULT)));
+        tm_ini_free(&after);
+    }
     LOGI("launch: emulator exited with %d after %llu s", code, (unsigned long long)elapsed / 1000);
     sync();
     tm_catalog_free(&cat);

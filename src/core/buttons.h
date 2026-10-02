@@ -26,6 +26,7 @@ typedef enum {
     TM_SWITCH_ECONOMY, /* force the Economy profile, also in games */
     TM_SWITCH_LEDS_OFF,
     TM_SWITCH_MUTE,    /* speaker muted (headphones keep working) */
+    TM_SWITCH_BOOST,   /* allow 2.0 GHz (opt-in, needs [power] boost_ack = 1) */
     TM_SWITCH_COUNT
 } TmSwitchAction;
 

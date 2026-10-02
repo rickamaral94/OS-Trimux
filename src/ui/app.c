@@ -329,6 +329,11 @@ void app_switch_tick(void)
             leds_set_all(now == TM_SWITCH_LEDS_OFF);
         if ((before == TM_SWITCH_MUTE || now == TM_SWITCH_MUTE) && tm_speaker_mute_available())
             tm_speaker_mute(now == TM_SWITCH_MUTE);
+        if (A.power.has_cpufreq && (before == TM_SWITCH_BOOST || now == TM_SWITCH_BOOST || before == TM_SWITCH_ECONOMY ||
+                                    now == TM_SWITCH_ECONOMY))
+            tm_power_apply(&A.power, tm_power_profile(now == TM_SWITCH_BOOST     ? "boost"
+                                                      : now == TM_SWITCH_ECONOMY ? "economy"
+                                                                                 : TM_POWER_DEFAULT));
         char k[48];
         snprintf(k, sizeof k, "switch.toast.%s", tm_switch_action_id(now == TM_SWITCH_NONE ? before : now));
         app_toast(now == TM_SWITCH_NONE ? tr("switch.toast.off") : tr(k));
@@ -339,7 +344,9 @@ void app_switch_tick(void)
     }
     if (++ticks >= 10 && A.power.has_cpufreq) {
         ticks = 0;
-        const TmPowerProfile *menu = tm_power_profile(now == TM_SWITCH_ECONOMY ? "economy" : TM_POWER_DEFAULT);
+        const TmPowerProfile *menu = tm_power_profile(now == TM_SWITCH_ECONOMY ? "economy"
+                                                      : now == TM_SWITCH_BOOST ? "boost"
+                                                                               : TM_POWER_DEFAULT);
         TmPowerTarget t;
         long mx = -1;
         if (tm_power_plan(&A.power, menu, &t) == 0 && tm_power_read(&A.power, NULL, NULL, &mx, NULL, 0) == 0 &&

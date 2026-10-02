@@ -79,3 +79,14 @@ def test_corrupt_settings_do_not_crash(env):
           "\x00\x01garbage\n[general\nwizard_done = 1\nlanguage = ../../etc\n")
     write(os.path.join(env["TRIMUX_SDCARD"], "TriMuxData/cache/library.tsv"), "#TRIMUX-LIB 1\nXX\tbad\n")
     assert ui(env, "DOWN,DOWN,UP").returncode == 0
+
+
+def test_switch_boost_needs_confirmation_in_menu(env):
+    cfg = os.path.join(env["TRIMUX_SDCARD"], "TriMuxData/config/trimux.ini")
+    page = "UP,A,DOWN,DOWN,A,DOWN,DOWN,A,DOWN,DOWN"
+    # none -> economy -> leds_off -> mute -> boost (dialog, default answer "No")
+    assert ui(env, page + ",RIGHT,RIGHT,RIGHT,RIGHT,A,B,B,B").returncode == 0
+    assert "boost" not in read(cfg)
+    assert ui(env, page + ",RIGHT,LEFT,A,B,B,B").returncode == 0   # from "mute": dialog, "Yes"
+    text = read(cfg)
+    assert "switch = boost" in text and "boost_ack = 1" in text

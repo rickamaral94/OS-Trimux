@@ -55,16 +55,24 @@ Detalhes que importam:
   `interactive`, `performance`, `powersave`, `userspace`.
 * A tabela de frequências do device tree vai até **2,0 GHz** (com 1,25 V para o
   bin c0) e o próprio firmware oficial usa 2,0 GHz nos modos "performance".
-  O fabricante anuncia **1,8 GHz**. O TriMux trata 1,8 GHz como limite rígido:
-  nenhum perfil passa disso, e o código recusa um perfil se não houver uma
-  frequência abaixo do limite (testado).
+  O fabricante anuncia **1,8 GHz**. Os perfis normais do TriMux nunca passam de
+  1,8 GHz, e o código recusa um perfil se não houver uma frequência abaixo do
+  limite (testado).
+* **2,0 GHz opcional (decisão do usuário):** a chave lateral pode ser mapeada
+  para "2,0 GHz (máximo do firmware)". É desligado por padrão, pede
+  confirmação explícita com o aviso de que está acima do valor anunciado e só
+  vale com a chave ligada; desligada, o teto volta a 1,8 GHz. Usa apenas a
+  entrada de 2,0 GHz que o próprio kernel/firmware lista (nunca mais que isso,
+  sem mexer em tensão) com o governador `ondemand`. A proteção térmica do
+  TriMux (Economia acima de 75 °C) e os limites térmicos do kernel continuam
+  ativos e têm prioridade. "Restaurar padrão" em Energia desfaz a opção.
 * O TriMux **não escreve** em pontos de disparo térmicos, dispositivos de
   resfriamento, tensões ou registradores. Escreve apenas `scaling_governor`,
   `scaling_min_freq` e `scaling_max_freq`, sempre lendo de volta.
 * Perfis: **Economia** (até 1,2 GHz), **Equilibrado** (até 1,608 GHz; padrão no
   menu), **Desempenho seguro** (até 1,8 GHz, mínimo 1,008 GHz) e
   **Automático** (padrão), que usa o perfil recomendado de cada emulador.
-  Não há "overclock" no TriMux.
+  Acima disso, só o modo de 2,0 GHz da chave lateral descrito acima.
 * Os limites são aplicados **antes** de o emulador iniciar e o perfil padrão é
   restaurado ao sair do jogo, a cada inicialização e após travamentos.
 * Proteção térmica adicional: durante o jogo, se a CPU passar de 75 °C por

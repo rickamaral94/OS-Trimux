@@ -9,10 +9,11 @@
 #include <unistd.h>
 
 static const TmPowerProfile k_profiles[] = {
-    {"economy", "power.economy", "power.economy.desc", 1200000L, 0},
-    {"balanced", "power.balanced", "power.balanced.desc", 1608000L, 0},
-    {"performance", "power.performance", "power.performance.desc", TM_POWER_HARD_CAP_KHZ, 1008000L},
+    {"economy", "power.economy", "power.economy.desc", 1200000L, 0, 0},
+    {"balanced", "power.balanced", "power.balanced.desc", 1608000L, 0, 0},
+    {"performance", "power.performance", "power.performance.desc", TM_POWER_HARD_CAP_KHZ, 1008000L, 0},
 };
+static const TmPowerProfile k_boost = {"boost", "power.boost", "power.boost.desc", TM_POWER_BOOST_CAP_KHZ, 1008000L, 1};
 
 const char *tm_sysfs_root(void)
 {
@@ -31,6 +32,8 @@ const TmPowerProfile *tm_power_profile(const char *id)
     for (size_t i = 0; id && i < TM_ARRAY_LEN(k_profiles); i++)
         if (strcmp(k_profiles[i].id, id) == 0)
             return &k_profiles[i];
+    if (id && strcmp(id, k_boost.id) == 0)
+        return &k_boost;
     return NULL;
 }
 
@@ -145,7 +148,8 @@ int tm_power_plan(const TmPowerCaps *caps, const TmPowerProfile *p, TmPowerTarge
     if (!caps->has_cpufreq || !p)
         return -1;
     memset(t, 0, sizeof *t);
-    long cap = p->max_khz < TM_POWER_HARD_CAP_KHZ ? p->max_khz : TM_POWER_HARD_CAP_KHZ;
+    long limit = p->boost ? TM_POWER_BOOST_CAP_KHZ : TM_POWER_HARD_CAP_KHZ;
+    long cap = p->max_khz < limit ? p->max_khz : limit;
     if (caps->nfreqs > 0) {
         long lo = caps->freqs[0], hi = -1, floor = -1;
         for (size_t i = 0; i < caps->nfreqs; i++) {
@@ -233,7 +237,7 @@ int tm_power_apply(const TmPowerCaps *caps, const TmPowerProfile *p)
     }
     long rmin = -1, rmax = -1;
     tm_power_read(caps, NULL, &rmin, &rmax, NULL, 0);
-    if (rmax > TM_POWER_HARD_CAP_KHZ) {
+    if (rmax > (p->boost ? TM_POWER_BOOST_CAP_KHZ : TM_POWER_HARD_CAP_KHZ)) {
         /* never leave the CPU above the cap, whatever happened */
         write_long(caps->policy_dir, "scaling_max_freq", t.max_khz);
         LOGE("power: max freq %ld above cap after apply, forced back", rmax);
@@ -254,4 +258,14 @@ long tm_power_temp_mc(const TmPowerCaps *caps)
     if (!caps->has_temp || tm_read_long(caps->temp_path, &t) != 0 || t < 5000 || t > 130000)
         return -1;
     return t;
+}
+
+int tm_power_boost_available(const TmPowerCaps *caps)
+{
+    if (!caps->has_cpufreq)
+        return 0;
+    for (size_t i = 0; i < caps->nfreqs; i++)
+        if (caps->freqs[i] > TM_POWER_HARD_CAP_KHZ && caps->freqs[i] <= TM_POWER_BOOST_CAP_KHZ)
+            return 1;
+    return caps->nfreqs == 0 && caps->cpuinfo_max > TM_POWER_HARD_CAP_KHZ;
 }

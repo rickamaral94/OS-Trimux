@@ -17,13 +17,15 @@ e desempenho reais ainda precisam ser confirmados no aparelho
   no estilo PortMaster (experimental).
 * Botões extras configuráveis: F1/F2 (favoritar, jogo surpresa, busca,
   recentes, menu rápido, trocar perfil, LEDs) e chave lateral (modo economia,
-  LEDs apagados ou alto-falante mudo, também durante o jogo).
+  LEDs apagados, alto-falante mudo ou 2,0 GHz, também durante o jogo).
 * Proteção do limite de CPU: se um atalho de FN do firmware oficial subir a
   CPU (até 2,0 GHz), o TriMux devolve ao limite do perfil em até 10 s.
 * Troca de emulador por jogo ou por plataforma; restauração da configuração
   recomendada (arquiva, não apaga).
 * Perfis de energia com teto de 1,8 GHz, aplicados antes de cada jogo,
   proteção térmica adicional e restauração automática do padrão.
+* Opcional: chave lateral libera 2,0 GHz (máximo da tabela do firmware) só
+  enquanto estiver ligada; exige confirmação; desligada, o teto é 1,8 GHz.
 * Controle de LEDs pelo driver oficial (opcional, desligado por padrão).
 * Retorno automático ao sistema oficial em caso de falhas repetidas; SELECT ao
   ligar abre o sistema oficial.

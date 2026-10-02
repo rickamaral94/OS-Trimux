@@ -13,7 +13,7 @@ compilação cruzada não contam como prova de desempenho.
 | Biblioteca | Índice em `TriMuxData/cache/library.tsv`; reindexação só quando o `mtime` das pastas muda ou a pedido. | `src/core/library.c` |
 | Gravações no cartão | Configuração salva ao sair dos menus (não a cada tecla); RetroArch com `config_save_on_exit=false`, sem autosave periódico, sem histórico; arquivos de trabalho em `/tmp` (RAM). Log limitado a 256 KiB + 1 rotação. | `retroarch.base.cfg`, `src/core/log.c` |
 | Memória | Sem swap no cartão; rewind e run-ahead desligados; cache de extração do RetroArch em RAM e limpo a cada volta ao menu. | `retroarch.base.cfg`, `premenu.sh` |
-| CPU | Perfis com teto de 1,8 GHz; "Automático" usa Economia (≤ 1,2 GHz) para 8/16 bits. | `src/core/power.c`, `emulators.ini` |
+| CPU | Perfis com teto de 1,8 GHz; "Automático" usa Economia (≤ 1,2 GHz) para 8/16 bits. 2,0 GHz só pela chave lateral, por escolha do usuário. | `src/core/power.c`, `emulators.ini` |
 
 Tamanhos da versão 0.1.0 (medidos no build): `trimux-ui` 171 KB,
 `trimuxctl` 81 KB, RetroArch 13,7 MB, 20 núcleos ~131 MB (FinalBurn Neo 81 MB),

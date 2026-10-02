@@ -3,9 +3,12 @@
  * Safety rules (enforced here, not in the UI):
  *  - only cpufreq policy files are written (governor, scaling_min/max_freq);
  *    thermal trip points, cooling devices and voltages are never touched;
- *  - no profile may exceed TM_POWER_HARD_CAP_KHZ (1.8 GHz, the manufacturer's
- *    rated maximum for the Brick Pro), even though the firmware's OPP table
- *    lists 2.0 GHz;
+ *  - the normal profiles never exceed TM_POWER_HARD_CAP_KHZ (1.8 GHz, the
+ *    manufacturer's rated maximum for the Brick Pro);
+ *  - the opt-in "boost" profile (side switch, after the user confirms) may use
+ *    up to TM_POWER_BOOST_CAP_KHZ (2.0 GHz), the top entry of the firmware's own
+ *    OPP table, which the stock firmware also uses in its performance modes.
+ *    Never more, and only frequencies the kernel lists;
  *  - when the files are missing or unwritable the feature reports itself as
  *    unavailable instead of guessing other paths.
  */
@@ -15,6 +18,7 @@
 #include <stddef.h>
 
 #define TM_POWER_HARD_CAP_KHZ 1800000L
+#define TM_POWER_BOOST_CAP_KHZ 2000000L
 #define TM_POWER_MAX_FREQS 32
 #define TM_POWER_DEFAULT "balanced"
 
@@ -24,9 +28,10 @@ typedef struct {
     const char *desc_key;
     long max_khz;         /* upper bound, clamped by the hard cap */
     long min_floor_khz;   /* minimum frequency floor (0 = lowest available) */
+    int boost;            /* allowed up to TM_POWER_BOOST_CAP_KHZ instead of the hard cap */
 } TmPowerProfile;
 
-typedef struct {
+typedef struct TmPowerCaps {
     int has_cpufreq;    /* policy files exist and are writable */
     int has_temp;       /* a plausible CPU temperature can be read */
     char policy_dir[512];
@@ -44,7 +49,10 @@ typedef struct {
 } TmPowerTarget;
 
 const char *tm_sysfs_root(void);
+/* Normal profiles (all <= 1.8 GHz). "boost" is looked up by id only. */
 size_t tm_power_profiles(const TmPowerProfile **out);
+/* 1 if the kernel lists a frequency above the hard cap (boost is meaningful). */
+int tm_power_boost_available(const struct TmPowerCaps *caps);
 const TmPowerProfile *tm_power_profile(const char *id);
 
 int tm_power_detect(TmPowerCaps *caps);

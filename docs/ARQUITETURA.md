@@ -34,7 +34,7 @@ ROM de boot (SoC) ── sem eGON.BT0 no cartão ──> boot pela eMMC (firmwar
 | ├ catálogo | `catalog.c` | plataformas/emuladores a partir de `systems.ini`/`emulators.ini`; resolução jogo → plataforma → padrão |
 | ├ biblioteca | `library.c`, `lists.c` | varredura de pastas conhecidas, índice, `.m3u`, favoritos/recentes |
 | ├ lançamento | `launch.c` | pedido de lançamento em RAM, validação de caminho, máquina de estados térmica |
-| ├ hardware | `power.c`, `leds.c`, `sysinfo.c` | cpufreq com teto de 1,8 GHz, LEDs detectados, bateria/memória/cartão |
+| ├ hardware | `power.c`, `leds.c`, `sysinfo.c` | cpufreq com teto de 1,8 GHz (2,0 GHz só pela chave, opt-in), LEDs detectados, bateria/memória/cartão |
 | └ cartão | `fatgrow.c` | expansão FAT32 só por metadados |
 | Menu (SDL2) | `src/ui/` | `gfx.c` (stb_truetype), `input.c`, telas `home.c`, `games.c`, `menus.c`, `wizard.c`, `keyboard.c` |
 | Ferramenta | `src/tools/trimuxctl.c` | comandos usados pelos scripts (energia, LEDs, lançamento, boot, expansão) |
@@ -62,6 +62,6 @@ ROM de boot (SoC) ── sem eGON.BT0 no cartão ──> boot pela eMMC (firmwar
 | Controle | Origem | Uso no TriMux |
 |---|---|---|
 | F1, F2 | botões 11 e 12 do "TRIMUI Player1" (configuráveis em `[input]`) | ação escolhida em *Controles › Botões extras* (`[buttons] f1/f2`) |
-| Chave lateral | GPIO 243, exportado pelo `runtrimui.sh` oficial | leitura 1×/s no menu e no `trimuxctl launch`; ação `[buttons] switch` = `economy`, `leds_off` ou `mute` (via `/sys/class/speaker/mute`, a mesma interface do `keymon`) |
+| Chave lateral | GPIO 243, exportado pelo `runtrimui.sh` oficial | leitura 1×/s no menu e no `trimuxctl launch`; ação `[buttons] switch` = `economy`, `boost` (2,0 GHz, exige `[power] boost_ack = 1`), `leds_off` ou `mute` (via `/sys/class/speaker/mute`, a mesma interface do `keymon`) |
 | HOME | botão 15 | menu rápido no TriMux; menu do RetroArch no jogo |
 | MENU | botão 8 | menu rápido no TriMux; tecla de atalho no RetroArch |

@@ -214,3 +214,29 @@ def test_cpu_limit_raised_by_firmware_shortcut_is_restored(rig, env):
     run_supervisor(rig, timeout=60)
     assert read(os.path.join(rig["dir"], "after")) == "1200000"
     assert "limit raised externally" in read(os.path.join(rig["card"], "TriMuxData/logs/trimux.log"))
+
+
+def boost_rig(rig, env, switch_value, ack="1"):
+    write(os.path.join(env["TRIMUX_SYSFS_ROOT"], "sys/class/gpio/gpio243/value"), switch_value + "\n")
+    os.makedirs(rig["tmp"], exist_ok=True)
+    write(os.path.join(rig["tmp"], "launch.ini"),
+          "[launch]\nsystem = GBA\nrom = Roms/GBA/Celeste Classic (World).gba\nemulator = mgba\n")
+    write(os.path.join(rig["card"], "TriMuxData/config/trimux.ini"),
+          "[power]\nprofile = performance\nboost_ack = %s\n[buttons]\nswitch = boost\n" % ack)
+    scripted_ui(rig, [10, 20])
+    run_supervisor(rig)
+    return read(os.path.join(rig["dir"], "ra_maxfreq"))
+
+
+def test_switch_boost_on_allows_2ghz(rig, env):
+    assert boost_rig(rig, env, "1") == "2000000"
+    log = read(os.path.join(rig["card"], "TriMuxData/logs/trimux.log"))
+    assert "profile boost" in log
+
+
+def test_switch_boost_off_keeps_1_8ghz_ceiling(rig, env):
+    assert boost_rig(rig, env, "0") == "1800000"
+
+
+def test_switch_boost_requires_confirmation(rig, env):
+    assert boost_rig(rig, env, "1", ack="0") == "1800000"

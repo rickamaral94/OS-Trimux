@@ -902,7 +902,13 @@ static void activate(MenuItem *it, TmButton b)
         TmSwitchAction a = tm_switch_action(&A.settings);
         do /* skip "mute" when the firmware has no speaker mute file */
             a = (TmSwitchAction)(((int)a + (b == BTN_LEFT ? -1 : 1) + TM_SWITCH_COUNT) % TM_SWITCH_COUNT);
-        while ((a == TM_SWITCH_MUTE && !tm_speaker_mute_available()) || (a == TM_SWITCH_LEDS_OFF && !A.leds.available));
+        while ((a == TM_SWITCH_MUTE && !tm_speaker_mute_available()) || (a == TM_SWITCH_LEDS_OFF && !A.leds.available) ||
+               (a == TM_SWITCH_BOOST && !tm_power_boost_available(&A.power)));
+        if (a == TM_SWITCH_BOOST && !setting_long("power", "boost_ack", 0)) {
+            /* 2.0 GHz is above the manufacturer's rating: explicit consent first */
+            app_dialog(DLG_BOOST, tr("boost.confirm.title"), tr("boost.confirm.text"), 0, NULL, 0);
+            return;
+        }
         tm_ini_set(&A.settings, "buttons", "switch", tm_switch_action_id(a));
         app_mark_settings();
         break;
@@ -972,9 +978,19 @@ void menu_dialog_result(int id, long arg, const char *sarg, int yes)
         break;
     }
     case DLG_RESTORE_EMU: restore_emulator(sarg); break;
+    case DLG_BOOST:
+        tm_ini_set_long(&A.settings, "power", "boost_ack", 1);
+        tm_ini_set(&A.settings, "buttons", "switch", "boost");
+        app_mark_settings();
+        LOGW("ui: user enabled the 2.0 GHz side-switch boost");
+        menu_rebuild();
+        break;
     case DLG_POWER_DEFAULT:
         tm_ini_set(&A.settings, "power", "profile", "auto");
         tm_ini_set_long(&A.settings, "general", "idle_poweroff_min", 0);
+        tm_ini_set_long(&A.settings, "power", "boost_ack", 0);
+        if (strcmp(tm_ini_get(&A.settings, "buttons", "switch", "none"), "boost") == 0)
+            tm_ini_set(&A.settings, "buttons", "switch", "none");
         app_mark_settings();
         if (A.power.has_cpufreq)
             tm_power_apply(&A.power, tm_power_profile(TM_POWER_DEFAULT));

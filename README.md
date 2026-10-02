@@ -27,9 +27,11 @@ cartão devolve o aparelho ao estado original.
 * Encontra jogos em pastas conhecidas (cartão oficial TrimUI, MinUI/NextUI,
   Batocera/Knulli) **sem mover ou renomear nada**.
 * **Energia segura:** perfis Economia / Equilibrado / Desempenho seguro /
-  Automático, nunca acima de 1,8 GHz (máximo do fabricante), aplicados antes de
-  cada jogo; proteção térmica adicional; sem overclock; limites térmicos do
+  Automático, até 1,8 GHz (máximo do fabricante), aplicados antes de
+  cada jogo; proteção térmica adicional; limites térmicos do
   firmware sempre ativos.
+  Opcional: mapear a chave lateral para liberar **2,0 GHz** (o máximo da
+  tabela do firmware) só enquanto ela estiver ligada, com confirmação.
 * **LEDs** pelo driver oficial (barra superior, anéis dos analógicos, F1/F2,
   gatilhos), só se detectados e só se você ativar.
 * Assistente inicial curto, que pode ser pulado e reaberto.
@@ -74,7 +76,7 @@ firmware oficial: **[docs/INSTALACAO.md](docs/INSTALACAO.md)**.
 | Jogo | MENU + R2 / L2 | trocar posição do estado |
 | Jogo | MENU + X | avanço rápido |
 | Menu | F1 / F2 | ação configurável (padrão: favoritar / jogo surpresa) |
-| Sempre | chave lateral | configurável: modo economia, apagar LEDs ou silenciar (vale também nos jogos) |
+| Sempre | chave lateral | configurável: modo economia, 2,0 GHz (opcional, com confirmação), apagar LEDs ou silenciar (vale também nos jogos) |
 | Sempre | + / −, MENU + (+/−) | volume, brilho (firmware oficial) |
 | Sempre | POWER / POWER 6 s | suspender / desligar à força (firmware oficial) |
 | Ao ligar | segurar SELECT | abrir o sistema oficial |

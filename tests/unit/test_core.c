@@ -318,6 +318,20 @@ static void test_power(void)
     CHECK(sysfs_long(POL "/scaling_min_freq") == 408000);
     CHECK(tm_power_apply(&caps, tm_power_profile("balanced")) == 0);
     CHECK(sysfs_long(POL "/scaling_max_freq") == 1608000);
+    /* opt-in boost: up to the firmware's 2.0 GHz OPP, never above it */
+    CHECK(tm_power_boost_available(&caps));
+    {
+        TmPowerTarget bt;
+        CHECK(tm_power_plan(&caps, tm_power_profile("boost"), &bt) == 0 && bt.max_khz == 2000000);
+        CHECK(strcmp(bt.governor, "performance") != 0);
+        long saved = caps.freqs[caps.nfreqs - 1];
+        caps.freqs[caps.nfreqs - 1] = 2208000; /* a hypothetical higher OPP is ignored */
+        CHECK(tm_power_plan(&caps, tm_power_profile("boost"), &bt) == 0 && bt.max_khz == 1800000);
+        caps.freqs[caps.nfreqs - 1] = saved;
+    }
+    CHECK(tm_power_apply(&caps, tm_power_profile("boost")) == 0);
+    CHECK(sysfs_long(POL "/scaling_max_freq") == 2000000);
+    CHECK(tm_power_apply(&caps, tm_power_profile("balanced")) == 0);
     /* a table without any OPP under the cap must be refused, not exceeded */
     caps.nfreqs = 1;
     caps.freqs[0] = 2000000;
@@ -497,6 +511,13 @@ static void test_buttons(void)
     CHECK(tm_key_action_parse("random", TM_KEY_NONE) == TM_KEY_RANDOM);
     CHECK(tm_key_action_parse("bogus", TM_KEY_FAVORITE) == TM_KEY_FAVORITE);
     CHECK(tm_switch_action_parse("../x") == TM_SWITCH_NONE);
+    /* boost needs the explicit acknowledgement */
+    tm_ini_set(&ini, "buttons", "switch_invert", "0");
+    put("btn/sys/class/gpio/gpio243/value", "1\n");
+    tm_ini_set(&ini, "buttons", "switch", "boost");
+    CHECK(tm_switch_active(&ini) == TM_SWITCH_NONE);
+    tm_ini_set(&ini, "power", "boost_ack", "1");
+    CHECK(tm_switch_active(&ini) == TM_SWITCH_BOOST);
     CHECK(!tm_speaker_mute_available());
     put("btn/sys/class/speaker/mute", "0\n");
     CHECK(tm_speaker_mute_available() && tm_speaker_mute(1) == 0);

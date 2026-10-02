@@ -30,7 +30,9 @@ Como rodar: `make test` (A + partes S que não exigem Docker),
 | `scripts/check_abi.py` — RetroArch, núcleos e binários exigem no máximo GLIBC 2.33 / GLIBCXX 3.4.28 e só bibliotecas presentes no firmware | A | **passou** |
 | Reprodutibilidade — duas gerações da imagem a partir da mesma árvore produziram o mesmo SHA-256 do `.img` | A | **passou** |
 
-Também cobertos: chave lateral (leitura, inversão, valor inválido), modo
+Também cobertos: modo 2,0 GHz pela chave (só com confirmação, nunca acima da
+maior frequência listada até 2,0 GHz, desligado = 1,8 GHz, confirmação na
+interface com padrão "Não"), chave lateral (leitura, inversão, valor inválido), modo
 economia pela chave sobrepondo o perfil no lançamento, restauração do limite
 de CPU quando um processo externo o sobe a 2,0 GHz durante o jogo, detecção de
 pastas de Atari em formatos diferentes (`atari2600`, `A7800`).
@@ -71,5 +73,6 @@ Marque com data, firmware, versão do TriMux e observações ao executar.
 | H22 | Sessões longas (60 min e 2 h) por plataforma com registro térmico ([DESEMPENHO.md](DESEMPENHO.md)) | pendente |
 | H23 | Bateria: consumo no menu, em jogo leve e pesado, suspensão por 8 h | pendente |
 | H26 | F1/F2 executam a ação escolhida; chave lateral muda o valor em *Botões extras* e aplica economia/LEDs/mudo no menu e no jogo | pendente |
+| H28 | Chave lateral em "2,0 GHz": frequência máxima em *Informações* vai a 2000 MHz com a chave ligada e volta a ≤ 1800 MHz desligada; temperatura em sessão longa | pendente |
 | H27 | Com um atalho FN oficial de CPU configurado, o TriMux volta a frequência ao limite do perfil | pendente |
 | H25 | Ports: DOOM com Freedoom, Quake shareware, Cave Story freeware; um script `.sh` simples | pendente |
