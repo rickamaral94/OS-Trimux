@@ -1,0 +1,25 @@
+TriMux para TrimUI Brick Pro (TG4040)
+=====================================
+
+Este cartão funciona junto com o firmware oficial da TrimUI: ligue o aparelho
+com o cartão inserido e o TriMux abre sozinho. Nada é gravado na memória
+interna do aparelho.
+
+Pastas
+  Roms/<PLATAFORMA>   seus jogos (ex.: Roms/GBA, Roms/FC, Roms/PS)
+  Bios/               arquivos de BIOS seus (veja Bios/LEIA-ME.txt)
+  Saves/  States/     jogos salvos e estados salvos (criados automaticamente)
+  TriMux/             o sistema (pode ser substituído numa atualização)
+  TriMuxData/         suas configurações, favoritos e registros (NÃO apague)
+  trimui/             ponto de entrada usado pelo firmware oficial (NÃO apague)
+
+Atalhos
+  HOME                menu do jogo
+  MENU + START        fechar o jogo
+  MENU + R1 / L1      salvar / carregar estado
+  POWER               suspender
+  Segurar SELECT ao ligar: abre o sistema oficial da TrimUI
+
+Voltar ao sistema oficial: retire o cartão (ou apague a pasta "trimui").
+Documentação completa: https://github.com/rickamaral94/OS-Trimux
+Não incluímos jogos, BIOS ou firmware de consoles.

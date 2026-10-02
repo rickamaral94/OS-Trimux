@@ -1,0 +1,20 @@
+# Pinned upstream sources. Format: name|git url|commit|license (SPDX or note)
+# Commits are content hashes: fetch_sources.sh checks out exactly these.
+retroarch|https://github.com/libretro/RetroArch|69a4f0ea1e8aaf442ae4858f2e7f2b31a1776576|GPL-3.0-or-later
+fceumm|https://github.com/libretro/libretro-fceumm|7a542dab1e87679921962a9f056186eca425c0c2|GPL-2.0-or-later
+nestopia|https://github.com/libretro/nestopia|8f00f500912a847062de432e38765c7285483e62|GPL-2.0-or-later
+snes9x2005|https://github.com/libretro/snes9x2005|a79dfe9047e7fec58808aefe48ad2bf499c7af11|Snes9x license (non-commercial)
+supafaust|https://github.com/libretro/supafaust|642d1d1b6684aa7e306a02a89885f3f5456a5157|GPL-2.0-or-later
+gambatte|https://github.com/libretro/gambatte-libretro|d9d6cd06382d1ced30de34d56d3609452323dab1|GPL-2.0-only
+mgba|https://github.com/libretro/mgba|7a12d6d4b9acb14c0ae62c9166b6a2f3d08007f6|MPL-2.0
+gpsp|https://github.com/libretro/gpsp|5819380c2ffb0900219d700a382ee68c464ebb99|GPL-2.0-or-later
+picodrive|https://github.com/libretro/picodrive|1890c2932234c9d30f4cd3851d02228baae8f09e|MAME-style (non-commercial)
+genesis_plus_gx|https://github.com/libretro/Genesis-Plus-GX|c2838c7dc4236fc2fe94e5dbd08b41486067918e|Genesis Plus GX license (non-commercial)
+pce_fast|https://github.com/libretro/beetle-pce-fast-libretro|1c693c630121366f0b819d785762f1ce5b3a68d0|GPL-2.0-only
+pcsx_rearmed|https://github.com/libretro/pcsx_rearmed|c8816799b50388e61cfe237fe2cdbb7d8175f20a|GPL-2.0-or-later
+race|https://github.com/libretro/RACE|c7810dd7f172827bfa2004813bc000b13786636b|GPL-2.0-only
+wswan|https://github.com/libretro/beetle-wswan-libretro|4b01295838ea89e3f1355bbe4cb5cf98aa6108cd|GPL-2.0-only
+handy|https://github.com/libretro/libretro-handy|bc55d462f0b2d6b073ea93dc552ebd73cec60fd1|Zlib
+stella2014|https://github.com/libretro/stella2014-libretro|7d1361e407e63f29e52892655069e5fb4096e691|GPL-2.0-or-later
+prosystem|https://github.com/libretro/prosystem-libretro|8a88014287c7a01cd568067e5a557d0a2b2a051f|GPL-2.0-only
+fbneo|https://github.com/libretro/FBNeo|a4012b161e48b33b94940f07987323574c237448|FBNeo license (non-commercial)

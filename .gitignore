@@ -1,0 +1,5 @@
+/build/
+/docker/downloads/
+__pycache__/
+.pytest_cache/
+*.pyc

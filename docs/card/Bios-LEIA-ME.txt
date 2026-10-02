@@ -1,0 +1,13 @@
+Coloque aqui as BIOS (cópias dos seus próprios aparelhos), com estes nomes:
+
+  PlayStation        scph5501.bin (ou scph1001.bin / scph7001.bin) - opcional
+  Game Boy Advance   gba_bios.bin                                   - opcional
+  Sega CD            bios_CD_U.bin / bios_CD_E.bin / bios_CD_J.bin   - obrigatória
+  PC Engine CD       syscard3.pce                                   - para jogos em CD
+  Neo Geo            neogeo.zip                                     - obrigatória
+  Famicom Disk Sys.  disksys.rom                                    - para jogos .fds
+  Atari Lynx         lynxboot.img                                   - recomendada
+  Atari 7800         7800 BIOS (U).rom                              - opcional
+
+Os nomes diferenciam maiúsculas/minúsculas no emulador. O TriMux mostra o que
+falta em Configurações > Biblioteca > Verificar BIOS.

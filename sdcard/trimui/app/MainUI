@@ -1,0 +1,40 @@
+#!/bin/sh
+# TriMux entry point.
+#
+# The stock TrimUI firmware (v1.1.1, /usr/trimui/bin/runtrimui.sh) checks for
+# /mnt/SDCARD/trimui at every turn of its main loop and, when the folder
+# exists, runs  trimui/app/premainui.sh, trimui/app/MainUI, trimui/app/preload.sh
+# from the card. The exit status of preload.sh decides what happens next:
+#   0  -> the stock launcher is skipped and this script runs again
+#   1  -> the stock launcher (/usr/trimui/bin/MainUI) starts
+# Nothing on the internal memory (eMMC) is modified by TriMux.
+
+SD=/mnt/SDCARD
+TMP=/tmp/trimux
+mkdir -p "$TMP"
+
+# Stock mode was chosen for this boot (or a fault forced it): do nothing.
+[ -f "$TMP/to_stock" ] && exit 0
+
+# Restart guard: if this entry point is re-entered 3 times within 30 s, the
+# system is looping on an error. Fall back to the stock launcher.
+now=$(cut -d. -f1 /proc/uptime)
+first=$(cat "$TMP/entry_first" 2>/dev/null || echo 0)
+count=$(cat "$TMP/entry_count" 2>/dev/null || echo 0)
+if [ $((now - first)) -gt 30 ]; then
+    first=$now
+    count=0
+fi
+count=$((count + 1))
+echo "$first" > "$TMP/entry_first"
+echo "$count" > "$TMP/entry_count"
+if [ "$count" -ge 3 ]; then
+    echo "TriMux restarted $count times in 30 s; using the stock launcher" > "$TMP/to_stock"
+    exit 0
+fi
+
+if [ ! -x "$SD/TriMux/scripts/supervisor.sh" ] && [ ! -f "$SD/TriMux/scripts/supervisor.sh" ]; then
+    echo "TriMux files missing" > "$TMP/to_stock"
+    exit 0
+fi
+exec /bin/sh "$SD/TriMux/scripts/supervisor.sh"

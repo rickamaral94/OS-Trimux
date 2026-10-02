@@ -1,0 +1,8 @@
+# Official TrimUI Brick Pro (TG4040) firmware used for the hardware audit and
+# for the ABI smoke tests (tests run TriMux binaries under qemu against the
+# firmware's own libraries). Nothing from these archives is copied into the
+# TriMux image. Source: https://github.com/trimui/firmware_brickpro/releases
+#
+# name|url|sha256
+update|https://github.com/trimui/firmware_brickpro/releases/download/v1.1.1-20260717/trimui_tg4040_20260717_v1.1.1.7z|36189b7966717c520901e6ef7318d1b092067598959b030cc0fd66b0747e5585
+recovery|https://github.com/trimui/firmware_brickpro/releases/download/v1.1.1-20260717/sd_recovery_tg4040_brick_pro_v1.1.1_20260717.7z|385cd2affdd9f6d73421012c8c6a78ef601f69589d5addb6b0a6b01b335102d1

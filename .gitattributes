@@ -1,0 +1,8 @@
+# Scripts executed by the device must keep LF line endings.
+*.sh text eol=lf
+sdcard/trimui/app/* text eol=lf
+*.ini text eol=lf
+*.lang text eol=lf
+*.cfg text eol=lf
+*.png binary
+*.ttf binary

@@ -1,0 +1,104 @@
+#!/bin/sh
+# TriMux supervisor: prepares the device, runs the menu and the games, and
+# returns to the stock firmware on request or after repeated failures.
+# Started by /mnt/SDCARD/trimui/app/MainUI (see the comments there).
+
+SD=${TRIMUX_SDCARD:-/mnt/SDCARD}
+TM=$SD/TriMux
+DATA=$SD/TriMuxData
+TMP=${TRIMUX_TMP:-/tmp/trimux}
+CTL=$TM/bin/trimuxctl
+UI=$TM/bin/trimux-ui
+LOG=$DATA/logs/trimux.log
+
+export TRIMUX_SDCARD=$SD TRIMUX_TMP=$TMP
+# Firmware libraries: SDL2 lives in /usr/trimui/lib, EGL/GLES and ALSA in /usr/lib.
+export LD_LIBRARY_PATH=/usr/trimui/lib:/usr/lib:/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+export PATH=${TRIMUX_EXTRA_PATH:+$TRIMUX_EXTRA_PATH:}/usr/trimui/bin:/usr/bin:/bin:/usr/sbin:/sbin
+export HOME=$DATA/retroarch
+
+mkdir -p "$TMP" "$DATA/logs" "$DATA/state"
+
+log() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null) boot[I] $*" >> "$LOG"
+}
+
+to_stock() {
+    log "handing over to the stock launcher: $1"
+    echo "$1" > "$TMP/to_stock"
+    "$CTL" power default >/dev/null 2>&1
+    exit 0
+}
+
+# --- safety checks -----------------------------------------------------------
+[ -x "$CTL" ] || chmod +x "$CTL" "$UI" "$TM/retroarch/retroarch" 2>/dev/null
+"$CTL" device || to_stock "not a TrimUI Brick Pro firmware"
+"$CTL" boot begin
+[ $? -eq 10 ] && to_stock "menu failed to start on 3 consecutive boots (safe mode)"
+if [ -f "$DATA/state/in_game" ]; then
+    log "previous session ended inside a game ($(cat "$DATA/state/in_game")); defaults restored"
+    rm -f "$DATA/state/in_game"
+fi
+log "TriMux $(cat "$TM/VERSION" 2>/dev/null) starting, firmware $(cat /etc/version 2>/dev/null)"
+
+# --- firmware services, started exactly like the stock launcher does ---------
+# keymon: volume/brightness keys, power button, suspend.
+# trimui_inputd: creates the "TRIMUI Player1" gamepad from the controller MCU.
+# hardwareservice: battery LED warnings, rumble.
+# Not started on purpose: trimui_scened (its scene scripts rewrite CPU limits
+# up to 2.0 GHz), trimui_osdd (in-game overlay that competes for buttons),
+# musicserver and trimui_btmanager (memory). Bluetooth stays available in the
+# stock launcher.
+start_service() {
+    name=$1; dir=$2; bin=$3
+    if ! pgrep "$name" >/dev/null 2>&1; then
+        (cd "$dir" && LD_LIBRARY_PATH=/usr/trimui/lib "./$bin" >/dev/null 2>&1 &)
+    fi
+}
+if [ -d /usr/trimui/bin ]; then
+    start_service keymon /usr/trimui/bin keymon
+    start_service inputd /usr/trimui/bin trimui_inputd
+    start_service hardwareservice /usr/trimui/bin hardwareservice
+    # Audio route used by the stock runtrimui.sh for the TG4040 speaker path.
+    tinymix set 9 1 >/dev/null 2>&1
+    tinymix set 1 0 >/dev/null 2>&1
+fi
+
+# Conservative CPU policy for the menu, and the user's LED choice (if any).
+"$CTL" power default >/dev/null 2>&1
+"$CTL" leds apply >/dev/null 2>&1
+
+# --- main loop ---------------------------------------------------------------
+crash_first=0
+crash_count=0
+while true; do
+    sh "$TM/scripts/premenu.sh" 2>/dev/null
+    "$UI"
+    rc=$?
+    case $rc in
+        10) # play: the launcher re-validates the request and applies limits first
+            "$CTL" launch
+            lrc=$?
+            [ $lrc -ne 0 ] && log "game ended with status $lrc"
+            ;;
+        20) to_stock "requested from the menu" ;;
+        30) log "power off"; sync; touch /tmp/poweroff_flag; poweroff; sleep 30 ;;
+        31) log "reboot"; sync; reboot; sleep 30 ;;
+        40) log "card partition grow requested"
+            if "$CTL" card-grow >> "$LOG" 2>&1; then
+                log "card grown, rebooting"
+            else
+                log "card grow failed; nothing was changed or the card was left consistent"
+            fi
+            sync; reboot; sleep 30 ;;
+        0) ;;
+        *)
+            now=$(cut -d. -f1 /proc/uptime)
+            if [ $((now - crash_first)) -gt 60 ]; then crash_first=$now; crash_count=0; fi
+            crash_count=$((crash_count + 1))
+            log "menu exited unexpectedly with status $rc ($crash_count in the last minute)"
+            [ $crash_count -ge 3 ] && to_stock "menu crashed $crash_count times in a minute"
+            sleep 1
+            ;;
+    esac
+done

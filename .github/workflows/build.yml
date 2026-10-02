@@ -1,0 +1,80 @@
+name: build
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  host-tests:
+    name: Unit, script and UI tests (host)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libsdl2-dev fonts-dejavu-core dosfstools mtools shellcheck python3-pytest
+      - name: Unit tests (ASan/UBSan) and native builds
+        run: make test-unit native ui-native
+      - name: Python tests (scripts, catalog, i18n, image, UI offscreen)
+        run: python3 -m pytest -q tests/py
+
+  image:
+    name: Cross build, smoke test and card image
+    runs-on: ubuntu-24.04
+    needs: host-tests
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain (Debian bullseye snapshot, pinned)
+        run: make toolchain
+      - name: Sources (pinned commits)
+        run: make sources
+      - name: Official firmware (pinned SHA-256, for ABI smoke tests only)
+        run: make firmware
+      - name: Build, test, smoke test, image
+        run: make all-docker
+      - name: Checksums
+        run: cat build/out/*.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trimux-image
+          path: |
+            build/out/*.img.xz
+            build/out/*-update.zip
+            build/out/*.sha256
+          if-no-files-found: error
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        with:
+          name: smoke-and-logs
+          path: |
+            build/smoke/*.txt
+            build/smoke/*.log
+            build/logs/
+          retention-days: 30
+
+  release:
+    name: Publish release (tags only)
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: image
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: trimux-image
+          path: dist
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* --title "TriMux $GITHUB_REF_NAME" \
+            --notes-file docs/NOTAS_DE_VERSAO.md --prerelease

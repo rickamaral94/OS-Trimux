@@ -1,0 +1,148 @@
+# TriMux — sistema de jogos para o TrimUI Brick Pro
+
+TriMux é uma interface e um conjunto de emuladores para o **TrimUI Brick Pro
+(TG4040)**, instalados em um cartão microSD gravável com o Rufus. Ele roda
+**sobre o firmware oficial** da TrimUI, usando um ponto de entrada que o
+próprio firmware já oferece: nada é gravado na memória interna, e tirar o
+cartão devolve o aparelho ao estado original.
+
+![Tela inicial](docs/img/02-inicio.png)
+
+> **Estado: 0.1.0, pré-lançamento, ainda não testado em um aparelho físico.**
+> Compilação, testes automáticos, testes em ambiente simulado e a verificação
+> de compatibilidade com as bibliotecas do firmware oficial v1.1.1 (em QEMU)
+> passaram. Inicialização real, imagem na tela, controles, som, suspensão e
+> desempenho dependem de teste no Brick Pro — veja [docs/TESTES.md](docs/TESTES.md).
+
+## Destaques
+
+* Abre direto em um menu feito para os botões do aparelho, em **português do
+  Brasil** (inglês incluído; novos idiomas são um arquivo de texto).
+* Poucos passos até jogar: **Continuar**, Recentes, Favoritos, Todos os jogos,
+  plataformas com contagem, busca com teclado na tela, filtros.
+* **19 plataformas, 17 emuladores** (RetroArch 1.22.2 + núcleos libretro
+  compilados para Cortex-A53). Troca de emulador **por jogo** ou **por
+  plataforma** com o botão SELECT.
+* Encontra jogos em pastas conhecidas (cartão oficial TrimUI, MinUI/NextUI,
+  Batocera/Knulli) **sem mover ou renomear nada**.
+* **Energia segura:** perfis Economia / Equilibrado / Desempenho seguro /
+  Automático, nunca acima de 1,8 GHz (máximo do fabricante), aplicados antes de
+  cada jogo; proteção térmica adicional; sem overclock; limites térmicos do
+  firmware sempre ativos.
+* **LEDs** pelo driver oficial (barra superior, anéis dos analógicos, F1/F2,
+  gatilhos), só se detectados e só se você ativar.
+* Assistente inicial curto, que pode ser pulado e reaberto.
+* Volta sozinho ao sistema oficial se algo der errado; **segure SELECT ao
+  ligar** para abrir o sistema oficial.
+
+| ![Plataforma](docs/img/03-plataforma.png) | ![Emulador por jogo](docs/img/04-emulador.png) |
+|---|---|
+| ![Energia](docs/img/06-energia.png) | ![Informações](docs/img/08-informacoes.png) |
+
+<sub>Capturas renderizadas no computador (SDL offscreen) com um Brick Pro
+simulado; não são fotos do aparelho.</sub>
+
+## Instalação rápida
+
+1. Baixe `TriMux-<versão>-brickpro.img.xz` e o `.sha256` (Actions → artefato
+   `trimux-image`, ou Releases quando houver uma versão publicada).
+2. No **Rufus**: Dispositivo = seu microSD → SELECIONAR → o `.img.xz` →
+   INICIAR. (Cartão de 2 GB ou mais; recomendado 16 GB+. **Apaga o cartão.**)
+3. Coloque o cartão no Brick Pro desligado e ligue. Siga o assistente.
+4. Copie seus jogos para `Roms/<PLATAFORMA>` e BIOS para `Bios/`.
+5. Opcional: *Configurações › Armazenamento › Expandir partição* para usar o
+   cartão inteiro.
+
+Passo a passo completo, atualização sem perder saves e recuperação para o
+firmware oficial: **[docs/INSTALACAO.md](docs/INSTALACAO.md)**.
+
+## Atalhos
+
+| Onde | Botões | Ação |
+|---|---|---|
+| Menu | A / B | abrir / voltar (pode trocar em Controles) |
+| Menu | X | favoritar |
+| Menu | Y | buscar |
+| Menu | SELECT | trocar emulador (jogo ou plataforma) |
+| Menu | START | opções do jogo |
+| Menu | MENU | menu rápido (energia, LEDs, reindexar, sistema oficial, desligar) |
+| Jogo | HOME (ou L3 + R3) | menu do jogo (RetroArch) |
+| Jogo | MENU + START | fechar o jogo |
+| Jogo | MENU + R1 / L1 | salvar / carregar estado |
+| Jogo | MENU + R2 / L2 | trocar posição do estado |
+| Jogo | MENU + X | avanço rápido |
+| Sempre | + / −, MENU + (+/−) | volume, brilho (firmware oficial) |
+| Sempre | POWER / POWER 6 s | suspender / desligar à força (firmware oficial) |
+| Ao ligar | segurar SELECT | abrir o sistema oficial |
+
+## Compatibilidade
+
+| Plataforma | Emulador padrão | Alternativa | Situação |
+|---|---|---|---|
+| NES/Famicom | FCEUmm | Nestopia UE | incluído, não medido no aparelho |
+| SNES | Snes9x 2005 Plus | Supafaust | incluído, não medido |
+| Game Boy / Color | Gambatte | mGBA | incluído, não medido |
+| Game Boy Advance | gpSP | mGBA | incluído, não medido |
+| Mega Drive, Master System, Game Gear, Sega CD, 32X | PicoDrive / Genesis Plus GX | a outra | incluído, não medido |
+| PC Engine / CD | Beetle PCE Fast | — | incluído, não medido |
+| PlayStation | PCSX ReARMed | — | incluído, não medido |
+| Arcade / Neo Geo | FinalBurn Neo | — | incluído, não medido |
+| Neo Geo Pocket, WonderSwan, Lynx, Atari 2600/7800 | RACE, Beetle WS, Handy, Stella 2014, ProSystem | — | incluído, não medido |
+| **PlayStation 2** | — | — | **não suportado** — sem emulador viável e validado ([docs/PS2.md](docs/PS2.md)) |
+
+Formatos, nomes de pastas e BIOS: [docs/ESTRUTURA_CARTAO.md](docs/ESTRUTURA_CARTAO.md).
+Jogos, BIOS e firmware de consoles **não são incluídos**.
+
+## Como funciona
+
+O firmware oficial (`/usr/trimui/bin/runtrimui.sh`) executa
+`/mnt/SDCARD/trimui/app/MainUI` quando essa pasta existe e decide, pelo
+`trimui/app/preload.sh`, se abre o lançador oficial. O TriMux usa esse
+mecanismo para iniciar o próprio menu, reaproveita os serviços oficiais de
+controle, teclas e suspensão e entrega o controle de volta ao firmware em caso
+de problema. A imagem do cartão **não** é uma imagem de boot do SoC; a análise
+completa (incluindo por que não foi feita uma distribuição inicializável pelo
+SD) está em [docs/VIABILIDADE.md](docs/VIABILIDADE.md) e o hardware auditado
+em [docs/HARDWARE.md](docs/HARDWARE.md). Arquitetura do código:
+[docs/ARQUITETURA.md](docs/ARQUITETURA.md).
+
+## Compilar a partir do código
+
+Requisitos: Linux x86-64 com Docker, `make`, `git`, `curl`, `7z` e Python 3.
+
+```sh
+make all-docker
+```
+
+Isso cria o contêiner de compilação fixado (Debian bullseye, snapshot
+2026-08-24, GCC 10 / glibc 2.31 — compatível com glibc 2.33 do firmware),
+baixa as fontes nos commits de `sources/sources.lock`, baixa o firmware oficial
+(SHA-256 em `firmware/official.lock`, usado só nos testes), compila RetroArch,
+núcleos, `trimux-ui` e `trimuxctl`, roda todos os testes e o teste de fumaça em
+QEMU e gera em `build/out/`:
+
+* `TriMux-<versão>-brickpro.img` e `.img.xz`
+* `TriMux-<versão>-update.zip`
+* `TriMux-<versão>-brickpro.sha256`
+
+Comandos individuais: `make test` (testes no computador), `make ui-native`
+(menu no computador; rode com `TRIMUX_SDCARD=<pasta>`), `make docker-cross`,
+`make docker-cores`, `make docker-image`. O CI (`.github/workflows/build.yml`)
+executa o mesmo processo e publica a imagem como artefato.
+
+## Testes
+
+* 148 verificações unitárias em C (com AddressSanitizer/UBSan).
+* Testes Python: `trimuxctl` contra um Brick Pro simulado, scripts de boot com
+  comandos do firmware simulados, imagem/partição/expansão em arquivos de
+  imagem, catálogo e traduções, e o menu com entradas roteirizadas.
+* Teste de fumaça em QEMU com as bibliotecas reais do firmware v1.1.1.
+* Testes no aparelho físico: **pendentes** (lista em
+  [docs/TESTES.md](docs/TESTES.md)); medições de desempenho seguem
+  [docs/DESEMPENHO.md](docs/DESEMPENHO.md).
+
+## Licenças
+
+Código do TriMux: MIT. Componentes de terceiros (RetroArch GPL-3.0, núcleos
+GPL/MPL/zlib e alguns **não comerciais**): [docs/LICENCAS.md](docs/LICENCAS.md).
+TriMux é um projeto independente, sem relação com a TrimUI.
