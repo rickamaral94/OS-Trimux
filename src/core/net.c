@@ -392,6 +392,9 @@ pid_t tm_spawn(char *const argv[], const char *cwd, const char *ld_path)
         pid_t gc = fork();
         if (gc == 0) {
             setpgid(0, 0); /* own group, so tm_ftp_stop can signal it and its children */
+            pid_t self = getpid();
+            ssize_t w = write(pfd[1], &self, sizeof self);
+            (void)w;
             if (cwd && chdir(cwd) != 0)
                 _exit(126);
             if (ld_path)
@@ -399,23 +402,38 @@ pid_t tm_spawn(char *const argv[], const char *cwd, const char *ld_path)
             devnull_fd(STDIN_FILENO, O_RDONLY);
             devnull_fd(STDOUT_FILENO, O_WRONLY);
             devnull_fd(STDERR_FILENO, O_WRONLY);
-            close_from(3);
             reset_signals();
+            /* pfd[1] is close-on-exec: the parent sees EOF once exec happened */
+            for (int fd = 3; fd < 4096; fd++)
+                if (fd != pfd[1])
+                    close(fd);
             execv(argv[0], argv);
             _exit(127);
         }
-        ssize_t w = write(pfd[1], &gc, sizeof gc);
-        (void)w;
         _exit(gc < 0);
     }
     close(pfd[1]);
-    pid_t gc = -1;
-    if (read(pfd[0], &gc, sizeof gc) != (ssize_t)sizeof gc)
-        gc = -1;
-    close(pfd[0]);
     int st;
     while (waitpid(child, &st, 0) < 0 && errno == EINTR) {
     }
+    pid_t gc = -1;
+    if (read(pfd[0], &gc, sizeof gc) != (ssize_t)sizeof gc)
+        gc = -1;
+    /* Wait (bounded) until the program is really running, so a caller that
+     * checks /proc/<pid>/cmdline right away sees it and not our fork. */
+    uint64_t deadline = tm_now_ms() + 3000;
+    for (char b; gc > 0;) {
+        uint64_t now = tm_now_ms();
+        if (now >= deadline)
+            break;
+        struct pollfd p = {pfd[0], POLLIN, 0};
+        int r = poll(&p, 1, (int)(deadline - now));
+        if (r < 0 && errno == EINTR)
+            continue;
+        if (r <= 0 || read(pfd[0], &b, 1) <= 0)
+            break; /* EOF: exec done (or the child exited) */
+    }
+    close(pfd[0]);
     return gc;
 }
 
