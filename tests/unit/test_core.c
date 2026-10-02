@@ -1,5 +1,6 @@
 /* Unit tests for the portable core. Run natively: make test-unit */
 #define _GNU_SOURCE
+#include "../../src/core/buttons.h"
 #include "../../src/core/catalog.h"
 #include "../../src/core/i18n.h"
 #include "../../src/core/ini.h"
@@ -478,6 +479,31 @@ static void test_sysinfo(void)
     unsetenv("TRIMUX_SYSFS_ROOT");
 }
 
+static void test_buttons(void)
+{
+    char root[1024];
+    snprintf(root, sizeof root, "%s/btn", T);
+    setenv("TRIMUX_SYSFS_ROOT", root, 1);
+    TmIni ini;
+    tm_ini_init(&ini);
+    CHECK(tm_switch_raw() == -1 && tm_switch_active(&ini) == TM_SWITCH_NONE);
+    put("btn/sys/class/gpio/gpio243/value", "1\n");
+    tm_ini_set(&ini, "buttons", "switch", "economy");
+    CHECK(tm_switch_raw() == 1 && tm_switch_active(&ini) == TM_SWITCH_ECONOMY);
+    tm_ini_set(&ini, "buttons", "switch_invert", "1");
+    CHECK(tm_switch_on(&ini) == 0 && tm_switch_active(&ini) == TM_SWITCH_NONE);
+    put("btn/sys/class/gpio/gpio243/value", "7\n"); /* implausible value: unreadable */
+    CHECK(tm_switch_raw() == -1);
+    CHECK(tm_key_action_parse("random", TM_KEY_NONE) == TM_KEY_RANDOM);
+    CHECK(tm_key_action_parse("bogus", TM_KEY_FAVORITE) == TM_KEY_FAVORITE);
+    CHECK(tm_switch_action_parse("../x") == TM_SWITCH_NONE);
+    CHECK(!tm_speaker_mute_available());
+    put("btn/sys/class/speaker/mute", "0\n");
+    CHECK(tm_speaker_mute_available() && tm_speaker_mute(1) == 0);
+    tm_ini_free(&ini);
+    unsetenv("TRIMUX_SYSFS_ROOT");
+}
+
 int main(void)
 {
     snprintf(T, sizeof T, "/tmp/trimux-unit-%d", (int)getpid());
@@ -494,6 +520,7 @@ int main(void)
     test_thermal();
     test_launch();
     test_sysinfo();
+    test_buttons();
     char cmd[600];
     snprintf(cmd, sizeof cmd, "rm -rf '%s'", T);
     if (system(cmd) != 0)

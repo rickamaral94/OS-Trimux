@@ -56,3 +56,12 @@ ROM de boot (SoC) ── sem eGON.BT0 no cartão ──> boot pela eMMC (firmwar
   `sh -c`; o RetroArch é iniciado com `execv`.
 * **Falha segura:** qualquer erro no TriMux leva ao lançador oficial, nunca a
   um aparelho travado.
+
+## Botões extras
+
+| Controle | Origem | Uso no TriMux |
+|---|---|---|
+| F1, F2 | botões 11 e 12 do "TRIMUI Player1" (configuráveis em `[input]`) | ação escolhida em *Controles › Botões extras* (`[buttons] f1/f2`) |
+| Chave lateral | GPIO 243, exportado pelo `runtrimui.sh` oficial | leitura 1×/s no menu e no `trimuxctl launch`; ação `[buttons] switch` = `economy`, `leds_off` ou `mute` (via `/sys/class/speaker/mute`, a mesma interface do `keymon`) |
+| HOME | botão 15 | menu rápido no TriMux; menu do RetroArch no jogo |
+| MENU | botão 8 | menu rápido no TriMux; tecla de atalho no RetroArch |

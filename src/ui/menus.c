@@ -1,6 +1,7 @@
 /* Settings, quick menu, per-game options, emulator choice, info pages. */
 #define _GNU_SOURCE
 #include "app.h"
+#include "../core/buttons.h"
 #include "../core/fatgrow.h"
 #include "../core/log.h"
 #include "../core/util.h"
@@ -19,6 +20,7 @@ enum {
     ACT_POWER_DEFAULT, ACT_LED_MANAGED, ACT_LED_ON, ACT_LED_COLOR, ACT_LED_BRIGHT, ACT_LED_EFFECT, ACT_RESCAN,
     ACT_MKDIRS, ACT_SET_PLAT_EMU, ACT_RESTORE_EMU, ACT_SET_GAME_EMU, ACT_INFO, ACT_WIZARD, ACT_STOCK,
     ACT_REBOOT, ACT_POWEROFF, ACT_GROW, ACT_PLAY, ACT_FAV, ACT_REMOVE_RECENT, ACT_FAV_ONLY, ACT_SEARCH,
+    ACT_KEY_ACTION, ACT_SWITCH_ACTION,
 };
 
 static const struct {
@@ -30,7 +32,6 @@ static const struct {
     {0x0060FF, "color.blue"},  {0x8000FF, "color.purple"}, {0xFF00FF, "color.pink"},
 };
 
-static const char *const k_profiles_ui[] = {"auto", "economy", "balanced", "performance"};
 
 static Menu *cur(void) { return A.nmenus ? &A.menus[A.nmenus - 1] : NULL; }
 
@@ -148,7 +149,40 @@ static void page_controls(Menu *m)
     int swap = (int)setting_long("input", "swap_ab", 0);
     add(m, ACT_SWAP_AB, tr("controls.confirm"), swap ? "B" : "A", tr("controls.confirm.desc"));
     add(m, ACT_CTRLTEST, tr("controls.test"), "›", tr("controls.test.desc"));
+    add_page(m, PAGE_BUTTONS, tr("buttons.title"), tr("buttons.desc"));
     add_page(m, PAGE_HOTKEYS, tr("controls.hotkeys"), tr("controls.hotkeys.desc"));
+}
+
+static void page_buttons(Menu *m)
+{
+    tm_strlcpy(m->title, tr("buttons.title"), sizeof m->title);
+    static const char *const keys[] = {"f1", "f2"};
+    for (int i = 0; i < 2; i++) {
+        TmKeyAction a = tm_key_action_parse(tm_ini_get(&A.settings, "buttons", keys[i], NULL),
+                                            i == 0 ? TM_KEY_FAVORITE : TM_KEY_RANDOM);
+        char lk[32], vk[48];
+        snprintf(lk, sizeof lk, "buttons.%s", keys[i]);
+        snprintf(vk, sizeof vk, "keyaction.%s", tm_key_action_id(a));
+        MenuItem *it = add(m, ACT_KEY_ACTION, tr(lk), tr(vk), tr("buttons.fkey.desc"));
+        tm_strlcpy(it->sarg, keys[i], sizeof it->sarg);
+    }
+    int raw = tm_switch_raw();
+    TmSwitchAction sa = tm_switch_action(&A.settings);
+    char vk[48];
+    snprintf(vk, sizeof vk, "switchaction.%s", tm_switch_action_id(sa));
+    MenuItem *it = add(m, ACT_SWITCH_ACTION, tr("buttons.switch"), tr(vk),
+                       tr(raw < 0 ? "buttons.switch.unavailable" : "buttons.switch.desc"));
+    it->enabled = raw >= 0;
+    it = add(m, ACT_TOGGLE, tr("buttons.switch_invert"), onoff((int)setting_long("buttons", "switch_invert", 0)),
+             tr("buttons.switch_invert.desc"));
+    tm_strlcpy(it->sarg, "buttons/switch_invert", sizeof it->sarg);
+    it->enabled = raw >= 0;
+    int on = tm_switch_on(&A.settings);
+    char v[48];
+    snprintf(v, sizeof v, "%s (%d)", tr(on < 0 ? "common.na" : on ? "buttons.pos_on" : "buttons.pos_off"), raw);
+    add(m, ACT_NONE, tr("buttons.switch_now"), v, tr("buttons.switch_now.desc"));
+    add(m, ACT_NONE, "HOME", tr("buttons.home.value"), tr("buttons.home.desc"));
+    add(m, ACT_NONE, "MENU", tr("buttons.menu.value"), tr("buttons.menu.desc"));
 }
 
 static void page_power(Menu *m)
@@ -490,7 +524,7 @@ static void page_hotkeys(Menu *m)
     static const char *const keys[][2] = {
         {"HOME", "hk.home"},           {"MENU + START", "hk.exit"},      {"MENU + R1", "hk.save"},
         {"MENU + L1", "hk.load"},      {"MENU + R2 / L2", "hk.slot"},    {"MENU + X", "hk.ff"},
-        {"L3 + R3", "hk.menu_alt"},    {"+ / −", "hk.volume"},           {"MENU + (+ / −)", "hk.brightness"},
+        {"L3 + R3", "hk.menu_alt"},    {"F1 / F2", "hk.fkeys"},         {"Chave lateral", "hk.switch"},    {"+ / −", "hk.volume"},           {"MENU + (+ / −)", "hk.brightness"},
         {"POWER", "hk.sleep"},         {"POWER 6 s", "hk.poweroff"},     {"SELECT (boot)", "hk.stock"},
     };
     for (size_t i = 0; i < TM_ARRAY_LEN(keys); i++)
@@ -565,6 +599,7 @@ void menu_rebuild(void)
     case PAGE_HOTKEYS: page_hotkeys(m); break;
     case PAGE_ABOUT: page_about(m); break;
     case PAGE_LOG: page_log(m); break;
+    case PAGE_BUTTONS: page_buttons(m); break;
     }
     m->sel = sel < m->n ? sel : (m->n ? m->n - 1 : 0);
     m->top = top;
@@ -659,7 +694,8 @@ void menu_draw(void)
     }
     int has_change = m->n && (m->items[m->sel].id == ACT_PROFILE || m->items[m->sel].id == ACT_THEME ||
                               m->items[m->sel].id == ACT_LED_COLOR || m->items[m->sel].id == ACT_LED_BRIGHT ||
-                              m->items[m->sel].id == ACT_IDLE);
+                              m->items[m->sel].id == ACT_IDLE || m->items[m->sel].id == ACT_KEY_ACTION ||
+                              m->items[m->sel].id == ACT_SWITCH_ACTION);
     app_footer(tr(has_change ? "menu.hints_change" : "menu.hints"));
 }
 
@@ -677,18 +713,7 @@ static void toggle_key(const char *sk)
         app_rescan();
 }
 
-static void cycle_profile(int dir)
-{
-    const char *p = tm_ini_get(&A.settings, "power", "profile", "auto");
-    int i = 0, n = (int)TM_ARRAY_LEN(k_profiles_ui);
-    for (int k = 0; k < n; k++)
-        if (strcmp(p, k_profiles_ui[k]) == 0)
-            i = k;
-    i = (i + dir + n) % n;
-    tm_ini_set(&A.settings, "power", "profile", k_profiles_ui[i]);
-    app_mark_settings();
-    LOGI("ui: power profile set to %s", k_profiles_ui[i]);
-}
+static void cycle_profile(int dir) { app_cycle_profile(dir); }
 
 static void restore_emulator(const char *emu_id)
 {
@@ -865,6 +890,23 @@ static void activate(MenuItem *it, TmButton b)
         }
         break;
     case ACT_FAV_ONLY: A.fav_only = !A.fav_only; break;
+    case ACT_KEY_ACTION: {
+        TmKeyAction a = tm_key_action_parse(tm_ini_get(&A.settings, "buttons", it->sarg, NULL),
+                                            strcmp(it->sarg, "f1") == 0 ? TM_KEY_FAVORITE : TM_KEY_RANDOM);
+        a = (TmKeyAction)(((int)a + (b == BTN_LEFT ? -1 : 1) + TM_KEY_COUNT) % TM_KEY_COUNT);
+        tm_ini_set(&A.settings, "buttons", it->sarg, tm_key_action_id(a));
+        app_mark_settings();
+        break;
+    }
+    case ACT_SWITCH_ACTION: {
+        TmSwitchAction a = tm_switch_action(&A.settings);
+        do /* skip "mute" when the firmware has no speaker mute file */
+            a = (TmSwitchAction)(((int)a + (b == BTN_LEFT ? -1 : 1) + TM_SWITCH_COUNT) % TM_SWITCH_COUNT);
+        while ((a == TM_SWITCH_MUTE && !tm_speaker_mute_available()) || (a == TM_SWITCH_LEDS_OFF && !A.leds.available));
+        tm_ini_set(&A.settings, "buttons", "switch", tm_switch_action_id(a));
+        app_mark_settings();
+        break;
+    }
     case ACT_SEARCH:
         if (b == BTN_A) {
             A.nmenus = 0;

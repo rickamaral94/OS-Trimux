@@ -80,3 +80,13 @@ def test_boot_counter_safe_mode(env):
     assert ctl(env, "boot", "begin", check=False).returncode == 10
     ctl(env, "boot", "ok")
     assert ctl(env, "boot", "begin", check=False).returncode == 0
+
+
+def test_atari_folders_are_found(env, card):
+    """Batocera-style lowercase folder for 2600 and stock-style A7800."""
+    write(os.path.join(card, "Roms/atari2600/Adventure (Homebrew).a26"), "")
+    write(os.path.join(card, "Roms/A7800/Homebrew.a78"), "")
+    ctl(env, "scan")
+    idx = read(os.path.join(card, "TriMuxData/cache/library.tsv"))
+    assert "A2600\tRoms/atari2600/Adventure (Homebrew).a26\tAdventure" in idx
+    assert "A7800\tRoms/A7800/Homebrew.a78" in idx

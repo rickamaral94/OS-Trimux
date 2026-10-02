@@ -39,7 +39,7 @@ cartão devolve o aparelho ao estado original.
 | ![Plataforma](docs/img/03-plataforma.png) | ![Emulador por jogo](docs/img/04-emulador.png) |
 |---|---|
 | ![Energia](docs/img/06-energia.png) | ![Informações](docs/img/08-informacoes.png) |
-| ![Seção PS2](docs/img/11-ps2.png) | ![Ports](docs/img/13-ports.png) |
+| ![Ports](docs/img/11-ports.png) | ![Botões extras](docs/img/12-botoes.png) |
 
 <sub>Capturas renderizadas no computador (SDL offscreen) com um Brick Pro
 simulado; não são fotos do aparelho.</sub>
@@ -73,6 +73,8 @@ firmware oficial: **[docs/INSTALACAO.md](docs/INSTALACAO.md)**.
 | Jogo | MENU + R1 / L1 | salvar / carregar estado |
 | Jogo | MENU + R2 / L2 | trocar posição do estado |
 | Jogo | MENU + X | avanço rápido |
+| Menu | F1 / F2 | ação configurável (padrão: favoritar / jogo surpresa) |
+| Sempre | chave lateral | configurável: modo economia, apagar LEDs ou silenciar (vale também nos jogos) |
 | Sempre | + / −, MENU + (+/−) | volume, brilho (firmware oficial) |
 | Sempre | POWER / POWER 6 s | suspender / desligar à força (firmware oficial) |
 | Ao ligar | segurar SELECT | abrir o sistema oficial |
@@ -92,7 +94,7 @@ firmware oficial: **[docs/INSTALACAO.md](docs/INSTALACAO.md)**.
 | Neo Geo Pocket, WonderSwan, Lynx, Atari 2600/7800 | RACE, Beetle WS, Handy, Stella 2014, ProSystem | — | incluído, não medido |
 | Ports: DOOM, Quake, Cave Story | PrBoom, TyrQuake, NXEngine | — | incluído, não medido ([docs/PORTS.md](docs/PORTS.md)) |
 | Ports por script (`.sh`, PortMaster) | shell do firmware | — | experimental, depende de cada port |
-| **PlayStation 2** | — | — | **não suportado** — seção visível no menu explicando a situação ([docs/PS2.md](docs/PS2.md)) |
+| **PlayStation 2** | — | — | **removido**: nenhum emulador viável neste hardware ([docs/PS2.md](docs/PS2.md)) |
 
 Formatos, nomes de pastas e BIOS: [docs/ESTRUTURA_CARTAO.md](docs/ESTRUTURA_CARTAO.md).
 Jogos, BIOS e firmware de consoles **não são incluídos**.

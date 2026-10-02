@@ -1,12 +1,9 @@
 # PlayStation 2 no TrimUI Brick Pro
 
-**Situação: não suportado. Nenhum emulador de PS2 está incluído.** A seção
-**PlayStation 2 (experimental)** fica sempre visível no menu inicial, com o selo
-EXPERIMENTAL e o texto abaixo resumido; abri-la mostra a explicação completa e a
-pasta (`Roms/PS2`) onde jogos seriam reconhecidos.
-
-![Seção PS2 no menu](img/11-ps2.png)
-![Seção PS2 aberta](img/12-ps2-lista.png)
+**Situação: removido.** O TriMux não tem plataforma, pasta, emulador nem
+entrada de menu para PlayStation 2. A análise abaixo fica registrada para
+justificar a decisão e servir de ponto de partida caso um emulador viável
+apareça.
 
 ## Requisitos e o que o aparelho oferece
 
@@ -25,16 +22,12 @@ pasta (`Roms/PS2`) onde jogos seriam reconhecidos.
 | AetherSX2 / NetherSX2 | Somente Android, código fechado. | Não é Linux; empacotar um APK como se fosse compatível seria enganoso (proibido pelo escopo). |
 | Play! (libretro `play_libretro`) | Sim, código aberto, usa OpenGL ES 3. | Não validado no aparelho. Mesmo em SoCs Android muito mais rápidos o desempenho é baixo para jogos 3D; com A53 a 1,8 GHz e 1 GB a expectativa é de velocidade bem abaixo de 100 % na maioria dos jogos. Compilar e distribuir sem medições seria anunciar suporte nominal. |
 
-## Integração modular deixada pronta
+## Se um dia houver um candidato viável
 
-* `systems.ini` tem a plataforma `PS2` (`experimental = 1`, pastas `PS2`/`ps2`,
-  extensões `iso, chd, cso, cue, elf`, BIOS obrigatória `scph39001.bin`).
-* `emulators.ini` tem a entrada `play` (`play_libretro.so`, perfil
-  "Desempenho seguro", marcada experimental).
-* Se alguém colocar um `play_libretro.so` compatível (aarch64, glibc ≤ 2.33)
-  em `TriMux/retroarch/cores/`, o TriMux passa a oferecê-lo **com aviso de
-  recurso experimental** antes de cada execução. Os limites de 1,8 GHz e a
-  proteção térmica continuam valendo.
+Adicionar o PS2 de volta exige só dados, sem código: uma seção `[PS2]` em
+`TriMux/share/systems.ini` e uma entrada do núcleo em `emulators.ini` (com
+`experimental = 1`, que faz o menu pedir confirmação). Antes disso, o núcleo
+precisa passar nas medições abaixo.
 
 ## Como testar, se você quiser medir
 

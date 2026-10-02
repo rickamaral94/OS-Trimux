@@ -70,6 +70,10 @@ Detalhes que importam:
 * Proteção térmica adicional: durante o jogo, se a CPU passar de 75 °C por
   30 s seguidos, o TriMux cai para Economia e volta abaixo de 65 °C. É uma
   camada extra; os limites do kernel continuam ativos.
+* O `keymon` oficial executa atalhos de FN configurados pelo usuário no
+  sistema oficial (por exemplo, "CPU clock switcher", que vai até 2,0 GHz). O
+  TriMux não altera a memória interna para desativá-los; em vez disso, confere
+  o limite a cada 10 s (menu e jogo) e o devolve ao perfil, registrando no log.
 * O serviço oficial `trimui_scened` **não é iniciado** pelo TriMux porque seus
   scripts de cena reescrevem os limites da CPU para 2,0 GHz a cada 5 s.
 * Sem `zram` no kernel e com o cartão montado com `sync`, o TriMux **não cria
@@ -78,10 +82,8 @@ Detalhes que importam:
 ## 4. PlayStation 2
 
 Conclusão: **não há emulador de PS2 compatível e utilizável neste aparelho**.
-Detalhes e critérios em [PS2.md](PS2.md). A seção "PlayStation 2
-(experimental)" fica sempre visível no menu, sem emulador incluído, e explica a
-limitação na própria interface; um núcleo compatível adicionado depois é
-reconhecido e marcado como experimental.
+Detalhes e critérios em [PS2.md](PS2.md). Por isso o PS2 foi **removido**
+do catálogo e do menu.
 
 ## 5. LEDs
 

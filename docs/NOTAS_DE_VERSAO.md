@@ -15,7 +15,11 @@ e desempenho reais ainda precisam ser confirmados no aparelho
   1.22.2 (GLES via SDL2 do firmware, ALSA, controle via `/dev/input/js*`).
 * Ports: DOOM (PrBoom), Quake (TyrQuake), Cave Story (NXEngine) e scripts `.sh`
   no estilo PortMaster (experimental).
-* Seção PlayStation 2 sempre visível, explicando por que não há emulador.
+* Botões extras configuráveis: F1/F2 (favoritar, jogo surpresa, busca,
+  recentes, menu rápido, trocar perfil, LEDs) e chave lateral (modo economia,
+  LEDs apagados ou alto-falante mudo, também durante o jogo).
+* Proteção do limite de CPU: se um atalho de FN do firmware oficial subir a
+  CPU (até 2,0 GHz), o TriMux devolve ao limite do perfil em até 10 s.
 * Troca de emulador por jogo ou por plataforma; restauração da configuração
   recomendada (arquiva, não apaga).
 * Perfis de energia com teto de 1,8 GHz, aplicados antes de cada jogo,
@@ -31,13 +35,15 @@ e desempenho reais ainda precisam ser confirmados no aparelho
 * Funciona **sobre** o firmware oficial (não é uma distribuição que inicializa
   sozinha pelo cartão). Mudanças futuras no firmware da TrimUI podem exigir
   ajustes.
+* F1/F2 não têm ação dentro dos jogos (no RetroArch todo atalho exige segurar
+  MENU); a chave lateral funciona também nos jogos.
 * Numeração de botões/eixos baseada em documentação comunitária da família
   TG5040; se algo estiver trocado, use *Controles › Testar controles* e ajuste
   `[input]` em `trimux.ini` (menu) ou remapeie no menu do RetroArch (jogos).
 * Volume e brilho são controlados pelas teclas do firmware (sem indicador na
   tela dentro do TriMux, porque o serviço de OSD oficial não é iniciado).
 * Bluetooth e Wi-Fi não são gerenciados pelo TriMux (use o sistema oficial).
-* PlayStation 2: sem emulador incluído (não há opção viável validada).
+* PlayStation 2: removido (nenhum emulador viável; análise em docs/PS2.md).
 * N64, PSP, Dreamcast e outros sistemas mais pesados não estão incluídos.
 * Sem swap: jogos de arcade muito grandes podem não caber na memória.
 * Snes9x 2005, PicoDrive, Genesis Plus GX e FinalBurn Neo têm licenças não

@@ -1,6 +1,7 @@
 /* TriMux menu: state, shared widgets, launch handoff and the main loop. */
 #define _GNU_SOURCE
 #include "app.h"
+#include "../core/buttons.h"
 #include "../core/launch.h"
 #include "../core/log.h"
 #include "../core/util.h"
@@ -180,7 +181,7 @@ void app_launch(long gi)
     const TmEmulator *em = app_resolve_emu(g, NULL);
     char msg[512];
     if (!em) {
-        snprintf(msg, sizeof msg, tr(sys->experimental ? "launch.no_emu_experimental" : "launch.no_emu"), sys->name);
+        snprintf(msg, sizeof msg, tr("launch.no_emu"), sys->name);
         app_dialog(DLG_INFO, tr("launch.cannot"), msg, 0, NULL, 1);
         return;
     }
@@ -210,6 +211,143 @@ void app_launch(long gi)
     save_ui_state();
     LOGI("ui: launch %s via %s", g->relpath, em->id);
     app_exit(EXIT_LAUNCH);
+}
+
+/* ------------------------------------------------------------ extra controls */
+
+void app_cycle_profile(int dir)
+{
+    static const char *const ids[] = {"auto", "economy", "balanced", "performance"};
+    const char *p = tm_ini_get(&A.settings, "power", "profile", "auto");
+    int i = 0, n = (int)TM_ARRAY_LEN(ids);
+    for (int k = 0; k < n; k++)
+        if (strcmp(p, ids[k]) == 0)
+            i = k;
+    i = (i + dir + n) % n;
+    tm_ini_set(&A.settings, "power", "profile", ids[i]);
+    app_mark_settings();
+    LOGI("ui: power profile set to %s", ids[i]);
+}
+
+static void leds_set_all(int off)
+{
+    for (size_t i = 0; i < A.leds.nzones; i++) {
+        char sec[32];
+        snprintf(sec, sizeof sec, "leds.%s", A.leds.zones[i].id);
+        TmLedSetting st = {
+            .on = off ? 0 : (int)tm_ini_get_long(&A.settings, sec, "on", 1),
+            .color = (unsigned)strtoul(tm_ini_get(&A.settings, sec, "color", "FFFFFF"), NULL, 16),
+            .brightness = (int)tm_ini_get_long(&A.settings, sec, "brightness", 60),
+            .effect = (int)tm_ini_get_long(&A.settings, sec, "effect", TM_LED_EFFECT_STATIC),
+        };
+        tm_leds_apply(&A.leds, A.leds.zones[i].id, &st);
+    }
+}
+
+void app_key_action(TmButton b)
+{
+    const char *key = b == BTN_F1 ? "f1" : "f2";
+    TmKeyAction a = tm_key_action_parse(tm_ini_get(&A.settings, "buttons", key, NULL),
+                                        b == BTN_F1 ? TM_KEY_FAVORITE : TM_KEY_RANDOM);
+    long gi = games_selected_index();
+    switch (a) {
+    case TM_KEY_QUICK:
+        A.menu_return = A.screen == SCR_MENU ? A.menu_return : A.screen;
+        menu_open(PAGE_QUICK, 0, NULL);
+        break;
+    case TM_KEY_FAVORITE:
+        if (gi >= 0) {
+            int r = tm_list_toggle(&A.fav, A.lib.games[gi].relpath);
+            tm_list_save(&A.fav, A.paths.favorites);
+            app_toast(tr(r == 1 ? "games.fav_added" : r == 0 ? "games.fav_removed" : "games.fav_full"));
+        } else {
+            app_toast(tr("keys.no_game"));
+        }
+        break;
+    case TM_KEY_SEARCH:
+        if (A.screen != SCR_GAMES)
+            games_open(VIEW_ALL);
+        keyboard_open(A.query, SCR_GAMES);
+        break;
+    case TM_KEY_RANDOM:
+        if (A.lib.count) {
+            if (A.screen != SCR_GAMES || A.nview == 0)
+                games_open(VIEW_ALL);
+            if (A.nview) {
+                A.games_sel = rand() % (int)A.nview;
+                app_toast(tr("keys.random_done"));
+            }
+        }
+        break;
+    case TM_KEY_RECENT: A.query[0] = '\0'; A.nmenus = 0; games_open(VIEW_RECENT); break;
+    case TM_KEY_POWER: {
+        if (!A.power.has_cpufreq) {
+            app_toast(tr("power.unavailable"));
+            break;
+        }
+        app_cycle_profile(1);
+        const char *p = tm_ini_get(&A.settings, "power", "profile", "auto");
+        char k[48], msg[128];
+        snprintf(k, sizeof k, strcmp(p, "auto") == 0 ? "power.auto" : "power.%s", p);
+        snprintf(msg, sizeof msg, "%s: %s", tr("power.profile"), tr(k));
+        app_toast(msg);
+        if (A.screen == SCR_MENU)
+            menu_rebuild();
+        break;
+    }
+    case TM_KEY_LEDS:
+        if (!A.leds.available) {
+            app_toast(tr("leds.unavailable"));
+            break;
+        }
+        {
+            int off = !tm_ini_get_long(&A.settings, "leds", "user_off", 0);
+            tm_ini_set_long(&A.settings, "leds", "user_off", off);
+            tm_ini_set_long(&A.settings, "leds", "managed", 1);
+            app_mark_settings();
+            leds_set_all(off);
+            app_toast(tr(off ? "keys.leds_off" : "keys.leds_on"));
+        }
+        break;
+    default:
+        break;
+    }
+}
+
+/* Called once per second: reacts to the side switch and keeps the CPU limit
+ * at or below the menu profile (firmware FN shortcuts can raise it). */
+void app_switch_tick(void)
+{
+    static int last = -2;
+    static int ticks;
+    TmSwitchAction now = tm_switch_active(&A.settings);
+    if (last == -2) {
+        last = now;
+    } else if ((int)now != last) {
+        TmSwitchAction before = (TmSwitchAction)last;
+        if ((before == TM_SWITCH_LEDS_OFF || now == TM_SWITCH_LEDS_OFF) && A.leds.available)
+            leds_set_all(now == TM_SWITCH_LEDS_OFF);
+        if ((before == TM_SWITCH_MUTE || now == TM_SWITCH_MUTE) && tm_speaker_mute_available())
+            tm_speaker_mute(now == TM_SWITCH_MUTE);
+        char k[48];
+        snprintf(k, sizeof k, "switch.toast.%s", tm_switch_action_id(now == TM_SWITCH_NONE ? before : now));
+        app_toast(now == TM_SWITCH_NONE ? tr("switch.toast.off") : tr(k));
+        LOGI("ui: side switch %s -> %s", tm_switch_action_id(before), tm_switch_action_id(now));
+        last = now;
+        if (A.screen == SCR_MENU)
+            menu_rebuild();
+    }
+    if (++ticks >= 10 && A.power.has_cpufreq) {
+        ticks = 0;
+        const TmPowerProfile *menu = tm_power_profile(now == TM_SWITCH_ECONOMY ? "economy" : TM_POWER_DEFAULT);
+        TmPowerTarget t;
+        long mx = -1;
+        if (tm_power_plan(&A.power, menu, &t) == 0 && tm_power_read(&A.power, NULL, NULL, &mx, NULL, 0) == 0 &&
+            mx > t.max_khz) {
+            LOGW("ui: CPU limit raised externally to %ld kHz, restoring %s", mx, menu->id);
+            tm_power_apply(&A.power, menu);
+        }
+    }
 }
 
 /* ------------------------------------------------------------ widgets */
@@ -390,6 +528,12 @@ static void dispatch(TmButton b)
         dialog_input(b);
         return;
     }
+    /* F1/F2 run the user's assigned action on the main screens; the
+     * controller test and text entry keep seeing them as plain buttons. */
+    if ((b == BTN_F1 || b == BTN_F2) && (A.screen == SCR_HOME || A.screen == SCR_GAMES || A.screen == SCR_MENU)) {
+        app_key_action(b);
+        return;
+    }
     switch (A.screen) {
     case SCR_HOME: home_input(b); break;
     case SCR_GAMES: games_input(b); break;
@@ -560,6 +704,7 @@ int app_main(int argc, char **argv)
             if (A.screen == SCR_INFO || A.screen == SCR_MENU)
                 A.dirty = 1;
             check_idle();
+            app_switch_tick();
         }
     }
     app_save_all();

@@ -51,6 +51,8 @@ def make_device(root, leds=True, cpufreq=True, brick_pro=True):
             write(os.path.join(root, "sys/class/led_anim", a), "0\n")
     write(os.path.join(root, "proc/meminfo"), "MemTotal: 1001012 kB\nMemAvailable: 702330 kB\nSwapTotal: 0 kB\nSwapFree: 0 kB\n")
     write(os.path.join(root, "etc/version"), "1.1.1\n")
+    write(os.path.join(root, "sys/class/gpio/gpio243/value"), "0\n")      # side switch
+    write(os.path.join(root, "sys/class/speaker/mute"), "0\n")
     model = b"Trimui Brick Pro\x00" if brick_pro else b"Trimui Brick\x00"
     write(os.path.join(root, "usr/trimui/bin/MainUI"), b"\x7fELF....." + model + b"....")
     return root

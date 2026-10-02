@@ -188,3 +188,29 @@ def test_port_script_runs_from_its_folder_with_limits(rig, env):
     ctl(rig["env"], "scan")
     idx = read(os.path.join(rig["card"], "TriMuxData/cache/library.tsv"))
     assert "Roms/PORTS/My Port.sh" in idx and "helper.sh" not in idx
+
+
+def test_side_switch_economy_overrides_profile(rig, env):
+    write(os.path.join(env["TRIMUX_SYSFS_ROOT"], "sys/class/gpio/gpio243/value"), "1\n")
+    os.makedirs(rig["tmp"], exist_ok=True)
+    write(os.path.join(rig["tmp"], "launch.ini"),
+          "[launch]\nsystem = GBA\nrom = Roms/GBA/Celeste Classic (World).gba\nemulator = gpsp\n")
+    write(os.path.join(rig["card"], "TriMuxData/config/trimux.ini"),
+          "[power]\nprofile = performance\n[buttons]\nswitch = economy\n")
+    scripted_ui(rig, [10, 20])
+    run_supervisor(rig)
+    assert read(os.path.join(rig["dir"], "ra_maxfreq")) == "1200000"
+
+
+def test_cpu_limit_raised_by_firmware_shortcut_is_restored(rig, env):
+    """Simulates keymon's FN 'CPU switcher' writing 2.0 GHz during a game."""
+    maxf = os.path.join(env["TRIMUX_SYSFS_ROOT"], POLICY, "scaling_max_freq")
+    write(os.path.join(rig["tm"], "retroarch", "retroarch"),
+          '#!/bin/sh\necho 2000000 > "%s"\nsleep 12\ncat "%s" > "$RIG_DIR/after"\nexit 0\n' % (maxf, maxf), 0o755)
+    os.makedirs(rig["tmp"], exist_ok=True)
+    write(os.path.join(rig["tmp"], "launch.ini"),
+          "[launch]\nsystem = FC\nrom = Roms/FC/Micro Mages (World).nes\nemulator = fceumm\n")
+    scripted_ui(rig, [10, 20])
+    run_supervisor(rig, timeout=60)
+    assert read(os.path.join(rig["dir"], "after")) == "1200000"
+    assert "limit raised externally" in read(os.path.join(rig["card"], "TriMuxData/logs/trimux.log"))

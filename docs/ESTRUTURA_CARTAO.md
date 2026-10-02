@@ -57,7 +57,6 @@ formato `Nome Longo (TAG)` de cartões MinUI/NextUI.
 | Quake | QUAKE | pak | TyrQuake | — |
 | Cave Story | CAVESTORY, NXENGINE | exe | NXEngine | — |
 | Ports (scripts) | PORTS | sh (só 1º nível) | shell do firmware (experimental) | — ver [PORTS.md](PORTS.md) |
-| PlayStation 2 (experimental) | PS2 | iso chd cso cue elf | nenhum incluído | `scph39001.bin` — veja [PS2.md](PS2.md) |
 
 Notas:
 

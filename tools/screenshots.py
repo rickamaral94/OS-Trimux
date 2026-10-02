@@ -23,9 +23,8 @@ SHOTS = [
     ("08-informacoes", "UP,A,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,A,A", True),
     ("09-busca", "Y,A", True),
     ("10-menu-rapido", "MENU", True),
-    ("11-ps2", "UP,UP", True),
-    ("12-ps2-lista", "UP,UP,A", True),
-    ("13-ports", "UP,UP,UP", True),
+    ("11-ports", "UP,UP", True),
+    ("12-botoes", "UP,A,DOWN,DOWN,A,DOWN,DOWN,A,DOWN,DOWN", True),
 ]
 
 

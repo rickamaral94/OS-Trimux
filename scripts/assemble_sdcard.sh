@@ -40,7 +40,7 @@ done
 cp src/ui/third_party/STB_COMMIT "$TM/licenses/stb_truetype-commit.txt"
 
 # One folder per platform (first name in systems.ini), so users see where
-# games go (except platforms marked create_folder = 0, e.g. PS2).
+# games go (except platforms marked create_folder = 0).
 python3 - "$TM/share/systems.ini" "$OUT/Roms" <<'EOF'
 import configparser, os, sys
 cp = configparser.ConfigParser(interpolation=None, strict=False)

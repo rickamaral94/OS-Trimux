@@ -44,7 +44,7 @@ void home_build(void)
     int show_empty = (int)tm_ini_get_long(&A.settings, "general", "show_empty", 0);
     for (size_t s = 0; s < A.cat.nsystems && g_n < TM_ARRAY_LEN(g_entries) - 1; s++) {
         size_t n = tm_library_count_system(&A.lib, (int)s);
-        /* experimental platforms (PS2, ports) are always listed so their status
+        /* experimental platforms (ports) are always listed so their status
          * is visible; others only with games unless "show empty" is on */
         if (n == 0 && !show_empty && !A.cat.systems[s].experimental)
             continue;

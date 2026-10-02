@@ -125,6 +125,9 @@ void app_mark_settings(void);
 void app_save_all(void);
 void app_refresh_sysinfo(int force);
 void app_rescan(void);
+void app_key_action(TmButton b);
+void app_switch_tick(void);
+void app_cycle_profile(int dir);
 void app_exit(int code);
 const TmEmulator *app_resolve_emu(const TmGame *g, int *is_override);
 void app_launch(long game_index);
@@ -174,7 +177,7 @@ enum {
     PAGE_SETTINGS = 1, PAGE_LANGUAGE, PAGE_APPEARANCE, PAGE_CONTROLS, PAGE_POWER, PAGE_LEDS, PAGE_LED_ZONE,
     PAGE_LIBRARY, PAGE_FOLDERS, PAGE_BIOS, PAGE_EMULATORS, PAGE_EMU_PLATFORM, PAGE_STORAGE, PAGE_SYSTEM,
     PAGE_QUICK, PAGE_GAME_OPTIONS, PAGE_EMU_CHOOSE, PAGE_HOTKEYS, PAGE_DISPLAY, PAGE_ABOUT, PAGE_LOG,
-    PAGE_ADD_GAMES,
+    PAGE_ADD_GAMES, PAGE_BUTTONS,
 };
 
 /* dialog ids */

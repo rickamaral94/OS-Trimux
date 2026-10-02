@@ -2,6 +2,7 @@
  *
  *   trimuxctl power list|status|apply <profile>|default
  *   trimuxctl leds detect|apply
+ *   trimuxctl switch                 show the side switch state and apply its LED/mute action
  *   trimuxctl sysinfo
  *   trimuxctl device                 exit 0 only on a TrimUI Brick Pro (TG4040) firmware
  *   trimuxctl scan
@@ -11,6 +12,7 @@
  *   trimuxctl card-grow              grow the mounted SD card (remounts read-only first)
  */
 #define _GNU_SOURCE
+#include "../core/buttons.h"
 #include "../core/catalog.h"
 #include "../core/fatgrow.h"
 #include "../core/ini.h"
@@ -117,6 +119,56 @@ static int cmd_power(int argc, char **argv)
     return tm_power_apply(&caps, p) == 0 ? 0 : 1;
 }
 
+/* Applies the user's LED settings; all_off forces every zone off (side
+ * switch "LEDs off"). Does nothing unless the user let TriMux manage LEDs. */
+static int leds_apply_settings(const TmIni *ini, int all_off)
+{
+    TmLeds leds;
+    if (tm_leds_detect(&leds) != 0)
+        return 2;
+    if (!tm_ini_get_long(ini, "leds", "managed", 0) && !all_off)
+        return 0; /* user never changed LEDs: leave firmware behaviour alone */
+    if (tm_ini_get_long(ini, "leds", "user_off", 0))
+        all_off = 1; /* turned off with an F1/F2 shortcut */
+    int rc = 0;
+    for (size_t i = 0; i < leds.nzones; i++) {
+        char sec[32];
+        snprintf(sec, sizeof sec, "leds.%s", leds.zones[i].id);
+        TmLedSetting st = {
+            .on = all_off ? 0 : (int)tm_ini_get_long(ini, sec, "on", 1),
+            .color = (unsigned)strtoul(tm_ini_get(ini, sec, "color", "FFFFFF"), NULL, 16),
+            .brightness = (int)tm_ini_get_long(ini, sec, "brightness", 60),
+            .effect = (int)tm_ini_get_long(ini, sec, "effect", TM_LED_EFFECT_STATIC),
+        };
+        rc |= tm_leds_apply(&leds, leds.zones[i].id, &st);
+    }
+    return rc ? 1 : 0;
+}
+
+/* Side switch side effects that are not about CPU (LEDs, speaker). */
+static void switch_effects(const TmIni *ini, TmSwitchAction now, TmSwitchAction before)
+{
+    if (now == before)
+        return;
+    if (before == TM_SWITCH_LEDS_OFF || now == TM_SWITCH_LEDS_OFF)
+        leds_apply_settings(ini, now == TM_SWITCH_LEDS_OFF);
+    if ((before == TM_SWITCH_MUTE || now == TM_SWITCH_MUTE) && tm_speaker_mute_available())
+        tm_speaker_mute(now == TM_SWITCH_MUTE);
+    LOGI("switch: %s -> %s", tm_switch_action_id(before), tm_switch_action_id(now));
+}
+
+static int cmd_switch(void)
+{
+    TmIni ini;
+    tm_settings_load(&ini, &P);
+    TmSwitchAction a = tm_switch_active(&ini);
+    printf("switch_raw=%d switch_on=%d action=%s active=%s\n", tm_switch_raw(), tm_switch_on(&ini),
+           tm_switch_action_id(tm_switch_action(&ini)), tm_switch_action_id(a));
+    switch_effects(&ini, a, TM_SWITCH_NONE);
+    tm_ini_free(&ini);
+    return 0;
+}
+
 static int cmd_leds(int argc, char **argv)
 {
     TmLeds leds;
@@ -134,24 +186,9 @@ static int cmd_leds(int argc, char **argv)
             return 2;
         TmIni ini;
         tm_settings_load(&ini, &P);
-        if (!tm_ini_get_long(&ini, "leds", "managed", 0)) {
-            tm_ini_free(&ini);
-            return 0; /* user never changed LEDs: leave firmware behaviour alone */
-        }
-        int rc = 0;
-        for (size_t i = 0; i < leds.nzones; i++) {
-            char sec[32];
-            snprintf(sec, sizeof sec, "leds.%s", leds.zones[i].id);
-            TmLedSetting s = {
-                .on = (int)tm_ini_get_long(&ini, sec, "on", 1),
-                .color = (unsigned)strtoul(tm_ini_get(&ini, sec, "color", "FFFFFF"), NULL, 16),
-                .brightness = (int)tm_ini_get_long(&ini, sec, "brightness", 60),
-                .effect = (int)tm_ini_get_long(&ini, sec, "effect", TM_LED_EFFECT_STATIC),
-            };
-            rc |= tm_leds_apply(&leds, leds.zones[i].id, &s);
-        }
+        int rc = leds_apply_settings(&ini, tm_switch_active(&ini) == TM_SWITCH_LEDS_OFF);
         tm_ini_free(&ini);
-        return rc ? 1 : 0;
+        return rc;
     }
     return 1;
 }
@@ -249,25 +286,53 @@ static int run_retroarch(const char *ra, const char *cfg, const char *append, co
     signal(SIGINT, forward_signal);
     TmThermalGuard g;
     tm_thermal_init(&g, 75000, 65000, 3);
+    TmIni ini;
+    tm_settings_load(&ini, &P);
+    const TmPowerProfile *economy = tm_power_profile("economy");
+    TmSwitchAction sw = tm_switch_active(&ini);
     int status = 0, tick = 0;
     for (;;) {
         pid_t w = waitpid(pid, &status, WNOHANG);
         if (w == pid || (w < 0 && errno != EINTR))
             break;
         sleep(1);
-        if (guard_on && ++tick >= 10) { /* one sysfs read every 10 s */
-            tick = 0;
+        /* side switch: one GPIO read per second */
+        TmSwitchAction now = tm_switch_active(&ini);
+        if (now != sw) {
+            switch_effects(&ini, now, sw);
+            if (have_power && !g.throttled)
+                tm_power_apply(caps, now == TM_SWITCH_ECONOMY ? economy : prof);
+            sw = now;
+        }
+        if (++tick < 10)
+            continue;
+        tick = 0; /* every 10 s: temperature and CPU limit enforcement */
+        const TmPowerProfile *want = (g.throttled || sw == TM_SWITCH_ECONOMY) ? economy : prof;
+        if (guard_on) {
             long t = tm_power_temp_mc(caps);
             int act = tm_thermal_step(&g, t);
             if (act == TM_THERMAL_THROTTLE && have_power) {
                 LOGW("thermal: %ld mC sustained, limiting to economy", t);
-                tm_power_apply(caps, tm_power_profile("economy"));
+                tm_power_apply(caps, economy);
+                continue;
             } else if (act == TM_THERMAL_RESTORE && have_power) {
-                LOGI("thermal: %ld mC, restoring profile %s", t, prof->id);
-                tm_power_apply(caps, prof);
+                want = sw == TM_SWITCH_ECONOMY ? economy : prof;
+                LOGI("thermal: %ld mC, restoring profile %s", t, want->id);
+                tm_power_apply(caps, want);
+                continue;
             }
         }
+        /* Firmware FN shortcuts (keymon) can raise the CPU limit up to
+         * 2.0 GHz behind our back; put the profile's limit back. */
+        TmPowerTarget tgt;
+        long cur_max = -1;
+        if (have_power && tm_power_plan(caps, want, &tgt) == 0 &&
+            tm_power_read(caps, NULL, NULL, &cur_max, NULL, 0) == 0 && cur_max > tgt.max_khz) {
+            LOGW("power: limit raised externally to %ld kHz, restoring %s", cur_max, want->id);
+            tm_power_apply(caps, want);
+        }
     }
+    tm_ini_free(&ini);
     g_child = 0;
     *elapsed_ms = tm_now_ms() - t0;
     return WIFEXITED(status) ? WEXITSTATUS(status) : 128 + (WIFSIGNALED(status) ? WTERMSIG(status) : 0);
@@ -308,7 +373,7 @@ static int cmd_launch(void)
     int have_power = tm_power_detect(&caps) == 0;
     const TmPowerProfile *prof = tm_power_profile(chosen_profile(l.emu));
     if (have_power)
-        tm_power_apply(&caps, prof);
+        tm_power_apply(&caps, tm_switch_active(&ini) == TM_SWITCH_ECONOMY ? tm_power_profile("economy") : prof);
     int guard_on = (int)tm_ini_get_long(&ini, "power", "thermal_guard", 1) && caps.has_temp;
     tm_ini_free(&ini);
 
@@ -463,6 +528,8 @@ int main(int argc, char **argv)
         return cmd_power(argc - 2, argv + 2);
     if (strcmp(c, "leds") == 0)
         return cmd_leds(argc - 2, argv + 2);
+    if (strcmp(c, "switch") == 0)
+        return cmd_switch();
     if (strcmp(c, "sysinfo") == 0)
         return cmd_sysinfo();
     if (strcmp(c, "device") == 0) /* 0 only on a TrimUI Brick Pro firmware */
