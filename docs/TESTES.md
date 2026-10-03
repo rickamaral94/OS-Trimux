@@ -80,6 +80,7 @@ Marque com data, firmware, versão do TriMux e observações ao executar.
 | H53 | "Luzes: Apagadas" em *Configurações › LEDs* apaga tudo na hora e continua apagado depois de mudar o volume | pendente |
 | H54 | Capas baixadas continuam em `Imgs/` depois de reiniciar, desligar pelo menu e atualizar pelo menu; nenhum `FSCK*.REC` aparece na raiz do cartão | pendente |
 | H55 | *LEDs › Todas as luzes*: mudar a cor muda todas as zonas ao mesmo tempo; depois uma zona sozinha ainda pode ter outra cor | pendente |
+| H56 | Jogo com nome em japonês ou chinês (ex.: `0001 ゼルダの伝説.nes`) aparece com os caracteres certos na lista e no painel, sem `?` | pendente |
 | H47 | Tela de início do TriMux aparece logo depois do logotipo da TrimUI e enquanto os jogos são indexados | pendente |
 | H15 | Primeiro boot de um cartão de 32 GB e de 128 GB gravado com a imagem: expansão automática, um reinício, aviso com o espaço total; `chkdsk`/`fsck` limpo depois. Repetir pela opção do menu num cartão regravado | pendente |
 | H16 | Cartão cheio: aviso em Armazenamento; salvar estado falha sem corromper | pendente |

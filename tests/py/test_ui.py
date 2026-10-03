@@ -299,3 +299,30 @@ def test_profile_locked_while_boost_switch_is_on(env):
     write(gpio, "0\n")                                       # switch off: free again
     assert ui(env, POWER + ",RIGHT,B,B,B").returncode == 0
     assert "profile = balanced" not in read(cfg)
+
+
+CJK_FONTS = (os.environ.get("TRIMUX_TEST_CJK_FONT", ""), "/usr/share/fonts/truetype/fonts-japanese-gothic.ttf", "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+             "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc")
+
+
+def test_japanese_names_use_the_firmware_font(env, tmp_path):
+    """Names the menu font lacks are drawn with the firmware's full.ttf
+    instead of '?' (a host CJK font stands in for it)."""
+    import shutil
+    src = next((f for f in CJK_FONTS if os.path.exists(f)), None)
+    if not src:
+        pytest.skip("no CJK font on this system")
+    sd, dev = env["TRIMUX_SDCARD"], env["TRIMUX_SYSFS_ROOT"]
+    write(os.path.join(sd, "Roms/GBA/ゼルダの伝説.gba"), "")
+    write(os.path.join(sd, "Roms/GBA/ゼルダの伝説 2.gba"), "")
+    without, with_ = str(tmp_path / "without.bmp"), str(tmp_path / "with.bmp")
+    assert ui(env, "DOWN,A,shot=%s" % without).returncode == 0
+    os.makedirs(os.path.join(dev, "usr/trimui/res"), exist_ok=True)
+    shutil.copy(src, os.path.join(dev, "usr/trimui/res/full.ttf"))
+    assert ui(env, "DOWN,A,shot=%s" % with_).returncode == 0
+
+    def rows(path):   # the game list (left), below the header, above the footer
+        return [[bmp_pixel(path, x, y) for x in range(40, 480, 3)] for y in range(100, 680, 3)]
+    a, b = rows(without), rows(with_)
+    assert a != b                                   # the Japanese names changed ...
+    assert sum(ra != rb for ra, rb in zip(a, b)) < len(a) // 2   # ... and only those rows
