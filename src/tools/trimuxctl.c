@@ -1,7 +1,7 @@
 /* trimuxctl — TriMux command-line helper used by the boot scripts.
  *
  *   trimuxctl power list|status|apply <profile>|default
- *   trimuxctl leds detect|apply
+ *   trimuxctl leds detect|apply|keep <pid>
  *   trimuxctl switch                 show the side switch state and apply its LED/mute action
  *   trimuxctl sysinfo
  *   trimuxctl device                 exit 0 only on a TrimUI Brick Pro (TG4040) firmware
@@ -37,6 +37,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mount.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
@@ -128,30 +129,109 @@ static int cmd_power(int argc, char **argv)
     return tm_power_apply(&caps, p) == 0 ? 0 : 1;
 }
 
-/* Applies the user's LED settings; all_off forces every zone off (side
- * switch "LEDs off"). Does nothing unless the user let TriMux manage LEDs. */
-static int leds_apply_settings(const TmIni *ini, int all_off)
+/* What each zone should show: the user's settings, or all off (side switch
+ * "LEDs off", or turned off with an F1/F2 shortcut). */
+static void leds_desired(const TmIni *ini, const TmLeds *leds, int all_off, TmLedSetting *out)
 {
-    TmLeds leds;
-    if (tm_leds_detect(&leds) != 0)
-        return 2;
-    if (!tm_ini_get_long(ini, "leds", "managed", 0) && !all_off)
-        return 0; /* user never changed LEDs: leave firmware behaviour alone */
     if (tm_ini_get_long(ini, "leds", "user_off", 0))
-        all_off = 1; /* turned off with an F1/F2 shortcut */
-    int rc = 0;
-    for (size_t i = 0; i < leds.nzones; i++) {
+        all_off = 1;
+    for (size_t i = 0; i < leds->nzones; i++) {
         char sec[32];
-        snprintf(sec, sizeof sec, "leds.%s", leds.zones[i].id);
-        TmLedSetting st = {
+        snprintf(sec, sizeof sec, "leds.%s", leds->zones[i].id);
+        out[i] = (TmLedSetting){
             .on = all_off ? 0 : (int)tm_ini_get_long(ini, sec, "on", 1),
             .color = (unsigned)strtoul(tm_ini_get(ini, sec, "color", "FFFFFF"), NULL, 16),
             .brightness = (int)tm_ini_get_long(ini, sec, "brightness", 60),
             .effect = (int)tm_ini_get_long(ini, sec, "effect", TM_LED_EFFECT_STATIC),
         };
-        rc |= tm_leds_apply(&leds, leds.zones[i].id, &st);
     }
-    return rc ? 1 : 0;
+}
+
+/* Applies the user's LED settings; all_off forces every zone off. Does
+ * nothing unless the user let TriMux manage LEDs. only_changed: rewrite only
+ * zones whose state differs from the setting (or is not reported), so a
+ * running effect is not restarted. Returns the number of zones written. */
+static int leds_apply_settings_ex(const TmIni *ini, const TmLeds *leds, int all_off, int only_changed, int *err)
+{
+    if (!tm_ini_get_long(ini, "leds", "managed", 0) && !all_off)
+        return 0; /* user never changed LEDs: leave firmware behaviour alone */
+    TmLedSetting want[TM_LED_MAX_ZONES];
+    leds_desired(ini, leds, all_off, want);
+    int written = 0, any_on = 0;
+    for (size_t i = 0; i < leds->nzones; i++) {
+        any_on |= want[i].on;
+        /* unknown (driver does not report): rewritten only when forced, so
+         * a breathing effect is not restarted every check */
+        if (only_changed && tm_leds_matches(leds, leds->zones[i].id, &want[i]) != 0)
+            continue;
+        if (tm_leds_apply(leds, leds->zones[i].id, &want[i]) != 0 && err)
+            *err = 1;
+        written++;
+    }
+    /* everything off: the firmware's master switch too (the strongest off) */
+    if (!any_on && tm_leds_master(leds, 0) != 0 && err)
+        *err = 1;
+    return written;
+}
+
+static int leds_apply_settings(const TmIni *ini, int all_off)
+{
+    TmLeds leds;
+    if (tm_leds_detect(&leds) != 0)
+        return 2;
+    int err = 0;
+    leds_apply_settings_ex(ini, &leds, all_off, 0, &err);
+    return err ? 1 : 0;
+}
+
+static long file_mtime(const char *path)
+{
+    struct stat st;
+    return stat(path, &st) == 0 ? (long)st.st_mtime : 0;
+}
+
+/* trimuxctl leds keep <pid>: while process <pid> (the supervisor) lives,
+ * keeps the LEDs as the user chose. The firmware's keymon and
+ * hardwareservice, which TriMux runs for the keys and battery warnings,
+ * re-apply the stock LED settings from /mnt/UDISK/system.json whenever that
+ * file changes (keymon itself rewrites it on every volume change). Checked
+ * every 2 s, reading the driver back, so unchanged zones are not touched. */
+static int cmd_leds_keep(pid_t watch)
+{
+    TmLeds leds;
+    if (tm_leds_detect(&leds) != 0)
+        return 2;
+    char pidf[TM_PATH_MAX], sysjson[TM_PATH_MAX], buf[32];
+    tm_path_join(pidf, sizeof pidf, P.tmp, "leds-keep.pid");
+    long other = 0;
+    if (tm_read_long(pidf, &other) == 0 && other > 1 && other != getpid() && kill((pid_t)other, 0) == 0)
+        return 0; /* already running */
+    snprintf(buf, sizeof buf, "%d\n", (int)getpid());
+    tm_atomic_write(pidf, buf, strlen(buf));
+    tm_fw_path(sysjson, sizeof sysjson, "/mnt/UDISK/system.json");
+    long seen = file_mtime(sysjson);
+    LOGI("leds: keeping the user's LED settings (watching pid %d)", (int)watch);
+    while (watch <= 1 || kill(watch, 0) == 0) {
+        sleep(2);
+        TmIni ini;
+        tm_settings_load(&ini, &P);
+        int bat = -1, chg = -1;
+        tm_battery_read(&bat, &chg);
+        long now = file_mtime(sysjson);
+        int force = now != seen; /* the stock settings were just re-applied */
+        seen = now;
+        if (bat >= 0 && bat <= 10 && chg != 1) {
+            /* the firmware's low-battery warning (red LEDs) has priority */
+        } else {
+            int err = 0;
+            int n = leds_apply_settings_ex(&ini, &leds, tm_switch_active(&ini) == TM_SWITCH_LEDS_OFF, !force, &err);
+            if (n > 0)
+                LOGD("leds: %d zone(s) restored%s", n, force ? " after a firmware settings change" : "");
+        }
+        tm_ini_free(&ini);
+    }
+    unlink(pidf);
+    return 0;
 }
 
 /* Side switch side effects that are not about CPU (LEDs, speaker). */
@@ -193,6 +273,8 @@ static int cmd_leds(int argc, char **argv)
                    leds.zones[i].has_brightness ? leds.zones[i].brightness_attr : "no");
         return ok ? 0 : 2;
     }
+    if (strcmp(sub, "keep") == 0)
+        return ok ? cmd_leds_keep(argc > 1 ? (pid_t)atol(argv[1]) : getppid()) : 2;
     if (strcmp(sub, "apply") == 0) {
         if (!ok)
             return 2;

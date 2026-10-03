@@ -1,3 +1,21 @@
+# TriMux 0.4.2 (pré-lançamento)
+
+**Estado: não testado em um Brick Pro físico.** Correções da 0.4.1:
+
+* **LEDs voltavam ao padrão da TrimUI:** o serviço `keymon` do firmware, que o
+  TriMux mantém para volume, brilho e botão POWER, reaplica as opções de LED
+  do sistema oficial sempre que o arquivo de configurações dele muda. Ele
+  próprio regrava esse arquivo a cada ajuste de volume. Agora, com
+  "Controlar LEDs" ligado, o TriMux confere os LEDs a cada 2 s e põe de volta
+  a sua escolha, tanto no menu quanto nos jogos. Só reescreve o que mudou, sem
+  reiniciar efeitos. Apagar os LEDs também desliga a chave geral do firmware,
+  e os LEDs ficam escuros de verdade. Com bateria abaixo de 10% e sem
+  carregador, o aviso vermelho do firmware tem prioridade.
+* **2,0 GHz pela chave lateral:** com a chave ligada, o perfil de energia
+  aparece como "Desempenho máximo (2,0 GHz)" e fica travado no menu, no menu
+  rápido e no atalho F1/F2. Ao desligar a chave, a escolha volta a ficar
+  livre.
+
 # TriMux 0.4.1 (pré-lançamento)
 
 **Estado: não testado em um Brick Pro físico.** Correções da 0.4.0:

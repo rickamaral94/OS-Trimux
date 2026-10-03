@@ -256,3 +256,57 @@ def test_card_device_found_by_mount_name_or_sysfs(env):
     write(os.path.join(blk, "mmcblk1p1", "partition"), "2\n")
     r = ctl(env, "card-grow", "--dry-run", check=False)
     assert r.returncode == 1 and "not a partitioned card" in r.stderr
+
+
+def test_leds_keep_restores_after_firmware_override(env, device, card):
+    import subprocess
+    import time
+    from conftest import CTL
+    led = os.path.join(device, "sys/class/led_anim")
+    write(os.path.join(card, "TriMuxData/config/trimux.ini"),
+          "[leds]\nmanaged = 1\n[leds.m]\ncolor = 00FF00\nbrightness = 30\neffect = 4\n")
+    sysjson = os.path.join(device, "mnt/UDISK/system.json")
+    write(sysjson, '{"ledswitch": 0}\n')
+    holder = subprocess.Popen(["sleep", "30"])
+    keep = subprocess.Popen([CTL, "leds", "keep", str(holder.pid)], env=env)
+    try:
+        def wait_for(path, value, timeout=8):
+            end = time.time() + timeout
+            while time.time() < end:
+                if read(path) == value:
+                    return True
+                time.sleep(0.2)
+            return False
+        assert wait_for(os.path.join(led, "effect_m"), "4")
+        # keymon re-applies the stock settings after rewriting system.json
+        write(os.path.join(led, "enable"), "0\n")
+        write(os.path.join(led, "effect_m"), "0\n")
+        write(os.path.join(led, "max_scale"), "5\n")
+        os.utime(sysjson, (time.time() + 5, time.time() + 5))
+        assert wait_for(os.path.join(led, "effect_m"), "4")
+        assert wait_for(os.path.join(led, "enable"), "1")
+        assert read(os.path.join(led, "max_scale")) == "30"
+        assert read(os.path.join(led, "effect_rgb_hex_m")) == "00FF00"
+        # the user turns every zone off: zones dark and the master switch off
+        cfg = "[leds]\nmanaged = 1\nuser_off = 1\n"
+        write(os.path.join(card, "TriMuxData/config/trimux.ini"), cfg)
+        assert wait_for(os.path.join(led, "enable"), "0")
+        assert read(os.path.join(led, "effect_m")) == "0"
+        assert read(os.path.join(led, "effect_rgb_hex_m")) == "000000"
+    finally:
+        holder.kill()
+        holder.wait()
+    assert keep.wait(timeout=10) == 0      # stops with the process it watches
+
+
+def test_leds_keep_leaves_firmware_alone_when_not_managed(env, device):
+    import subprocess
+    import time
+    from conftest import CTL
+    led = os.path.join(device, "sys/class/led_anim")
+    write(os.path.join(led, "effect_m"), "6\n")             # e.g. the low-battery breathing
+    holder = subprocess.Popen(["sleep", "4"])
+    keep = subprocess.Popen([CTL, "leds", "keep", str(holder.pid)], env=env)
+    holder.wait()
+    assert keep.wait(timeout=10) == 0
+    assert read(os.path.join(led, "effect_m")) == "6"
