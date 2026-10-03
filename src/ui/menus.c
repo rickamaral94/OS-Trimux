@@ -288,6 +288,10 @@ static void page_leds(Menu *m)
     add(m, ACT_LED_POWER, tr("leds.power"), tr(lit ? "leds.power.on" : "leds.power.off"), tr("leds.power.desc"));
     add(m, ACT_LED_MANAGED, tr("leds.managed"), tr(setting_long("leds", "managed", 0) ? "leds.managed.trimux" : "leds.managed.stock"),
         tr("leds.managed.desc"));
+    if (A.leds.nzones > 1) {
+        MenuItem *all = add_page(m, PAGE_LED_ZONE, tr("leds.all"), tr("leds.all.desc"));
+        tm_strlcpy(all->sarg, "*", sizeof all->sarg);
+    }
     for (size_t i = 0; i < A.leds.nzones; i++) {
         MenuItem *it = add_page(m, PAGE_LED_ZONE, tr(A.leds.zones[i].name_key), tr("leds.zone.desc"));
         tm_strlcpy(it->sarg, A.leds.zones[i].id, sizeof it->sarg);
@@ -302,29 +306,37 @@ static const char *color_name(unsigned rgb)
     return tr("color.custom");
 }
 
+/* "*" is every zone at once: the page shows the first zone's values and a
+ * change sets that same value on all of them. */
+static int led_all(const char *id) { return id && strcmp(id, "*") == 0; }
+
 static void page_led_zone(Menu *m)
 {
-    const TmLedZone *z = tm_leds_zone(&A.leds, m->sctx);
+    int all = led_all(m->sctx);
+    const TmLedZone *z = all ? (A.leds.nzones ? &A.leds.zones[0] : NULL) : tm_leds_zone(&A.leds, m->sctx);
     if (!z)
         return;
-    tm_strlcpy(m->title, tr(z->name_key), sizeof m->title);
+    tm_strlcpy(m->title, tr(all ? "leds.all" : z->name_key), sizeof m->title);
+    int has_brightness = z->has_brightness;
+    for (size_t i = 0; all && i < A.leds.nzones; i++)
+        has_brightness |= A.leds.zones[i].has_brightness;
     TmLedSetting s;
     led_setting(z->id, &s);
     MenuItem *it = add(m, ACT_LED_ON, tr("leds.on"), onoff(s.on), tr("leds.on.desc"));
-    tm_strlcpy(it->sarg, z->id, sizeof it->sarg);
+    tm_strlcpy(it->sarg, all ? "*" : z->id, sizeof it->sarg);
     it = add(m, ACT_LED_COLOR, tr("leds.color"), color_name(s.color), tr("leds.color.desc"));
-    tm_strlcpy(it->sarg, z->id, sizeof it->sarg);
+    tm_strlcpy(it->sarg, all ? "*" : z->id, sizeof it->sarg);
     it->badge_color = s.color;
     tm_strlcpy(it->badge, " ", sizeof it->badge);
     char v[16];
     snprintf(v, sizeof v, "%d%%", s.brightness);
-    it = add(m, ACT_LED_BRIGHT, tr("leds.brightness"), z->has_brightness ? v : tr("common.na"),
-             tr(z->has_brightness ? "leds.brightness.desc" : "leds.brightness.na"));
-    it->enabled = z->has_brightness;
-    tm_strlcpy(it->sarg, z->id, sizeof it->sarg);
+    it = add(m, ACT_LED_BRIGHT, tr("leds.brightness"), has_brightness ? v : tr("common.na"),
+             tr(has_brightness ? "leds.brightness.desc" : "leds.brightness.na"));
+    it->enabled = has_brightness;
+    tm_strlcpy(it->sarg, all ? "*" : z->id, sizeof it->sarg);
     it = add(m, ACT_LED_EFFECT, tr("leds.effect"), tr(s.effect == TM_LED_EFFECT_BREATHE ? "leds.effect.breathe" : "leds.effect.static"),
              tr("leds.effect.desc"));
-    tm_strlcpy(it->sarg, z->id, sizeof it->sarg);
+    tm_strlcpy(it->sarg, all ? "*" : z->id, sizeof it->sarg);
 }
 
 static void page_library(Menu *m)
@@ -1549,7 +1561,10 @@ static void activate(MenuItem *it, TmButton b)
     case ACT_LED_BRIGHT:
     case ACT_LED_EFFECT: {
         TmLedSetting s;
-        led_setting(it->sarg, &s);
+        int all = led_all(it->sarg);
+        if (all && !A.leds.nzones)
+            return;
+        led_setting(all ? A.leds.zones[0].id : it->sarg, &s);
         if (it->id == ACT_LED_ON)
             s.on = !s.on;
         else if (it->id == ACT_LED_COLOR) {
@@ -1564,7 +1579,23 @@ static void activate(MenuItem *it, TmButton b)
         } else {
             s.effect = s.effect == TM_LED_EFFECT_STATIC ? TM_LED_EFFECT_BREATHE : TM_LED_EFFECT_STATIC;
         }
-        led_store(it->sarg, &s);
+        if (!all) {
+            led_store(it->sarg, &s);
+            break;
+        }
+        for (size_t i = 0; i < A.leds.nzones; i++) { /* the changed value on every zone */
+            TmLedSetting zs;
+            led_setting(A.leds.zones[i].id, &zs);
+            if (it->id == ACT_LED_ON)
+                zs.on = s.on;
+            else if (it->id == ACT_LED_COLOR)
+                zs.color = s.color;
+            else if (it->id == ACT_LED_BRIGHT)
+                zs.brightness = s.brightness;
+            else
+                zs.effect = s.effect;
+            led_store(A.leds.zones[i].id, &zs);
+        }
         break;
     }
     case ACT_RESCAN: if (b == BTN_A) app_rescan(); break;

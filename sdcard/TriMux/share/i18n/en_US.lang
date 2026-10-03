@@ -635,3 +635,5 @@ apps.builtin = App from the stock TrimUI system.
 apps.installed = Installed app.
 osd.volume = Volume
 osd.brightness = Brightness
+leds.all = All lights
+leds.all.desc = Color, brightness and effect for every light at once. Each one can still be adjusted separately below.

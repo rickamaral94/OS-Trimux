@@ -1,6 +1,6 @@
 # TriMux 0.4.4 (pré-lançamento)
 
-**Estado: não testado em um Brick Pro físico.** Correção da 0.4.3:
+**Estado: não testado em um Brick Pro físico.** Correção da 0.4.3 e um ajuste novo nas luzes:
 
 * **Capas sumindo depois de reiniciar:** o firmware da TrimUI verifica o
   cartão a cada boot (`fsck.fat -p`). Arquivos que ainda não estavam
@@ -13,6 +13,9 @@
   automático garante isso a cada versão.
 * Capas perdidas antes desta versão precisam ser baixadas de novo:
   *Configurações › Biblioteca › Capas dos jogos › Baixar capas agora*.
+* **Todas as luzes de uma vez:** em *Configurações › LEDs*, a nova entrada
+  *Todas as luzes* muda cor, brilho, efeito ou liga/desliga em todas as zonas
+  juntas. Depois dá para ajustar cada zona separadamente, como antes.
 
 # TriMux 0.4.3 (pré-lançamento)
 

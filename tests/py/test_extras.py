@@ -158,3 +158,15 @@ def test_led_master_switch_turns_everything_off_now(env):
     assert ui(env, LEDS + ",A,B,B").returncode == 0                 # and back on
     assert "user_off = 0" in read(os.path.join(env["TRIMUX_SDCARD"], "TriMuxData/config/trimux.ini"))
     assert read(os.path.join(led, "effect_m")) == "4" and read(os.path.join(led, "enable")) == "1"
+
+
+@needs_ui
+def test_all_lights_sets_every_zone_at_once(env):
+    led = os.path.join(env["TRIMUX_SYSFS_ROOT"], "sys/class/led_anim")
+    # "Todas as luzes" (third row) -> Cor (second row) -> next colour
+    assert ui(env, LEDS + ",DOWN,DOWN,A,DOWN,RIGHT,B,B,B").returncode == 0
+    cfg = read(os.path.join(env["TRIMUX_SDCARD"], "TriMuxData/config/trimux.ini"))
+    colors = [l.split("=")[1].strip() for l in cfg.splitlines() if l.startswith("color =")]
+    assert len(colors) >= 4 and len(set(colors)) == 1 and colors[0] != "FFFFFF"
+    hexes = {read(os.path.join(led, "effect_rgb_hex_%s" % z)).strip().upper() for z in ("m", "lr", "f1", "f2", "rear")}
+    assert hexes == {colors[0]}
