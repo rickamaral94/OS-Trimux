@@ -3,11 +3,14 @@
 #include "app.h"
 #include "../core/buttons.h"
 #include "../core/launch.h"
+#include "../core/clock.h"
 #include "../core/log.h"
+#include "../core/net.h"
 #include "../core/update.h"
 #include "../core/util.h"
 
 #include <stdio.h>
+#include <sys/stat.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -246,7 +249,7 @@ void app_cycle_profile(int dir)
     LOGI("ui: power profile set to %s", ids[i]);
 }
 
-static void leds_set_all(int off)
+void app_leds_set_all(int off)
 {
     for (size_t i = 0; i < A.leds.nzones; i++) {
         char sec[32];
@@ -259,6 +262,8 @@ static void leds_set_all(int off)
         };
         tm_leds_apply(&A.leds, A.leds.zones[i].id, &st);
     }
+    if (off)
+        tm_leds_master(&A.leds, 0); /* the firmware's master switch too: really dark */
 }
 
 void app_key_action(TmButton b)
@@ -327,7 +332,7 @@ void app_key_action(TmButton b)
             tm_ini_set_long(&A.settings, "leds", "managed", 1);
             app_mark_settings();
             app_save_all(); /* "trimuxctl leds keep" restores what is saved */
-            leds_set_all(off);
+            app_leds_set_all(off);
             app_toast(tr(off ? "keys.leds_off" : "keys.leds_on"));
         }
         break;
@@ -348,7 +353,7 @@ void app_switch_tick(void)
     } else if ((int)now != last) {
         TmSwitchAction before = (TmSwitchAction)last;
         if ((before == TM_SWITCH_LEDS_OFF || now == TM_SWITCH_LEDS_OFF) && A.leds.available)
-            leds_set_all(now == TM_SWITCH_LEDS_OFF);
+            app_leds_set_all(now == TM_SWITCH_LEDS_OFF);
         if ((before == TM_SWITCH_MUTE || now == TM_SWITCH_MUTE) && tm_speaker_mute_available())
             tm_speaker_mute(now == TM_SWITCH_MUTE);
         if (A.power.has_cpufreq && (before == TM_SWITCH_BOOST || now == TM_SWITCH_BOOST || before == TM_SWITCH_ECONOMY ||
@@ -531,6 +536,76 @@ static void draw_toast(void)
     gfx_text(FONT_S, gfx_w() / 2, y + (h - gfx_font_height(FONT_S)) / 2, t->text, ALIGN_CENTER, 0, A.toast);
 }
 
+/* ------------------------------------------------------------ volume / brightness indicator */
+
+/* The firmware's keymon service handles the volume and brightness keys and
+ * saves the new level in /mnt/UDISK/system.json right away ("vol" 0..20,
+ * "brightness"). The stock on-screen indicator (trimui_osdd) is not started
+ * under TriMux, so the menu shows its own when those values change. */
+typedef struct {
+    int kind; /* 0 volume, 1 brightness */
+    int value, max, dir;
+    uint64_t until;
+} Osd;
+static Osd g_osd;
+
+static int json_int(const char *js, const char *key)
+{
+    char k[32];
+    snprintf(k, sizeof k, "\"%s\"", key);
+    const char *p = strstr(js, k);
+    return p && (p = strchr(p + strlen(k), ':')) ? atoi(p + 1) : -1;
+}
+
+static void osd_poll(void)
+{
+    static long last_mtime = -1;
+    static int vol = -1, bri = -1;
+    char path[TM_PATH_MAX];
+    struct stat st;
+    if (tm_fw_path(path, sizeof path, "/mnt/UDISK/system.json") != 0 || stat(path, &st) != 0)
+        return;
+    if ((long)st.st_mtime == last_mtime && last_mtime != -1 && st.st_mtime != time(NULL))
+        return; /* unchanged (re-read during the current second: mtime has 1 s resolution) */
+    last_mtime = (long)st.st_mtime;
+    char *js = tm_read_file(path, 65536, NULL);
+    if (!js)
+        return;
+    int v = json_int(js, "vol"), b = json_int(js, "brightness");
+    free(js);
+    if (vol >= 0 && v >= 0 && v != vol)
+        g_osd = (Osd){0, v, 20, v > vol ? 1 : -1, tm_now_ms() + 1500};
+    else if (bri >= 0 && b >= 0 && b != bri)
+        g_osd = (Osd){1, b, b > 10 ? 20 : 10, b > bri ? 1 : -1, tm_now_ms() + 1500};
+    if (v >= 0)
+        vol = v;
+    if (b >= 0)
+        bri = b;
+    if (g_osd.until > tm_now_ms())
+        A.dirty = 1;
+}
+
+static void draw_osd(void)
+{
+    if (tm_now_ms() >= g_osd.until)
+        return;
+    const TmTheme *t = gfx_theme();
+    int h = gfx_h(), w = h * 560 / 768, bh = h * 104 / 768;
+    int x = (gfx_w() - w) / 2, y = h * 88 / 768;
+    gfx_round_rect(x, y, w, bh, h * 14 / 768, t->panel2);
+    char label[64], val[32];
+    snprintf(label, sizeof label, "%s %s", tr(g_osd.kind ? "osd.brightness" : "osd.volume"),
+             g_osd.dir > 0 ? "▲" : "▼");
+    snprintf(val, sizeof val, "%d / %d", g_osd.value, g_osd.max);
+    int pad = h * 20 / 768;
+    gfx_text(FONT_M, x + pad, y + pad / 2, t->text, ALIGN_LEFT, w / 2, label);
+    gfx_text(FONT_M, x + w - pad, y + pad / 2, t->accent, ALIGN_RIGHT, w / 2, val);
+    int segs = g_osd.max, gap = h * 4 / 768;
+    int sx = x + pad, sy = y + bh - pad - h * 22 / 768, sw = (w - 2 * pad - (segs - 1) * gap) / segs;
+    for (int i = 0; i < segs; i++)
+        gfx_rect(sx + i * (sw + gap), sy, sw, h * 22 / 768, i < g_osd.value ? t->accent : t->panel);
+}
+
 static void draw(void)
 {
     gfx_clear();
@@ -546,6 +621,7 @@ static void draw(void)
     if (A.dlg.active)
         draw_dialog();
     draw_toast();
+    draw_osd();
     gfx_present();
 }
 
@@ -678,6 +754,7 @@ int app_main(int argc, char **argv)
     if (gfx_init(font, "/usr/trimui/res/regular.ttf", win_w, win_h) != 0)
         return 2;
     input_init(&A.settings);
+    tm_zone_apply_env(tm_ini_get(&A.settings, "time", "zone", "")); /* the zone chosen in TriMux */
     draw_progress_message(tr("app.loading")); /* the start screen, as early as possible */
     if (splash_shot) {
         int rc = gfx_screenshot(splash_shot);
@@ -731,6 +808,7 @@ int app_main(int argc, char **argv)
             }
             if (strncmp(tok, "wait=", 5) == 0) { /* let background polling run */
                 usleep((useconds_t)atoi(tok + 5) * 1000u);
+                osd_poll();
                 net_tick();
                 continue;
             }
@@ -751,7 +829,8 @@ int app_main(int argc, char **argv)
                 first_frame = 0;
             }
         }
-        int timeout = (input_any_held() || A.screen == SCR_CTRLTEST) ? 16 : 1000;
+        /* 200 ms: the volume/brightness indicator follows the keys closely */
+        int timeout = (input_any_held() || A.screen == SCR_CTRLTEST) ? 16 : 200;
         if (SDL_WaitEventTimeout(&ev, timeout)) {
             do {
                 if (ev.type == SDL_QUIT)
@@ -761,6 +840,11 @@ int app_main(int argc, char **argv)
         }
         dispatch(input_repeat());
         ctrltest_tick();
+        osd_poll();
+        static int osd_shown;
+        if (osd_shown && tm_now_ms() >= g_osd.until)
+            A.dirty = 1; /* take the indicator off the screen */
+        osd_shown = tm_now_ms() < g_osd.until;
         if (A.toast[0] && tm_now_ms() > A.toast_until) {
             A.toast[0] = '\0';
             A.dirty = 1;

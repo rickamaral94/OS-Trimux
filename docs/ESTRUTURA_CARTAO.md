@@ -21,6 +21,7 @@
 │   ├── state/            contador de boot, marcador de jogo aberto, atualização a confirmar,
 │   │                     autogrow (só na imagem: usar o cartão inteiro no 1º boot)
 │   └── retroarch/        retroarch.cfg, config/<núcleo>/ (opções), remaps/
+├── Apps/<APP>/           aplicativos no formato da TrimUI (config.json + launch.sh), na seção Aplicativos
 ├── Roms/<PLATAFORMA>/    seus jogos (subpastas até 3 níveis)
 ├── Bios/                 suas BIOS
 ├── Saves/<PLATAFORMA>/   saves (SRAM) — criados ao jogar

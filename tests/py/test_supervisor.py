@@ -326,3 +326,16 @@ def test_performance_log_and_retroarch_diagnostics(rig):
     samples = [f for f in os.listdir(perf) if f.endswith("_GBA.csv")]
     assert len(samples) == 1
     assert read(os.path.join(perf, samples[0])).startswith("tempo_s;cpu_mhz;limite_mhz;temp_c;bateria")
+
+
+def test_app_request_runs_and_returns_to_menu(rig):
+    app = os.path.join(rig["card"], "Apps", "Hello")
+    write(os.path.join(app, "config.json"), '{"label":"Hello","launch":"launch.sh"}')
+    write(os.path.join(app, "launch.sh"), '#!/bin/sh\npwd > "$RIG_DIR/app_cwd"\n', 0o755)
+    os.makedirs(rig["tmp"], exist_ok=True)
+    pre = 'printf "[app]\\ndir = %s\\n" > "%s/app.ini"' % (app, rig["tmp"])
+    scripted_ui(rig, [11, 20], pre=pre)
+    r = run_supervisor(rig)
+    assert r.returncode == 0
+    assert os.path.realpath(read(os.path.join(rig["dir"], "app_cwd"))) == os.path.realpath(app)
+    assert "requested" in read(os.path.join(rig["tmp"], "to_stock"))      # back in the menu, then stock

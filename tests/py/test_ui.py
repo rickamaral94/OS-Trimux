@@ -176,7 +176,7 @@ def test_retroachievements_account_entry(env):
     assert "password = qqqqqq" in cfg
 
 
-DIAG = "UP,A" + ",DOWN" * 10 + ",A" + ",DOWN" * 4 + ",A"   # Configurações -> Sistema -> Registros e desempenho
+DIAG = "UP,A" + ",DOWN" * 10 + ",A" + ",DOWN" * 5 + ",A"   # Configurações -> Sistema -> Registros e desempenho
 
 
 def test_diagnostics_toggles(env):

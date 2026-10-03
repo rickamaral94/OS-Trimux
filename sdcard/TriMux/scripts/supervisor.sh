@@ -91,6 +91,8 @@ fi
 # Automatic covers (only if turned on): waits up to 90 s for Wi-Fi, pauses while
 # a game runs, and stops on its own when everything is downloaded.
 ("$CTL" scrape --auto --wait 90 >/dev/null 2>&1 &)
+# Internet time (only if "Ajustar pela internet" is on), once Wi-Fi connects.
+("$CTL" time sync --auto --wait 90 >/dev/null 2>&1 &)
 # Update check (only if "Verificar ao ligar" is on): asks GitHub for a newer
 # release and tells the menu. Nothing is downloaded or installed by itself.
 ("$CTL" update check --auto --wait 60 >/dev/null 2>&1 &)
@@ -99,6 +101,10 @@ fi
 crash_first=0
 crash_count=0
 while true; do
+    # Time zone chosen in TriMux (Configurações › Sistema › Data e hora) for
+    # the menu, games and apps; empty: the firmware's zone (/etc/localtime).
+    zone=$("$CTL" time tz 2>/dev/null)
+    if [ -n "$zone" ]; then export TZ="$zone"; else unset TZ; fi
     sh "$TM/scripts/premenu.sh" 2>/dev/null
     "$UI"
     rc=$?
@@ -107,6 +113,9 @@ while true; do
             "$CTL" launch
             lrc=$?
             [ $lrc -ne 0 ] && log "game ended with status $lrc"
+            ;;
+        11) # app (TrimUI format): the request is re-validated by trimuxctl
+            "$CTL" app || log "app request refused or failed"
             ;;
         20) to_stock "requested from the menu" ;;
         30) log "power off"; sync; touch /tmp/poweroff_flag; poweroff; sleep 30 ;;

@@ -23,6 +23,7 @@
 enum {
     EXIT_RESTART = 0,
     EXIT_LAUNCH = 10,
+    EXIT_APP = 11,
     EXIT_STOCK = 20,
     EXIT_POWEROFF = 30,
     EXIT_REBOOT = 31,
@@ -193,6 +194,8 @@ void net_ftp_stop(void);
 /* Starts the cover downloader in the background (auto: only if enabled). */
 void covers_start(int autorun, int retry);
 int update_blocks_launch(void);
+void app_leds_set_all(int off);
+size_t apps_count(void);
 void keyboard_draw(void);
 void keyboard_input(TmButton b);
 
@@ -202,7 +205,7 @@ enum {
     PAGE_LIBRARY, PAGE_FOLDERS, PAGE_BIOS, PAGE_EMULATORS, PAGE_EMU_PLATFORM, PAGE_STORAGE, PAGE_SYSTEM,
     PAGE_QUICK, PAGE_GAME_OPTIONS, PAGE_EMU_CHOOSE, PAGE_HOTKEYS, PAGE_DISPLAY, PAGE_ABOUT, PAGE_LOG,
     PAGE_ADD_GAMES, PAGE_BUTTONS, PAGE_NETWORK, PAGE_WIFI_SCAN, PAGE_WIFI_SAVED, PAGE_CHEEVOS,
-    PAGE_DIAG, PAGE_PERF, PAGE_COVERS, PAGE_UPDATE,
+    PAGE_DIAG, PAGE_PERF, PAGE_COVERS, PAGE_UPDATE, PAGE_DATETIME, PAGE_APPS,
 };
 
 /* dialog ids */
