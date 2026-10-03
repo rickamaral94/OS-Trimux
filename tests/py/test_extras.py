@@ -170,3 +170,33 @@ def test_all_lights_sets_every_zone_at_once(env):
     assert len(colors) >= 4 and len(set(colors)) == 1 and colors[0] != "FFFFFF"
     hexes = {read(os.path.join(led, "effect_rgb_hex_%s" % z)).strip().upper() for z in ("m", "lr", "f1", "f2", "rear")}
     assert hexes == {colors[0]}
+
+
+# ---- game picture (Settings > Emulators) ----
+EMULATORS = "UP,A" + ",DOWN" * 8 + ",A"         # Configurações -> Emuladores
+
+
+@needs_ui
+def test_image_page_per_platform_and_all(env, tmp_path):
+    cfg = os.path.join(env["TRIMUX_SDCARD"], "TriMuxData/config/trimux.ini")
+    shot = str(tmp_path / "fc.bmp")
+    # NES (first platform): Formato -> Pixels perfeitos, Visual -> two steps (Pixel suave)
+    assert ui(env, EMULATORS + ",DOWN,A,RIGHT,DOWN,RIGHT,RIGHT,shot=%s,B,B,B" % shot).returncode == 0
+    ini = read(cfg)
+    assert "[video.FC]" in ini and "aspect = integer" in ini and "filter = pixel" in ini
+    assert "[video.SFC]" not in ini
+    # all platforms at once: platforms differ ("Variado"), one step left = TV antiga
+    assert ui(env, EMULATORS + ",A,DOWN,LEFT,shot=%s,B,B,B" % shot).returncode == 0
+    ini = read(cfg)
+    assert ini.count("filter = crt") >= 20 and "[video.GBA]" in ini
+
+
+@needs_ui
+def test_image_page_extras_follow_the_emulator(env, tmp_path):
+    cfg = os.path.join(env["TRIMUX_SDCARD"], "TriMuxData/config/trimux.ini")
+    os.makedirs(os.path.join(env["TRIMUX_SDCARD"], "Bios/HdPacks/Micro Mages (World)"), exist_ok=True)
+    write(os.path.join(env["TRIMUX_SDCARD"], "Bios/HdPacks/Micro Mages (World)/hires.txt"), "<ver>106\n")
+    # NES: Formato, Visual, Resolução (não disponível), Texturas HD -> off
+    shot = str(tmp_path / "hd.bmp")
+    assert ui(env, EMULATORS + ",DOWN,A,DOWN,DOWN,DOWN,shot=%s,A,B,B,B" % shot).returncode == 0
+    assert "hdpacks = 0" in read(cfg)

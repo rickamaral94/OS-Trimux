@@ -41,6 +41,10 @@ cartão devolve o aparelho ao estado original.
   conta), manualmente ou automaticamente para jogos novos, e mostra no painel
   da lista. Salva em `Imgs/`, a mesma pasta do sistema oficial.
   [docs/CAPAS.md](docs/CAPAS.md).
+* **Imagem dos jogos** por plataforma, em linguagem simples: formato da tela,
+  visual (Pixel suave, Tela de LCD, TV antiga), resolução interna no
+  PlayStation, DOOM e Quake, cores e rastro de LCD nos portáteis e texturas
+  HD no NES. [docs/IMAGEM.md](docs/IMAGEM.md).
 * **Aplicativos** em uma seção própria, separada dos jogos (formato TrimUI:
   pasta `Apps/` do cartão, apps da memória interna e os do sistema).
 * **Data e hora** com fuso, ajuste pela internet e manual; indicador de

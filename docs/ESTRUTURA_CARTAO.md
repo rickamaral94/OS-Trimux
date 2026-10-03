@@ -9,7 +9,7 @@
 │   └── premainui.sh
 ├── TriMux/               sistema — substituído nas atualizações
 │   ├── bin/              trimux-ui (menu), trimuxctl (energia, LEDs, lançamento…)
-│   ├── retroarch/        RetroArch, cores/, autoconfig/, retroarch.base.cfg
+│   ├── retroarch/        RetroArch, cores/, autoconfig/, shaders/, retroarch.base.cfg
 │   ├── scripts/          supervisor.sh, premenu.sh
 │   ├── share/            systems.ini, emulators.ini, update.ini, i18n/*.lang, fonts/
 │   └── licenses/         licenças de cada componente
@@ -23,7 +23,7 @@
 │   └── retroarch/        retroarch.cfg, config/<núcleo>/ (opções), remaps/
 ├── Apps/<APP>/           aplicativos no formato da TrimUI (config.json + launch.sh), na seção Aplicativos
 ├── Roms/<PLATAFORMA>/    seus jogos (subpastas até 3 níveis)
-├── Bios/                 suas BIOS
+├── Bios/                 suas BIOS; HdPacks/ (texturas HD do NES, opcional)
 ├── Saves/<PLATAFORMA>/   saves (SRAM) — criados ao jogar
 ├── States/<PLATAFORMA>/  estados salvos
 ├── Screenshots/
