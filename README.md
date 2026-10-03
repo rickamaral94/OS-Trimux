@@ -48,6 +48,9 @@ cartão devolve o aparelho ao estado original.
 * **Ordem dos jogos** por nome, por popularidade (mais vendidos da
   plataforma, das listas de vendas da Wikipedia) ou pelos que você mais
   jogou (tempo contado no aparelho).
+* **PortMaster integrado aos Ports** e **loja de aplicativos** (PortMaster,
+  Grout): instalação em um toque pelo Wi-Fi, com versão e SHA-256 fixados.
+  [docs/PORTS.md](docs/PORTS.md), [docs/LOJA.md](docs/LOJA.md).
 * **Aplicativos** em uma seção própria, separada dos jogos (formato TrimUI:
   pasta `Apps/` do cartão, apps da memória interna e os do sistema).
 * **Data e hora** com fuso, ajuste pela internet e manual; indicador de

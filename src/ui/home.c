@@ -51,7 +51,7 @@ void home_build(void)
         g_entries[g_n++] = (HomeEntry){H_SYSTEM, (int)s, -1};
     }
     /* apps (TrimUI format) get their own entry, apart from the games */
-    if (apps_count() > 0)
+    if (1) /* always: the app store lives there */
         g_entries[g_n++] = (HomeEntry){H_APPS, -1, -1};
     g_entries[g_n++] = (HomeEntry){H_SETTINGS, -1, -1};
     if ((size_t)A.home_sel >= g_n)

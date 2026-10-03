@@ -59,6 +59,11 @@ int tm_system_has_ext(const TmSystem *sys, const char *filename);
 int tm_system_supports_emu(const TmSystem *sys, const char *emu_id);
 
 /* 1 if the emulator's core file exists in cores_dir. */
+/* PortMaster's launcher (store install), relative to the card. */
+#define TM_PORTMASTER_LAUNCH "Emus/tg5040/PORTS.pak/launch.sh"
+int tm_portmaster_launcher(const char *cores_dir, char *out, size_t size);
+/* 1 if a Ports script is a PortMaster port (or the PortMaster entry itself). */
+int tm_port_is_portmaster(const char *script_path);
 int tm_emulator_available(const TmEmulator *emu, const char *cores_dir);
 
 /* Chooses the emulator for a game: per-game override, then platform

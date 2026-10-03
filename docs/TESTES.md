@@ -88,6 +88,9 @@ Marque com data, firmware, versão do TriMux e observações ao executar.
 | H61 | *Texturas HD*: um pacote Mesen em `Bios/HdPacks/<jogo>/` é carregado pelo FCEUmm; desligar a opção volta aos gráficos originais | pendente |
 | H62 | *Ordem dos jogos › Popularidade*: no SNES, Super Mario World, Donkey Kong Country e Zelda (nomes No-Intro) aparecem antes dos outros; o painel mostra a posição | pendente |
 | H63 | *Mais jogados*: depois de jogar um jogo por alguns minutos, ele sobe para o topo e o painel mostra vezes e tempo; jogos abertos por menos de 10 s não contam | pendente |
+| H64 | *Loja › PortMaster › Instalar*: download de 149 MB pelo Wi-Fi conclui, `Emus/tg5040/PORTS.pak` e `Roms/PORTS/Portmaster.sh` aparecem; *Remover* apaga só isso | pendente |
+| H65 | *Ports › Portmaster*: o PortMaster abre (primeira vez descompacta), instala um port gratuito (ex.: um homebrew sem arquivos externos) e o port aparece em Ports e roda com os controles certos | pendente |
+| H66 | *Loja › Grout*: instala em `Apps/Grout`, aparece em Aplicativos e abre | pendente |
 | H47 | Tela de início do TriMux aparece logo depois do logotipo da TrimUI e enquanto os jogos são indexados | pendente |
 | H15 | Primeiro boot de um cartão de 32 GB e de 128 GB gravado com a imagem: expansão automática, um reinício, aviso com o espaço total; `chkdsk`/`fsck` limpo depois. Repetir pela opção do menu num cartão regravado | pendente |
 | H16 | Cartão cheio: aviso em Armazenamento; salvar estado falha sem corromper | pendente |

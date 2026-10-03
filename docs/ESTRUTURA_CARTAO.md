@@ -22,9 +22,11 @@
 │   │                     autogrow (só na imagem: usar o cartão inteiro no 1º boot),
 │   │                     plays.ini (vezes e tempo de cada jogo)
 │   └── retroarch/        retroarch.cfg, config/<núcleo>/ (opções), remaps/
-├── Apps/<APP>/           aplicativos no formato da TrimUI (config.json + launch.sh), na seção Aplicativos
+├── Apps/<APP>/           aplicativos no formato da TrimUI (config.json + launch.sh), na seção Aplicativos;
+│                         os da loja (ex.: Grout) também ficam aqui
 ├── Roms/<PLATAFORMA>/    seus jogos (subpastas até 3 níveis)
 ├── Bios/                 suas BIOS; HdPacks/ (texturas HD do NES, opcional)
+├── Emus/tg5040/PORTS.pak PortMaster, quando instalado pela loja
 ├── Saves/<PLATAFORMA>/   saves (SRAM) — criados ao jogar
 ├── States/<PLATAFORMA>/  estados salvos
 ├── Screenshots/

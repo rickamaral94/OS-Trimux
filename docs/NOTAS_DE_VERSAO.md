@@ -1,3 +1,26 @@
+# TriMux 0.4.8 (pré-lançamento)
+
+**Estado: não testado em um Brick Pro físico.** Novidades:
+
+* **PortMaster integrado aos Ports** ([PORTS.md](PORTS.md)):
+  * Instale em *Aplicativos › Loja de aplicativos › PortMaster*.
+  * Em **Ports** aparece a entrada **Portmaster**, que abre a loja de ports
+    (Stardew Valley, Celeste, Half-Life e centenas de outros).
+  * Os ports instalados entram na mesma lista de Ports.
+  * Usa o pacote MinUI PortMaster (MIT), que traz bash, Python e as
+    bibliotecas que o firmware não tem. Ele é baixado quando você pede e não
+    vai na imagem.
+* **Loja de aplicativos** ([LOJA.md](LOJA.md)): na aba Aplicativos, uma lista
+  escolhida a dedo com instalação em um toque pelo Wi-Fi. Começa com
+  PortMaster e **Grout** (cliente do RomM).
+  * Cada app tem versão fixa e SHA-256 conferido antes de gravar.
+  * A tela mostra a licença, a origem e se o app ajusta algo do sistema
+    enquanto está aberto.
+  * Só grava em `Apps/`, `Emus/` e `Roms/PORTS/` no cartão. Remover apaga só
+    os arquivos do app.
+* A aba **Aplicativos** aparece sempre na tela inicial, por causa da loja.
+* Painel de descrição dos menus: textos longos não são mais cortados.
+
 # TriMux 0.4.7 (pré-lançamento)
 
 **Estado: não testado em um Brick Pro físico.** Novidade:

@@ -119,6 +119,16 @@ const TmEmulator *app_resolve_emu(const TmGame *g, int *is_override)
     const char *ov = tm_ini_get(&A.overrides, "games", g->relpath, NULL);
     const char *pref = tm_ini_get(&A.settings, "emulators", sys->id, NULL);
     const TmEmulator *em = tm_catalog_resolve(&A.cat, sys, ov, pref, A.paths.cores);
+    if (!ov && tm_system_supports_emu(sys, "portmaster")) {
+        /* Ports: PortMaster's own ports (and its "Portmaster" entry) open
+         * through PortMaster when it is installed; other scripts keep the
+         * plain shell launcher */
+        const TmEmulator *pm = tm_catalog_emulator(&A.cat, "portmaster");
+        char abs[TM_PATH_MAX];
+        if (pm && tm_emulator_available(pm, A.paths.cores) && tm_path_join(abs, sizeof abs, A.paths.sd, g->relpath) == 0 &&
+            tm_port_is_portmaster(abs))
+            em = pm;
+    }
     if (is_override)
         *is_override = ov && em && strcmp(em->id, ov) == 0;
     return em;
