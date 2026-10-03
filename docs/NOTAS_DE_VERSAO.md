@@ -17,6 +17,8 @@
   de rolagem ficaram arredondadas (e aparecem também nos menus), os títulos
   de seção ganharam uma linha de destaque e a bateria do cabeçalho tem cantos
   arredondados.
+* **Informações do aparelho** em cartões, com barras de bateria, temperatura
+  (verde, amarela ou vermelha), memória e espaço no cartão.
 
 # TriMux 0.5.1 (pré-lançamento)
 
