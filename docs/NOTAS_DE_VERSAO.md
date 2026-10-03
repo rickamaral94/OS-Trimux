@@ -17,6 +17,11 @@ renovado**, com o mesmo jeito de usar:
   quando está conectado).
 * Diálogos, avisos e listas vazias com acabamento novo (sombras, cantos
   arredondados, mensagem centralizada).
+* **Ports do sistema oficial da TrimUI:** pastas com `config.json` e
+  `launch.sh`, copiadas do cartão original, agora aparecem em Ports. Funciona
+  tanto na pasta `Ports` da raiz do cartão (onde o sistema oficial guarda os
+  ports) quanto em `Roms/PORTS/<jogo>/`. O ícone da pasta vira a capa
+  ([PORTS.md](PORTS.md)).
 * Nenhuma imagem nova vai para o cartão: tudo é desenhado pelo menu. As
   capturas da documentação foram refeitas no computador; não são fotos do
   aparelho.

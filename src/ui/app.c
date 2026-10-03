@@ -1,7 +1,9 @@
 /* TriMux menu: state, shared widgets, launch handoff and the main loop. */
 #define _GNU_SOURCE
 #include "app.h"
+#include "../core/apps.h"
 #include "../core/buttons.h"
+#include "../core/scrape.h"
 #include "../core/launch.h"
 #include "../core/clock.h"
 #include "../core/log.h"
@@ -463,6 +465,28 @@ static int wifi_bars(void)
 }
 
 /* ------------------------------------------------------------ widgets */
+
+int app_game_cover(const TmGame *g, char *out, size_t size)
+{
+    if (!tm_ini_get_long(&A.settings, "covers", "show", 1))
+        return -1;
+    const TmSystem *sys = &A.cat.systems[g->system];
+    if (tm_scrape_cover_path(A.paths.sd, g->relpath, sys->id, out, size) == 0 && tm_file_exists(out))
+        return 0;
+    if (sys->app_folders) { /* stock TrimUI port: the icon of its folder */
+        char dir[TM_PATH_MAX];
+        TmApp app;
+        if (tm_path_join(dir, sizeof dir, A.paths.sd, g->relpath) == 0) {
+            char *slash = strrchr(dir, '/');
+            if (slash)
+                *slash = '\0';
+            if (tm_app_load(dir, "en", &app) == 0 && app.icon[0])
+                return tm_strlcpy(out, app.icon, size);
+        }
+    }
+    /* no cover yet: the path where a downloaded one will appear */
+    return tm_scrape_cover_path(A.paths.sd, g->relpath, sys->id, out, size);
+}
 
 void app_panel(int x, int y, int w, int h, uint32_t band)
 {

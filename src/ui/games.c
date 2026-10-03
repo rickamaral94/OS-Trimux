@@ -176,8 +176,7 @@ static void draw_panel(const TmGame *g, int x, int y, int w, int h)
     /* cover (Imgs/<folder>/<game>.png, downloaded or copied by the user) */
     int cover_h = 0;
     char cover[TM_PATH_MAX];
-    if (tm_ini_get_long(&A.settings, "covers", "show", 1) &&
-        tm_scrape_cover_path(A.paths.sd, g->relpath, sys->id, cover, sizeof cover) == 0)
+    if (app_game_cover(g, cover, sizeof cover) == 0)
         cover_h = gfx_image(cover, px, py, pw, h * 45 / 100);
     if (cover_h)
         py += cover_h + S(14);

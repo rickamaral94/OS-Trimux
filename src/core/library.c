@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "library.h"
+#include "apps.h"
 #include "log.h"
 #include "util.h"
 
@@ -184,6 +185,14 @@ static void scan_dir(TmLibrary *lib, const TmSystem *sys, int sys_index, const c
         if (stat(abs, &st) != 0)
             continue;
         if (S_ISDIR(st.st_mode)) {
+            TmApp app;
+            if (sys->app_folders && tm_app_load(abs, "en", &app) == 0 && tm_system_has_ext(sys, app.launch)) {
+                /* a port in the stock TrimUI format: the folder is the game */
+                char launch[TM_PATH_MAX];
+                if (tm_path_join(launch, sizeof launch, rel, app.launch) == 0 && strlen(launch) < 256)
+                    add_game(lib, sys_index, launch, app.label);
+                continue;
+            }
             if (depth < sys->max_depth && depth < SCAN_MAX_DEPTH && !skip_dir_name(nm)) {
                 scan_dir(lib, sys, sys_index, sd_root, rel, depth + 1, clean);
                 /* the recursive call reused the static buffer */
@@ -253,6 +262,21 @@ static size_t find_system_dirs(const TmSystem *sys, const char *sd_root, char ou
             tm_strlcpy(out[n++], rel, 256);
         }
         closedir(d);
+    }
+    if (sys->root_folder[0] && n < max) { /* e.g. /mnt/SDCARD/Ports of the stock firmware */
+        char abs[TM_PATH_MAX];
+        struct stat st;
+        int dup = 0;
+        if (tm_path_join(abs, sizeof abs, sd_root, sys->root_folder) == 0 && stat(abs, &st) == 0 &&
+            S_ISDIR(st.st_mode)) {
+            for (size_t s = 0; s < *nseen && !dup; s++)
+                dup = seen[s].dev == st.st_dev && seen[s].ino == st.st_ino;
+            if (!dup) {
+                if (*nseen < seen_max)
+                    seen[(*nseen)++] = (DirId){st.st_dev, st.st_ino};
+                tm_strlcpy(out[n++], sys->root_folder, 256);
+            }
+        }
     }
     return n;
 }

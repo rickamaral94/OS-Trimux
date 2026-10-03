@@ -88,3 +88,22 @@ Não reporte problemas ao projeto PortMaster: o MinUI PortMaster pede o mesmo.
 
 Segurança: um port é um programa com acesso total ao aparelho. Use apenas
 ports de fontes confiáveis.
+
+## 4. Ports do sistema oficial da TrimUI (a partir da 0.5.1)
+
+O cartão original da TrimUI guarda os ports na pasta `Ports` da raiz do
+cartão, uma pasta por jogo, com um `config.json` (nome, ícone e o script de
+início, normalmente `launch.sh`) e os arquivos do jogo.
+
+* O TriMux encontra esses ports em **`Ports/`** (a mesma pasta do sistema
+  oficial) e também em **`Roms/PORTS/<jogo>/`**.
+* O nome que aparece é o `label` do `config.json`, e o ícone da pasta vira a
+  capa no painel.
+* O jogo começa pelo script indicado em `launch`, executado de dentro da
+  própria pasta, como no sistema oficial.
+* Prefira copiar a pasta `Ports` inteira para a raiz do cartão do TriMux,
+  como estava no cartão original. Alguns scripts usam o caminho completo
+  `/mnt/SDCARD/Ports/...`, e numa outra pasta eles não acham os próprios
+  arquivos.
+* Pastas sem `config.json` válido (sem `launch` ou com um script que não
+  existe) são ignoradas.

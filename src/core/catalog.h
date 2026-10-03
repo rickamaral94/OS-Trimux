@@ -26,6 +26,8 @@ typedef struct {
     unsigned color;   /* 0xRRGGBB badge color */
     int experimental; /* shown with a warning (e.g. ports) */
     int max_depth;    /* sub-folder levels scanned (1 = top level only) */
+    int app_folders;  /* a sub-folder with a TrimUI config.json ("launch") is one game (stock ports) */
+    char root_folder[32]; /* also scanned at the card root (the stock firmware's /mnt/SDCARD/Ports) */
     char note_key[48];
     char thumbs[160]; /* libretro-thumbnails repositories, '|' separated */
     char popular[16]; /* share/popular/<name>.txt ranking (default: the id) */

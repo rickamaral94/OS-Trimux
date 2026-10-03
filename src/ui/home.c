@@ -107,9 +107,7 @@ static long last_played(int system)
 static int cover(long gi, int x, int y, int w, int max_h)
 {
     char path[TM_PATH_MAX];
-    const TmGame *g = &A.lib.games[gi];
-    if (!tm_ini_get_long(&A.settings, "covers", "show", 1) ||
-        tm_scrape_cover_path(A.paths.sd, g->relpath, A.cat.systems[g->system].id, path, sizeof path) != 0)
+    if (app_game_cover(&A.lib.games[gi], path, sizeof path) != 0)
         return 0;
     return gfx_image(path, x, y, w, max_h);
 }

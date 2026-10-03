@@ -144,6 +144,8 @@ void app_header(const char *title);
  * (0 home, 1 games, 2 menus); row = row height (long jumps snap). */
 int app_anim(int slot, int target, int row);
 /* Side panel with a soft shadow; band = platform colour washed in at the top (0: none). */
+/* Cover image path of a game (Imgs/..., or a stock port's own icon); -1 if covers are off. */
+int app_game_cover(const TmGame *g, char *out, size_t size);
 void app_panel(int x, int y, int w, int h, uint32_t band);
 /* Centred message for an empty list (star: the favourites icon above it). */
 void app_empty(const char *msg, int star);
