@@ -28,6 +28,7 @@ typedef struct {
     int max_depth;    /* sub-folder levels scanned (1 = top level only) */
     char note_key[48];
     char thumbs[160]; /* libretro-thumbnails repositories, '|' separated */
+    char popular[16]; /* share/popular/<name>.txt ranking (default: the id) */
 } TmSystem;
 
 typedef struct {

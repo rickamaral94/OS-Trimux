@@ -27,6 +27,7 @@
 #include "../core/log.h"
 #include "../core/net.h"
 #include "../core/perf.h"
+#include "../core/popular.h"
 #include "../core/scrape.h"
 #include "../core/paths.h"
 #include "../core/power.h"
@@ -566,6 +567,12 @@ static int cmd_launch(void)
             code = run_retroarch(ra, cfg, append, NULL, &l, &caps, have_power, guard_on, prof, &elapsed, perf);
     }
     unlink(marker);
+    /* "Mais jogados por você": one more session for this game (starts that
+     * failed within 10 s are not counted) */
+    char plays[TM_PATH_MAX];
+    if (tm_path_join(plays, sizeof plays, P.state, "plays.ini") == 0 &&
+        tm_plays_add(plays, l.rom_rel, (long)(elapsed / 1000), (long)time(NULL), 10) != 0)
+        LOGW("launch: could not record the play time");
     if (perf) {
         perf_sample(perf, &caps, have_power, NULL);
         tm_perf_close(perf, tm_now_ms(), code);

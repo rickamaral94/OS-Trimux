@@ -10,6 +10,7 @@
 #include "../core/lists.h"
 #include "../core/net.h"
 #include "../core/paths.h"
+#include "../core/popular.h"
 #include "../core/power.h"
 #include "../core/sysinfo.h"
 #include "gfx.h"
@@ -78,6 +79,11 @@ typedef struct {
     TmCatalog cat;
     TmLibrary lib;
     TmList fav, recent;
+    TmPopular pop;      /* popularity ranks per platform */
+    TmIni plays;        /* play statistics (TriMuxData/state/plays.ini) */
+    int *rank;          /* popularity rank per library game (0 = none) */
+    size_t nrank;
+    int ranks_valid;
     TmPowerCaps power;
     TmLeds leds;
     TmSysInfo si;
@@ -159,6 +165,10 @@ size_t home_count(void);
 /* games.c */
 void games_open(int system);
 void games_rebuild(void);
+enum { SORT_NAME = 0, SORT_POPULAR, SORT_PLAYED };
+int games_sort_mode(void);
+/* popularity rank of a library game (0 = not in the list) */
+int games_rank(long gi);
 void games_draw(void);
 void games_input(TmButton b);
 long games_selected_index(void);

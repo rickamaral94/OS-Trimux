@@ -14,6 +14,7 @@
 #include "../../src/core/log.h"
 #include "../../src/core/paths.h"
 #include "../../src/core/perf.h"
+#include "../../src/core/popular.h"
 #include "../../src/core/image.h"
 #include "../../src/core/scrape.h"
 #include "../../src/core/sha256.h"
@@ -21,6 +22,7 @@
 #include "../../src/core/power.h"
 #include "../../src/core/sysinfo.h"
 #include "../../src/core/util.h"
+#include "../../src/core/video.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -926,6 +928,84 @@ static void test_clock_apps(void)
     CHECK(tm_app_load(dir, NULL, &a) == -1);
 }
 
+static void test_popular_video(void)
+{
+    char k1[128], k2[128];
+    tm_popular_key("Legend of Zelda, The - A Link to the Past", k1, sizeof k1);
+    tm_popular_key("The Legend of Zelda: A Link to the Past", k2, sizeof k2);
+    CHECK_STR(k1, k2);
+    tm_popular_key("Pok\xc3\xa9mon Pinball: Ruby & Sapphire", k1, sizeof k1);
+    CHECK_STR(k1, "pokemonpinballrubyandsapphire");
+    tm_popular_key("Theme Park", k1, sizeof k1); /* only a whole leading "the " goes */
+    CHECK_STR(k1, "themepark");
+
+    char dir[600], p[700];
+    snprintf(dir, sizeof dir, "%s/share/popular", T);
+    tm_mkdir_p(dir);
+    snprintf(p, sizeof p, "%s/SFC.txt", dir);
+    FILE *f = fopen(p, "w");
+    fputs("# header\nSuper Mario World\nThe Legend of Zelda: A Link to the Past\n"
+          "Final Fantasy VI|Final Fantasy III\nSuper Mario World|duplicate keeps rank 1\n", f);
+    fclose(f);
+    TmSystem sys[2];
+    memset(sys, 0, sizeof sys);
+    tm_strlcpy(sys[0].popular, "SFC", sizeof sys[0].popular);
+    tm_strlcpy(sys[1].popular, "NONE", sizeof sys[1].popular);
+    TmCatalog cat = {.systems = sys, .nsystems = 2};
+    TmPopular pop;
+    snprintf(dir, sizeof dir, "%s/share", T);
+    CHECK(tm_popular_load(&pop, &cat, dir) == 0);
+    CHECK(tm_popular_rank(&pop, 0, "Roms/SFC/Super Mario World (USA).sfc") == 1);
+    CHECK(tm_popular_rank(&pop, 0, "Roms/SFC/Legend of Zelda, The - A Link to the Past (USA).zip") == 2);
+    CHECK(tm_popular_rank(&pop, 0, "Roms/SFC/Final Fantasy III (USA) (Rev 1).sfc") == 3);
+    CHECK(tm_popular_rank(&pop, 0, "Roms/SFC/Homebrew.sfc") == 0);
+    CHECK(tm_popular_rank(&pop, 1, "Roms/X/Super Mario World.sfc") == 0); /* no list */
+    CHECK(tm_popular_count(&pop, 0) == 4 && tm_popular_count(&pop, 1) == 0);
+    tm_popular_free(&pop);
+
+    /* play statistics: short sessions (failed starts) are not counted */
+    snprintf(p, sizeof p, "%s/plays.ini", T);
+    CHECK(tm_plays_add(p, "Roms/SFC/a b=c.sfc", 5, 100, 10) == 0);
+    CHECK(!tm_file_exists(p));
+    CHECK(tm_plays_add(p, "Roms/SFC/a b=c.sfc", 600, 100, 10) == 0);
+    CHECK(tm_plays_add(p, "Roms/SFC/a b=c.sfc", 60, 200, 10) == 0);
+    TmIni ini;
+    tm_ini_init(&ini);
+    tm_ini_load(&ini, p);
+    TmPlays pl;
+    tm_plays_get(&ini, "Roms/SFC/a b=c.sfc", &pl);
+    CHECK(pl.times == 2 && pl.seconds == 660 && pl.last == 200);
+    tm_plays_get(&ini, "Roms/SFC/other.sfc", &pl);
+    CHECK(pl.times == 0 && pl.seconds == 0);
+    tm_ini_free(&ini);
+
+    /* image: core options keep other lines; a longer key with the same
+     * prefix is not mistaken for ours */
+    snprintf(p, sizeof p, "%s/core/x.opt", T);
+    tm_mkdir_p(T);
+    TmIni st;
+    tm_ini_init(&st);
+    tm_ini_set(&st, "video.GBA", "colors", "1");
+    tm_ini_set(&st, "video.GBA", "ghost", "0");
+    const TmVideoCaps *caps = tm_video_caps("gpsp");
+    CHECK(caps != NULL && tm_video_caps("snes9x2005") == NULL);
+    snprintf(dir, sizeof dir, "%s/core", T);
+    tm_mkdir_p(dir);
+    f = fopen(p, "w");
+    fputs("gpsp_color_correction_extra = \"keep\"\ngpsp_frameskip = \"auto\"", f);
+    fclose(f);
+    CHECK(tm_video_core_options(&st, "GBA", caps, p) == 0);
+    size_t len;
+    char *o = tm_read_file(p, 4096, &len);
+    CHECK(o && strstr(o, "gpsp_color_correction_extra = \"keep\"") && strstr(o, "gpsp_frameskip = \"auto\"\n") &&
+          strstr(o, "gpsp_color_correction = \"enabled\"") && strstr(o, "gpsp_frame_mixing = \"disabled\""));
+    free(o);
+    char lines[256] = "", shader[256];
+    tm_ini_set(&st, "video.GBA", "aspect", "bogus");
+    CHECK(tm_video_ra_lines(&st, "GBA", T, lines, sizeof lines, shader, sizeof shader) == 0 && !lines[0] && !shader[0]);
+    tm_ini_free(&st);
+}
+
 int main(void)
 {
     snprintf(T, sizeof T, "/tmp/trimux-unit-%d", (int)getpid());
@@ -948,6 +1028,7 @@ int main(void)
     test_scrape();
     test_update();
     test_clock_apps();
+    test_popular_video();
     char cmd[600];
     snprintf(cmd, sizeof cmd, "rm -rf '%s'", T);
     if (system(cmd) != 0)

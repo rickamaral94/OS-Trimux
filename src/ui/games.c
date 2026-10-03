@@ -1,6 +1,7 @@
 /* Game list: per platform, all, favorites or recent; search and filters. */
 #define _GNU_SOURCE
 #include "app.h"
+#include "../core/popular.h"
 #include "../core/scrape.h"
 #include "../core/log.h"
 #include "../core/util.h"
@@ -23,6 +24,77 @@ static int view_push(int gi)
     }
     A.view[A.nview++] = gi;
     return 0;
+}
+
+/* ---- order: name (library order), popularity or your play time ---- */
+
+int games_sort_mode(void)
+{
+    const char *m = tm_ini_get(&A.settings, "general", "sort", "name");
+    return strcmp(m, "popular") == 0 ? SORT_POPULAR : strcmp(m, "played") == 0 ? SORT_PLAYED : SORT_NAME;
+}
+
+static void ranks_ensure(void)
+{
+    if (A.ranks_valid && A.nrank == A.lib.count)
+        return;
+    free(A.rank);
+    A.rank = calloc(A.lib.count ? A.lib.count : 1, sizeof *A.rank);
+    A.nrank = A.rank ? A.lib.count : 0;
+    for (size_t i = 0; i < A.nrank; i++)
+        A.rank[i] = tm_popular_rank(&A.pop, A.lib.games[i].system, A.lib.games[i].relpath);
+    A.ranks_valid = 1;
+}
+
+int games_rank(long gi)
+{
+    ranks_ensure();
+    return gi >= 0 && (size_t)gi < A.nrank ? A.rank[gi] : 0;
+}
+
+typedef struct {
+    int gi;
+    long a, b; /* sort keys, smaller first */
+} SortKey;
+
+static int cmp_sortkey(const void *x, const void *y)
+{
+    const SortKey *p = x, *q = y;
+    if (p->a != q->a)
+        return p->a < q->a ? -1 : 1;
+    if (p->b != q->b)
+        return p->b < q->b ? -1 : 1;
+    return p->gi - q->gi; /* library order: by name */
+}
+
+static void view_sort(void)
+{
+    int mode = games_sort_mode();
+    if (mode == SORT_NAME || A.view_system == VIEW_RECENT || A.nview < 2)
+        return;
+    SortKey *k = malloc(A.nview * sizeof *k);
+    if (!k)
+        return;
+    if (mode == SORT_POPULAR)
+        ranks_ensure();
+    for (size_t i = 0; i < A.nview; i++) {
+        int gi = A.view[i];
+        k[i].gi = gi;
+        if (mode == SORT_POPULAR) {
+            int r = (size_t)gi < A.nrank ? A.rank[gi] : 0;
+            k[i].a = r ? r : 1L << 30; /* unranked after, by name */
+            k[i].b = 0;
+        } else {
+            TmPlays pl;
+            tm_plays_get(&A.plays, A.lib.games[gi].relpath, &pl);
+            k[i].a = -pl.seconds; /* most played first, never played after */
+            k[i].b = -pl.times;
+        }
+    }
+    qsort(k, A.nview, sizeof *k, cmp_sortkey);
+    for (size_t i = 0; i < A.nview; i++)
+        A.view[i] = k[i].gi;
+    free(k);
 }
 
 void games_rebuild(void)
@@ -49,6 +121,7 @@ void games_rebuild(void)
             view_push((int)i);
         }
     }
+    view_sort();
     if (A.games_sel >= (int)A.nview)
         A.games_sel = A.nview ? (int)A.nview - 1 : 0;
 }
@@ -86,6 +159,11 @@ static const char *view_title(void)
         size_t n = strlen(t);
         snprintf(t + n, sizeof t - n, " · ★");
     }
+    int mode = games_sort_mode();
+    if (mode != SORT_NAME && A.view_system != VIEW_RECENT) {
+        size_t n = strlen(t);
+        snprintf(t + n, sizeof t - n, " · %s", tr(mode == SORT_POPULAR ? "sort.popular" : "sort.played"));
+    }
     return t;
 }
 
@@ -118,6 +196,22 @@ static void draw_panel(const TmGame *g, int x, int y, int w, int h)
     py += gfx_text_wrap(FONT_S, px, py, pw, 2, em ? t->text : t->warn, buf) + S(8);
     if (em && em->note_key[0])
         py += gfx_text_wrap(FONT_S, px, py, pw, 4, t->dim, tr(em->note_key)) + S(8);
+    long gi = g - A.lib.games;
+    int rank = games_rank(gi);
+    if (rank > 0) {
+        snprintf(buf, sizeof buf, tr("games.rank"), rank, sys->short_name);
+        py += gfx_text_wrap(FONT_S, px, py, pw, 2, t->accent, buf) + S(4);
+    }
+    TmPlays pl;
+    tm_plays_get(&A.plays, g->relpath, &pl);
+    if (pl.times > 0) {
+        long hours = pl.seconds / 3600, m = (pl.seconds % 3600) / 60;
+        if (hours > 0)
+            snprintf(buf, sizeof buf, tr("games.played_h"), pl.times, hours, m);
+        else
+            snprintf(buf, sizeof buf, tr("games.played_m"), pl.times, m > 0 ? m : 1);
+        py += gfx_text_wrap(FONT_S, px, py, pw, 2, t->dim, buf) + S(4);
+    }
     const char *file = strrchr(g->relpath, '/');
     gfx_text_wrap(FONT_S, px, y + h - S(80), pw, 2, t->dim, file ? file + 1 : g->relpath);
 }
@@ -182,7 +276,7 @@ void games_draw(void)
 
 static void jump_letter(int dir)
 {
-    if (!A.nview || A.view_system == VIEW_RECENT)
+    if (!A.nview || A.view_system == VIEW_RECENT || games_sort_mode() != SORT_NAME)
         return;
     char cur = A.lib.games[A.view[A.games_sel]].key[0];
     int i = A.games_sel;

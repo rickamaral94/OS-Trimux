@@ -687,3 +687,16 @@ video.hd = Texturas HD
 video.hd.desc = Troca os gráficos por versões em alta resolução quando o jogo tem um pacote HD (formato Mesen HD Pack).\n\nComo usar: coloque a pasta do pacote em Bios/HdPacks/<nome do arquivo do jogo, sem a extensão>/ com o arquivo hires.txt dentro. Funciona melhor com o jogo em .nes (fora do .zip). Os pacotes não vêm com o TriMux.\n\nPacotes encontrados no cartão: %d.
 game.image = Imagem da plataforma
 game.image.desc = Formato da tela, visual (LCD, TV antiga…), resolução e texturas dos jogos desta plataforma.
+
+# Ordem dos jogos
+sort.title = Ordem dos jogos
+sort.desc = Como as listas de jogos são ordenadas. Use ◀ ▶ para trocar. Vale para todas as plataformas.
+sort.name = Nome (A–Z)
+sort.name.desc = Nome (A–Z): ordem alfabética, como sempre.
+sort.popular = Popularidade
+sort.popular.desc = Popularidade: os jogos mais vendidos da plataforma primeiro, segundo listas públicas de vendas (Wikipedia). Jogos fora da lista vêm depois, em ordem alfabética. O jogo é reconhecido pelo nome do arquivo (padrão No-Intro, ex.: Super Mario World (USA).sfc).
+sort.played = Mais jogados
+sort.played.desc = Mais jogados: os jogos em que você passou mais tempo primeiro. A contagem é feita no aparelho, a cada jogo aberto por mais de 10 segundos. Jogos nunca abertos vêm depois, em ordem alfabética.
+games.rank = Nº %d entre os mais vendidos do %s
+games.played_h = Jogado %ld vezes · %ld h %02ld min
+games.played_m = Jogado %ld vezes · %ld min

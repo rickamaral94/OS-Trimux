@@ -74,6 +74,9 @@ int tm_catalog_load(TmCatalog *cat, const char *systems_ini, const char *emulato
         sys->color = (unsigned)strtoul(tm_ini_get(&s, id, "color", "607080"), NULL, 16) & 0xFFFFFFu;
         tm_strlcpy(sys->note_key, tm_ini_get(&s, id, "note", ""), sizeof sys->note_key);
         tm_strlcpy(sys->thumbs, tm_ini_get(&s, id, "thumbs", ""), sizeof sys->thumbs);
+        tm_strlcpy(sys->popular, tm_ini_get(&s, id, "popular", id), sizeof sys->popular);
+        if (!tm_name_is_safe(sys->popular))
+            sys->popular[0] = '\0';
         /* folder names become path components: reject unsafe ones */
         int k = 0;
         for (int f = 0; f < sys->nfolders; f++)

@@ -11,7 +11,7 @@
 │   ├── bin/              trimux-ui (menu), trimuxctl (energia, LEDs, lançamento…)
 │   ├── retroarch/        RetroArch, cores/, autoconfig/, shaders/, retroarch.base.cfg
 │   ├── scripts/          supervisor.sh, premenu.sh
-│   ├── share/            systems.ini, emulators.ini, update.ini, i18n/*.lang, fonts/
+│   ├── share/            systems.ini, emulators.ini, update.ini, i18n/*.lang, fonts/, popular/
 │   └── licenses/         licenças de cada componente
 ├── TriMux.old/, trimui.old/  versão anterior, guardada pela atualização online (podem ser apagadas)
 ├── TriMuxData/           seus dados — nunca substituído
@@ -19,7 +19,8 @@
 │   ├── cache/            library.tsv (índice da biblioteca), covers-missing.txt (podem ser apagados)
 │   ├── logs/             trimux.log (máx. 256 KiB + 1 arquivo antigo), perf/, retroarch/
 │   ├── state/            contador de boot, marcador de jogo aberto, atualização a confirmar,
-│   │                     autogrow (só na imagem: usar o cartão inteiro no 1º boot)
+│   │                     autogrow (só na imagem: usar o cartão inteiro no 1º boot),
+│   │                     plays.ini (vezes e tempo de cada jogo)
 │   └── retroarch/        retroarch.cfg, config/<núcleo>/ (opções), remaps/
 ├── Apps/<APP>/           aplicativos no formato da TrimUI (config.json + launch.sh), na seção Aplicativos
 ├── Roms/<PLATAFORMA>/    seus jogos (subpastas até 3 níveis)

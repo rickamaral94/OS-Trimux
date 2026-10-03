@@ -685,3 +685,16 @@ video.hd = HD textures
 video.hd.desc = Replaces the graphics with high-resolution versions when the game has an HD pack (Mesen HD Pack format).\n\nHow to use: put the pack folder in Bios/HdPacks/<game file name, without extension>/ with its hires.txt inside. Works best with the game as .nes (not inside a .zip). Packs are not included with TriMux.\n\nPacks found on the card: %d.
 game.image = Platform picture
 game.image.desc = Screen shape, look (LCD, old TV…), resolution and textures for this platform's games.
+
+# Game order
+sort.title = Game order
+sort.desc = How game lists are ordered. Use ◀ ▶ to change. Applies to every platform.
+sort.name = Name (A–Z)
+sort.name.desc = Name (A–Z): alphabetical, as always.
+sort.popular = Popularity
+sort.popular.desc = Popularity: the platform's best-selling games first, from public sales lists (Wikipedia). Games not in the list come after, alphabetically. Games are recognised by file name (No-Intro style, e.g. Super Mario World (USA).sfc).
+sort.played = Most played
+sort.played.desc = Most played: the games you spent most time in first. Counted on the device, for every game open longer than 10 seconds. Games never opened come after, alphabetically.
+games.rank = No. %d among the best-selling %s games
+games.played_h = Played %ld times · %ld h %02ld min
+games.played_m = Played %ld times · %ld min
