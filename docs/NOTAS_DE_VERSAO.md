@@ -11,6 +11,17 @@
   principal e o TriMux comparava esse setor com a cópia de reserva. Corrigido.
   O pedido pelo menu também falhava ao deixar o cartão somente leitura e,
   agora, volta ao menu com o motivo no log quando não dá para expandir.
+* **Tela de início do TriMux** com logotipo, versão e situação, no lugar do
+  texto "Carregando…". Ela aparece logo que o menu abre e enquanto os jogos
+  são indexados. O logotipo da TrimUI ao ligar continua: ele vem da memória
+  interna, que o TriMux não altera.
+* **Controle dos LEDs:** as cores não acendiam ou apagavam depois de um
+  segundo. O firmware deixa no boot uma repetição só para cada efeito, e a
+  chave geral de LEDs pode estar desligada pela opção do sistema oficial. O
+  TriMux agora liga a chave geral e desliga as animações por quadros quando
+  você acende uma zona. Também usa 30000 repetições, o mesmo número que o
+  firmware usa, e aplica suas escolhas de novo 5 s depois do boot, depois
+  que o serviço da TrimUI aplicou as dele. Falhas de escrita vão para o log.
 * O `update.zip` traz as pastas `Roms/<plataforma>` vazias e os arquivos do
   TriMux em `Bios/` (inclusive o `prboom.wad` do DOOM), para quem prepara o
   cartão pelo computador.

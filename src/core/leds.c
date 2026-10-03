@@ -4,6 +4,7 @@
 #include "power.h" /* tm_sysfs_root */
 #include "util.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -84,7 +85,11 @@ static int write_attr(const TmLeds *leds, const char *attr, const char *value)
     char p[600];
     if (attr_path(leds, p, sizeof p, attr) != 0)
         return -1;
-    return tm_write_str(p, value);
+    if (tm_write_str(p, value) != 0) {
+        LOGW("leds: writing \"%s\" to %s failed: %s", value, attr, strerror(errno));
+        return -1;
+    }
+    return 0;
 }
 
 int tm_leds_apply(const TmLeds *leds, const char *zone_id, const TmLedSetting *s)
@@ -98,8 +103,20 @@ int tm_leds_apply(const TmLeds *leds, const char *zone_id, const TmLedSetting *s
     int bright = s->brightness < 0 ? 0 : s->brightness > 100 ? 100 : s->brightness;
     char attr[48], val[32];
     int rc = 0;
-    if (leds->has_enable && effect != TM_LED_EFFECT_OFF)
-        rc |= write_attr(leds, "effect_enable", "1");
+    if (effect != TM_LED_EFFECT_OFF) {
+        /* "enable" is the firmware's master LED switch: hardwareservice sets
+         * it from the stock "LED" setting (system.json ledswitch), so with
+         * that setting off nothing lights up. Turning a zone on here means
+         * the user wants it on while TriMux runs (not saved in the firmware). */
+        if (attr_writable(leds, "enable"))
+            rc |= write_attr(leds, "enable", "1");
+        if (leds->has_enable)
+            rc |= write_attr(leds, "effect_enable", "1");
+        /* frame animations take over the effects (the firmware's own
+         * fn_editor scripts turn them off before using effects) */
+        if (attr_writable(leds, "anim_frames_enable"))
+            rc |= write_attr(leds, "anim_frames_enable", "0");
+    }
     if (z->has_brightness) {
         snprintf(val, sizeof val, "%d", bright);
         rc |= write_attr(leds, z->brightness_attr, val);
@@ -109,9 +126,13 @@ int tm_leds_apply(const TmLeds *leds, const char *zone_id, const TmLedSetting *s
     rc |= write_attr(leds, attr, val);
     snprintf(attr, sizeof attr, "effect_duration_%s", z->id);
     rc |= write_attr(leds, attr, "1000");
+    /* Repetitions: the firmware leaves 1 here at boot (runtrimui.sh), which
+     * ends an effect after one second, and never writes a negative value
+     * itself; 30000 is the count its low-battery script uses (about 8 h at
+     * 1 s, and the menu applies the settings again whenever it starts). */
     snprintf(attr, sizeof attr, "effect_cycles_%s", z->id);
     if (attr_writable(leds, attr))
-        rc |= write_attr(leds, attr, "-1"); /* loop until changed */
+        rc |= write_attr(leds, attr, "30000");
     snprintf(attr, sizeof attr, "effect_%s", z->id);
     snprintf(val, sizeof val, "%d", effect);
     rc |= write_attr(leds, attr, val);

@@ -50,7 +50,17 @@ def test_leds_detect_and_apply(env, device, card):
     assert read(os.path.join(device, "sys/class/led_anim/effect_rgb_hex_m")) == "0"
     cfg = os.path.join(card, "TriMuxData/config/trimux.ini")
     write(cfg, "[leds]\nmanaged = 1\n[leds.m]\ncolor = 00FF00\nbrightness = 30\neffect = 4\n")
+    # state left by the firmware: master switch off (stock "LED" setting off),
+    # frame animations on, one repetition from runtrimui.sh's boot flash
+    led = os.path.join(device, "sys/class/led_anim")
+    write(os.path.join(led, "enable"), "0\n")
+    write(os.path.join(led, "anim_frames_enable"), "1\n")
+    write(os.path.join(led, "effect_cycles_m"), "1\n")
     ctl(env, "leds", "apply")
+    assert read(os.path.join(led, "enable")) == "1"
+    assert read(os.path.join(led, "effect_enable")) == "1"
+    assert read(os.path.join(led, "anim_frames_enable")) == "0"
+    assert read(os.path.join(led, "effect_cycles_m")) == "30000"
     assert read(os.path.join(device, "sys/class/led_anim/effect_rgb_hex_m")) == "00FF00"
     assert read(os.path.join(device, "sys/class/led_anim/max_scale")) == "30"
     assert read(os.path.join(device, "sys/class/led_anim/effect_m")) == "4"

@@ -275,3 +275,12 @@ def test_card_grow_result_shown_after_reboot(env):
     write(os.path.join(state, "card-grown"), "%d\n" % (1 << 50))   # bigger than now: it did not work
     assert ui(env, "wait=50").returncode == 0
     assert "did not take effect" in read(os.path.join(env["TRIMUX_SDCARD"], "TriMuxData/logs/trimux.log"))
+
+
+def test_start_screen(env, tmp_path):
+    shot = str(tmp_path / "splash.bmp")
+    e = dict(env, SDL_VIDEODRIVER="offscreen", SDL_AUDIODRIVER="dummy")
+    import subprocess as sp
+    from conftest import UI
+    assert sp.run([UI, "--window", "1024", "768", "--splash-shot", shot], env=e, timeout=60).returncode == 0
+    assert bmp_pixel(shot, 600, 470) == (0x2e, 0x86, 0xde)   # "Mux" in the accent colour

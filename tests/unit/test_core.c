@@ -393,6 +393,10 @@ static void test_leds(void)
     snprintf(p, sizeof p, "%s/sys/class/led_anim/effect_m", root);
     tm_read_line(p, v, sizeof v);
     CHECK_STR(v, "4"); /* invalid effect -> static */
+    snprintf(p, sizeof p, "%s/sys/class/led_anim/effect_cycles_m", root);
+    tm_read_line(p, v, sizeof v);
+    CHECK_STR(v, "30000"); /* never a single repetition, never negative */
+    snprintf(p, sizeof p, "%s/sys/class/led_anim/effect_m", root);
     s.on = 0;
     tm_leds_apply(&leds, "m", &s);
     tm_read_line(p, v, sizeof v);

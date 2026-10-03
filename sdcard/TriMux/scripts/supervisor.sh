@@ -76,6 +76,9 @@ fi
 # Conservative CPU policy for the menu, and the user's LED choice (if any).
 "$CTL" power default >/dev/null 2>&1
 "$CTL" leds apply >/dev/null 2>&1
+# hardwareservice applies the stock LED settings when it starts, which can be
+# after the line above: apply the user's choice again a few seconds later.
+(sleep 5; "$CTL" leds apply) >/dev/null 2>&1 &
 # Side switch: LEDs off / speaker mute, if the user assigned one of those.
 "$CTL" switch >/dev/null 2>&1
 # Network choices (Wi-Fi on/off, Bluetooth service, firmware SSH off unless

@@ -62,7 +62,7 @@ cartão devolve o aparelho ao estado original.
 | ![Rede](docs/img/13-rede.png) | ![Senha do Wi-Fi](docs/img/15-senha-wifi.png) |
 | ![Registros e desempenho](docs/img/16-registros.png) | ![Sessões gravadas](docs/img/17-sessoes.png) |
 | ![Capa no painel](docs/img/18-capas.png) | ![Capas dos jogos](docs/img/19-capas-opcoes.png) |
-| ![Atualização](docs/img/20-atualizacao.png) | |
+| ![Atualização](docs/img/20-atualizacao.png) | ![Tela de início](docs/img/21-inicio.png) |
 
 <sub>Capturas renderizadas no computador (SDL offscreen) com um Brick Pro
 simulado; não são fotos do aparelho.</sub>
@@ -166,7 +166,7 @@ testada do zero antes de ser anexada.
 
 ## Testes
 
-* 303 verificações unitárias em C (com AddressSanitizer/UBSan).
+* 304 verificações unitárias em C (com AddressSanitizer/UBSan).
 * Testes Python: `trimuxctl` contra um Brick Pro simulado (inclusive
   ferramentas de rede falsas do firmware), scripts de boot com
   comandos do firmware simulados, imagem/partição/expansão em arquivos de
