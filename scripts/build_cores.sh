@@ -38,7 +38,8 @@ prboom|.|Makefile|platform=unix|prboom_libretro.so
 tyrquake|.|Makefile|platform=unix|tyrquake_libretro.so
 nxengine|.|Makefile|platform=unix|nxengine_libretro.so
 mupen64plus_next|.|Makefile|platform=unix ARCH=aarch64 WITH_DYNAREC=aarch64 FORCE_GLES3=1|mupen64plus_next_libretro.so
-flycast|cmake-new|-|-|flycast_libretro.so'
+flycast|cmake-new|-|-|flycast_libretro.so
+ppsspp|cmake-ppsspp|-|-|ppsspp_libretro.so'
 
 want="$*"
 failed=""
@@ -72,6 +73,20 @@ echo "$RECIPES" | while IFS='|' read -r name sub mkfile extra out; do
             echo "FAILED $name (see $log)"; continue
         fi
         cp "$b/$out" "$OUT/$out"
+    elif [ "$sub" = "cmake-ppsspp" ]; then
+        # PPSSPP: libretro core, OpenGL ES (no Vulkan), FFmpeg from its own
+        # pinned submodule (prebuilt static libraries for linux/aarch64)
+        b=$ROOT/build/obj/$name
+        rm -rf "$b"
+        if ! { /opt/cmake-3.28/bin/cmake -S "$SRC/$name" -B "$b" -G Ninja -DCMAKE_TOOLCHAIN_FILE=/opt/cmake-aarch64.cmake \
+                 -DCMAKE_BUILD_TYPE=Release -DLIBRETRO=ON -DUSING_GLES2=ON -DUSING_EGL=OFF -DUSING_X11_VULKAN=OFF \
+                 -DVULKAN=OFF -DUSE_FFMPEG=ON -DUSE_SYSTEM_FFMPEG=OFF -DUSE_DISCORD=OFF -DUSE_MINIUPNPC=OFF \
+                 -DUSE_SYSTEM_LIBZIP=OFF -DUSE_SYSTEM_SNAPPY=OFF -DUSE_SYSTEM_ZSTD=OFF -DUSE_SYSTEM_LIBPNG=OFF \
+                 -DHEADLESS=OFF -DUNITTEST=OFF -DSIMULATOR=OFF \
+              && /opt/cmake-3.28/bin/cmake --build "$b" -j "$JOBS"; } >"$log" 2>&1; then
+            echo "FAILED $name (see $log)"; continue
+        fi
+        cp "$(find "$b" -name "$out" | head -n 1)" "$OUT/$out"
     else
         d="$SRC/$name/$sub"
         # shellcheck disable=SC2086

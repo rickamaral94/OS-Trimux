@@ -800,3 +800,4 @@ files.delete.failed = Não foi possível apagar o arquivo
 web.needs_wifi = Conecte o Wi-Fi primeiro (Configurações › Rede).
 web.failed = Não foi possível iniciar o servidor de arquivos. Veja o Registro.
 web.running = No computador ou no celular, na mesma rede Wi-Fi, abra no navegador:\n\nhttp://%s:%d\n\nSem senha: qualquer aparelho desta rede pode ver e mudar os arquivos enquanto esta janela estiver aberta. O aparelho não desliga sozinho enquanto ela estiver aberta.\n\nA ou B: fechar e desligar o servidor.
+emu.ppsspp.note = PlayStation Portable. Não precisa de BIOS: as fontes e arquivos do sistema do PSP vêm com o TriMux (Bios/PPSSPP). Jogos em .iso, .cso, .chd ou .pbp (os .cso ocupam menos espaço). Jogos 2D e leves rodam bem; os 3D pesados podem ficar lentos com a resolução 2x.

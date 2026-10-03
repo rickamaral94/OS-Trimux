@@ -5,6 +5,7 @@ Copie seus jogos para a pasta da plataforma:
   MS        .sms .zip          GG         .gg .zip          32X .32x .zip
   SEGACD    .cue .chd          PCE        .pce .cue .chd    PS  .cue .chd .pbp .m3u
   N64       .n64 .z64 .v64 .zip              DC  .chd .cdi .gdi .cue .m3u
+  PSP       .iso .cso .chd .pbp (sem BIOS)
   ARCADE    .zip (FinalBurn Neo)            NEOGEO .zip     NGP .ngp .ngc
   WS        .ws .wsc           LYNX       .lnx              A2600 .a26 .bin
   A7800     .a78               DOOM .wad (PrBoom)          QUAKE pak0.pak

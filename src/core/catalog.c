@@ -104,6 +104,7 @@ int tm_catalog_load(TmCatalog *cat, const char *systems_ini, const char *emulato
         tm_strlcpy(em->config_name, tm_ini_get(&e, id, "config_name", em->name), sizeof em->config_name);
         tm_strlcpy(em->profile, tm_ini_get(&e, id, "profile", "balanced"), sizeof em->profile);
         tm_strlcpy(em->note_key, tm_ini_get(&e, id, "note", ""), sizeof em->note_key);
+        tm_strlcpy(em->system_dir, tm_ini_get(&e, id, "system_dir", ""), sizeof em->system_dir);
         em->experimental = (int)tm_ini_get_long(&e, id, "experimental", 0);
         /* "script" and "portmaster" run a launcher script, no core file */
         int is_script = strcmp(em->type, "script") == 0 || strcmp(em->type, "portmaster") == 0;

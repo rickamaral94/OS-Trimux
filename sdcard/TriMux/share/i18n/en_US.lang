@@ -798,3 +798,4 @@ files.delete.failed = The file could not be deleted
 web.needs_wifi = Connect to Wi-Fi first (Settings › Network).
 web.failed = The file server could not be started. See the Log.
 web.running = On a computer or phone on the same Wi-Fi, open in the browser:\n\nhttp://%s:%d\n\nNo password: any device on this network can see and change the files while this window is open. The device does not power off by itself while it is open.\n\nA or B: close and stop the server.
+emu.ppsspp.note = PlayStation Portable. No BIOS needed: the PSP system fonts and files come with TriMux (Bios/PPSSPP). Games in .iso, .cso, .chd or .pbp (.cso takes less space). 2D and light games run well; heavy 3D games may slow down at 2x resolution.

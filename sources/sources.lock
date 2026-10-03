@@ -24,3 +24,4 @@ nxengine|https://github.com/libretro/nxengine-libretro|fd1c0686f8b4c0aea9b5addbc
 glsl_shaders|https://github.com/libretro/glsl-shaders|f8e23ff880668f0f0e837a05a316534d82a7f31b|per-shader (see docs/LICENCAS.md)
 mupen64plus_next|https://github.com/libretro/mupen64plus-libretro-nx|12edd2c74a517ff86dfa8cfc71ad75e4c10486d5|GPL-2.0-or-later
 flycast|https://github.com/flyinghead/flycast|59ed35a7ea7c1940d4c8ac221a662d0e6d6dc9ea|GPL-2.0-only
+ppsspp|https://github.com/hrydgard/ppsspp|e49c0bd8836a8a8f678565357773386f1174d3f5|GPL-2.0-or-later

@@ -40,6 +40,8 @@ typedef struct {
     char profile[16];     /* recommended power profile id */
     int experimental;
     char note_key[48];
+    char system_dir[64];  /* RetroArch system folder relative to the card, when not Bios/ (files the
+                           * core needs that ship with TriMux, so online updates refresh them) */
 } TmEmulator;
 
 typedef struct {

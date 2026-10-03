@@ -98,7 +98,11 @@ int tm_launch_write_ra_append(const TmPaths *p, const TmLaunch *l, const char *e
     rc |= tm_path_join(saves, sizeof saves, p->sd, rel);
     rc |= tm_snprintf(rel, sizeof rel, "States/%s", l->system->id);
     rc |= tm_path_join(states, sizeof states, p->sd, rel);
-    rc |= tm_path_join(bios, sizeof bios, p->sd, "Bios");
+    /* an emulator may use a folder of TriMux instead of Bios/ (emulators.ini system_dir) */
+    const char *sysdir = l->emu && l->emu->system_dir[0] ? l->emu->system_dir : "Bios";
+    rc |= tm_path_join(bios, sizeof bios, p->sd, sysdir);
+    if (!rc && !tm_path_is_safe_under(p->sd, bios))
+        rc |= tm_path_join(bios, sizeof bios, p->sd, "Bios");
     rc |= tm_path_join(shots, sizeof shots, p->sd, "Screenshots");
     if (rc)
         return -1;

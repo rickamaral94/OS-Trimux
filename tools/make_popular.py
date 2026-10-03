@@ -31,6 +31,7 @@ SOURCES = {
     "MD": "List_of_best-selling_Sega_Genesis_video_games",
     "PS": "List_of_best-selling_PlayStation_video_games",
     "N64": "List_of_best-selling_Nintendo_64_video_games",
+    "PSP": "List_of_best-selling_PlayStation_Portable_video_games",
 }
 
 # Entries that stand for more than one game, or whose cartridge is named
@@ -96,6 +97,8 @@ def strip_markup(s):
     s = re.sub(r"<ref[^>]*/>", "", s)
     s = re.sub(r"<ref[^>]*>.*?</ref>", "", s, flags=re.S)
     s = re.sub(r"\{\{efn[^{}]*\}\}", "", s)
+    s = re.sub(r"\{\{nts\|([^{}|]*)\}\}", r"\1", s)  # {{nts|7.5}}{{nbsp}}million (PSP page)
+    s = s.replace("{{nbsp}}", " ")
     s = re.sub(r"\{\{(?:sort|sortname)\|[^|{}]*\|([^{}]*)\}\}", r"\1", s)
     s = re.sub(r"\[\[(?:[^|\]]*\|)?([^\]]*)\]\]", r"\1", s)
     s = re.sub(r"\{\{[^{}]*\}\}", "", s)

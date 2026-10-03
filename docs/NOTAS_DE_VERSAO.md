@@ -1,7 +1,21 @@
 # TriMux 0.5.0 (pré-lançamento)
 
-**Estado: não testado em um Brick Pro físico.** Novidade: **ferramentas
-próprias** na aba Aplicativos ([FERRAMENTAS.md](FERRAMENTAS.md)):
+**Estado: não testado em um Brick Pro físico.** Novidades:
+
+* **PlayStation Portable** (pasta `Roms/PSP`): emulador PPSSPP 1.19.3
+  (núcleo libretro, GLES), compilado dos fontes oficiais.
+  * **Não precisa de BIOS.** As fontes e os arquivos de sistema do PSP vêm do
+    próprio PPSSPP e ficam em `TriMux/retroarch/system/PPSSPP`, atualizados
+    junto com o TriMux.
+  * Formatos `.iso`, `.cso` (ocupa menos espaço), `.chd` e `.pbp`.
+  * Em *Configurações › Emuladores › PlayStation Portable* há a **Resolução
+    interna**: Original (480×272) ou 2x (960×544, mais nítida e mais pesada).
+  * Ordem por popularidade com os 24 PSP mais vendidos (Wikipedia).
+  * Os saves do PSP ficam em `Saves/PSP`.
+* Lista de popularidade do Mega Drive corrigida: 4 jogos que se perdiam na
+  leitura da tabela voltaram (23 no total).
+
+**Ferramentas próprias** na aba Aplicativos ([FERRAMENTAS.md](FERRAMENTAS.md)):
 
 * **Estatísticas de jogo:** tempo total, sessões, último jogo, os 10 mais
   jogados e o tempo por plataforma, a partir do tempo de jogo que o TriMux já

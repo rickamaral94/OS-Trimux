@@ -469,7 +469,22 @@ static void test_launch(void)
     char *cfg = tm_read_file(app, 4096, NULL);
     CHECK(cfg && strstr(cfg, "savefile_directory = \"") && strstr(cfg, "/Saves/GBA\""));
     CHECK(cfg && strstr(cfg, "user_language = \"7\""));
+    CHECK(cfg && strstr(cfg, "/Bios\"\n"));
     CHECK(tm_ra_language("pt_BR") == 7 && tm_ra_language("xx") == 0);
+    free(cfg);
+    /* an emulator with its own system folder (PPSSPP), and one that tries to leave the card */
+    TmEmulator own = *l.emu;
+    TmLaunch l2 = l;
+    l2.emu = &own;
+    tm_strlcpy(own.system_dir, "TriMux/retroarch/system", sizeof own.system_dir);
+    CHECK(tm_launch_write_ra_append(&p, &l2, "", app, sizeof app) == 0);
+    cfg = tm_read_file(app, 4096, NULL);
+    CHECK(cfg && strstr(cfg, "system_directory = \"") && strstr(cfg, "/TriMux/retroarch/system\""));
+    free(cfg);
+    tm_strlcpy(own.system_dir, "../../etc", sizeof own.system_dir);
+    CHECK(tm_launch_write_ra_append(&p, &l2, "", app, sizeof app) == 0);
+    cfg = tm_read_file(app, 4096, NULL);
+    CHECK(cfg && strstr(cfg, "/Bios\"\n") && !strstr(cfg, "etc\""));
     free(cfg);
     TmIni ini;
     CHECK(tm_settings_load(&ini, &p) == 1);
