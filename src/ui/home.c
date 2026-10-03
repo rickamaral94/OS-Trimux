@@ -1,6 +1,7 @@
 /* Home screen: continue, recent, favorites, all games, platforms, settings. */
 #define _GNU_SOURCE
 #include "app.h"
+#include "../core/scrape.h"
 #include "../core/util.h"
 
 #include <stdio.h>
@@ -91,10 +92,32 @@ static void entry_label(const HomeEntry *e, char *label, size_t ls, char *value,
     }
 }
 
+/* most recently played game of a platform still in the library (-1: none) */
+static long last_played(int system)
+{
+    for (size_t i = 0; i < A.recent.count; i++) {
+        long gi = tm_library_find(&A.lib, A.recent.items[i]);
+        if (gi >= 0 && (system < 0 || A.lib.games[gi].system == system))
+            return gi;
+    }
+    return -1;
+}
+
+/* the game's cover, if any, centred at y; returns the height used */
+static int cover(long gi, int x, int y, int w, int max_h)
+{
+    char path[TM_PATH_MAX];
+    if (app_game_cover(&A.lib.games[gi], path, sizeof path) != 0)
+        return 0;
+    return gfx_image(path, x, y, w, max_h);
+}
+
 static void draw_panel(const HomeEntry *e, int x, int y, int w, int h)
 {
     const TmTheme *t = gfx_theme();
-    gfx_round_rect(x, y, w, h, S(14), t->panel);
+    uint32_t band = e->type == H_SYSTEM ? A.cat.systems[e->system].color
+                  : e->type == H_CONTINUE ? A.cat.systems[A.lib.games[e->game].system].color : 0;
+    app_panel(x, y, w, h, band);
     int px = x + S(24), py = y + S(22), pw = w - S(48);
     char buf[512];
     switch (e->type) {
@@ -103,7 +126,10 @@ static void draw_panel(const HomeEntry *e, int x, int y, int w, int h)
         const TmSystem *sys = &A.cat.systems[g->system];
         gfx_badge(px, py, S(34), sys->color, sys->short_name);
         py += S(52);
-        py += gfx_text_wrap(FONT_L, px, py, pw, 3, t->text, g->name) + S(14);
+        int ch = cover(e->game, px, py, pw, h * 42 / 100);
+        if (ch)
+            py += ch + S(16);
+        py += gfx_text_wrap(ch ? FONT_M : FONT_L, px, py, pw, 3, t->text, g->name) + S(14);
         const TmEmulator *em = app_resolve_emu(g, NULL);
         snprintf(buf, sizeof buf, "%s: %s", tr("games.emulator"), em ? em->name : tr("games.no_emulator"));
         gfx_text(FONT_S, px, py, t->dim, ALIGN_LEFT, pw, buf);
@@ -122,6 +148,13 @@ static void draw_panel(const HomeEntry *e, int x, int y, int w, int h)
         snprintf(buf, sizeof buf, tr(ng == 1 ? "home.games_1" : "home.games_n"), ng);
         gfx_text(FONT_M, px, py, t->text, ALIGN_LEFT, pw, buf);
         py += S(46);
+        long lp = last_played(e->system);
+        if (lp >= 0) { /* what you played last on this platform */
+            int ch = cover(lp, px, py + S(30), pw, h * 30 / 100);
+            snprintf(buf, sizeof buf, "%s: %s", tr("home.last_played"), A.lib.games[lp].name);
+            gfx_text(FONT_S, px, py, t->dim, ALIGN_LEFT, pw, buf);
+            py += S(30) + (ch ? ch + S(14) : S(8));
+        }
         const char *pref = tm_ini_get(&A.settings, "emulators", sys->id, NULL);
         const TmEmulator *em = tm_catalog_resolve(&A.cat, sys, NULL, pref, A.paths.cores);
         snprintf(buf, sizeof buf, "%s: %s", tr("games.emulator"), em ? em->name : tr("games.no_emulator"));
@@ -146,9 +179,27 @@ static void draw_panel(const HomeEntry *e, int x, int y, int w, int h)
         char label[96], value[64];
         entry_label(e, label, sizeof label, value, sizeof value);
         py += gfx_text_wrap(FONT_L, px, py, pw, 2, t->text, label) + S(16);
-        gfx_text_wrap(FONT_S, px, py, pw, 8, t->dim, tr(k));
+        py += gfx_text_wrap(FONT_S, px, py, pw, 8, t->dim, tr(k)) + S(20);
+        if (e->type == H_RECENT || e->type == H_ALL) { /* covers of the last games played, side by side */
+            int cw = (pw - S(24)) / 3, n = 0;
+            for (size_t i = 0; i < A.recent.count && n < 3; i++) {
+                long gi = tm_library_find(&A.lib, A.recent.items[i]);
+                if (gi >= 0 && cover(gi, px + n * (cw + S(12)), py, cw, h - (py - y) - S(24)))
+                    n++;
+            }
+        }
     }
     }
+}
+
+uint32_t home_ambient(void)
+{
+    if (!g_n)
+        return 0;
+    const HomeEntry *e = &g_entries[A.home_sel];
+    return e->type == H_SYSTEM     ? A.cat.systems[e->system].color
+           : e->type == H_CONTINUE ? A.cat.systems[A.lib.games[e->game].system].color
+                                   : 0;
 }
 
 void home_draw(void)
@@ -164,13 +215,15 @@ void home_draw(void)
         A.home_top = A.home_sel;
     if (A.home_sel >= A.home_top + visible)
         A.home_top = A.home_sel - visible + 1;
+    if (g_n)
+        app_list_highlight(S(16), top + (A.home_sel - A.home_top) * row, listw - S(24), row);
     for (int i = 0; i < visible && (size_t)(A.home_top + i) < g_n; i++) {
         const HomeEntry *e = &g_entries[A.home_top + i];
         char label[96], value[64];
         entry_label(e, label, sizeof label, value, sizeof value);
         const char *badge = e->type == H_SYSTEM ? A.cat.systems[e->system].short_name : NULL;
         uint32_t bc = e->type == H_SYSTEM ? A.cat.systems[e->system].color : 0;
-        app_draw_list_row(S(16), top + i * row, listw - S(24), row, A.home_top + i == A.home_sel, label,
+        app_draw_list_row(S(16), top + i * row, listw - S(24), row, A.home_top + i == A.home_sel ? 2 : 0, label,
                           e->type == H_CONTINUE ? "" : value, 1, bc, badge, 0);
     }
     if (g_n > (size_t)visible) { /* scroll indicator */

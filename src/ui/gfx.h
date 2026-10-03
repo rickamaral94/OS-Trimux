@@ -28,6 +28,15 @@ void gfx_present(void);
 void gfx_rect(int x, int y, int w, int h, uint32_t rgb);
 void gfx_rect_a(int x, int y, int w, int h, uint32_t rgb, uint8_t alpha);
 void gfx_round_rect(int x, int y, int w, int h, int r, uint32_t rgb);
+void gfx_round_rect_a(int x, int y, int w, int h, int r, uint32_t rgb, uint8_t alpha);
+/* Colour pct% of the way from a to b. */
+uint32_t gfx_mix(uint32_t a, uint32_t b, int pct);
+/* Vertical gradient (colour and alpha from top to bottom). */
+void gfx_gradient(int x, int y, int w, int h, uint32_t top, uint32_t bottom, uint8_t a_top, uint8_t a_bottom);
+/* Soft shadow around a rounded box (draw it before the box). */
+void gfx_shadow(int x, int y, int w, int h, int r, int spread);
+/* Wi-Fi signal: 4 bars, the first `bars` lit (0-4). Width = h * 1.3. */
+void gfx_wifi(int x, int y, int h, int bars, uint32_t on, uint32_t off);
 void gfx_frame(int x, int y, int w, int h, int t, uint32_t rgb);
 void gfx_star(int cx, int cy, int r, uint32_t rgb);
 void gfx_battery(int x, int y, int h, int pct, int charging);

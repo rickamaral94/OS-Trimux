@@ -294,6 +294,30 @@ def test_scrape_waits_for_the_wifi_after_a_suspend(env, device, card):
     assert "state=done" in st and "found=1" in st
 
 
+def test_trimui_format_ports_are_found_and_start_from_their_folder(env, card):
+    """Ports copied from the stock TrimUI card: one folder with config.json +
+    launch.sh, in Roms/PORTS or in the stock Ports folder at the card root."""
+    import json
+    launch = '#!/bin/sh\npwd > started\n'
+    for base, label in (("Roms/PORTS/Celeste", "Celeste"), ("Ports/Cave Story", "Cave Story (TrimUI)")):
+        write(os.path.join(card, base, "config.json"), json.dumps({"label": label, "launch": "launch.sh", "icon": "icon.png"}))
+        write(os.path.join(card, base, "launch.sh"), launch, 0o755)
+        write(os.path.join(card, base, "gamedata/data.bin"), "x")
+    write(os.path.join(card, "Roms/PORTS/Broken/config.json"), "{\"label\": \"No launch\"}")
+    write(os.path.join(card, "Roms/PORTS/Broken/run.sh"), "#!/bin/sh\n")   # inside a folder without a valid config: ignored
+    ctl(env, "scan")
+    idx = read(os.path.join(card, "TriMuxData/cache/library.tsv"))
+    assert "PORTS\tRoms/PORTS/Celeste/launch.sh\tCeleste" in idx
+    assert "PORTS\tPorts/Cave Story/launch.sh\tCave Story (TrimUI)" in idx
+    assert "Broken" not in idx and "data.bin" not in idx
+    os.makedirs(env["TRIMUX_TMP"], exist_ok=True)
+    write(os.path.join(env["TRIMUX_TMP"], "launch.ini"),
+          "[launch]\nsystem = PORTS\nrom = Ports/Cave Story/launch.sh\nemulator = shell\n")
+    ctl(env, "launch", check=False)
+    assert os.path.realpath(read(os.path.join(card, "Ports/Cave Story/started"))) == \
+        os.path.realpath(os.path.join(card, "Ports/Cave Story"))
+
+
 def test_card_grow_auto_needs_the_image_marker(env):
     # cards prepared on a computer (no marker) are never touched automatically
     write(os.path.join(env["TRIMUX_SYSFS_ROOT"], "proc/mounts"), "/dev/mmcblk1p1 %s vfat rw 0 0\n" % env["TRIMUX_SDCARD"])

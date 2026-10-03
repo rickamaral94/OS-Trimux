@@ -1,7 +1,9 @@
 /* TriMux menu: state, shared widgets, launch handoff and the main loop. */
 #define _GNU_SOURCE
 #include "app.h"
+#include "../core/apps.h"
 #include "../core/buttons.h"
+#include "../core/scrape.h"
 #include "../core/launch.h"
 #include "../core/clock.h"
 #include "../core/log.h"
@@ -395,14 +397,138 @@ void app_switch_tick(void)
     }
 }
 
+/* ------------------------------------------------------------ look and motion */
+
+static int g_anim_off;      /* scripted runs and "Animações: Desligado" draw the final state */
+static int g_animating;     /* something moved this frame: draw again soon */
+static uint32_t g_ambient, g_ambient_target;
+
+static int anim_enabled(void)
+{
+    return !g_anim_off && tm_ini_get_long(&A.settings, "general", "animations", 1);
+}
+
+
+/* The selection highlight glides to its row (about 100 ms) instead of
+ * jumping; long jumps (scrolling a page, wrapping around) snap. */
+int app_anim(int slot, int target, int row)
+{
+    static float pos[4];
+    static int have[4];
+    if (slot < 0 || slot > 3)
+        return target;
+    if (!anim_enabled() || !have[slot] || abs(target - (int)pos[slot]) > row * 3) {
+        pos[slot] = (float)target;
+        have[slot] = 1;
+        return target;
+    }
+    float d = (float)target - pos[slot];
+    if (d > -1.0f && d < 1.0f) {
+        pos[slot] = (float)target;
+        return target;
+    }
+    pos[slot] += d * 0.45f;
+    g_animating = 1;
+    return (int)pos[slot];
+}
+
+static void draw_background(void)
+{
+    const TmTheme *t = gfx_theme();
+    g_ambient_target = A.screen == SCR_HOME ? home_ambient() : A.screen == SCR_GAMES ? games_ambient() : 0;
+    uint32_t want = g_ambient_target ? g_ambient_target : t->accent;
+    if (!anim_enabled() || !g_ambient)
+        g_ambient = want;
+    else if (g_ambient != want) {
+        uint32_t next = gfx_mix(g_ambient, want, 30);
+        g_ambient = next == g_ambient ? want : next;
+        g_animating = 1;
+    }
+    /* a faint wash of the selected platform's colour from the bottom */
+    gfx_gradient(0, gfx_h() / 3, gfx_w(), gfx_h() * 2 / 3, t->bg, gfx_mix(t->bg, g_ambient, 16), 255, 255);
+}
+
+/* Wi-Fi state for the header, refreshed at most every 5 s (wpa_cli is a process) */
+static int wifi_bars(void)
+{
+    static uint64_t at;
+    static int bars = -1;
+    if (at && tm_now_ms() - at < 5000)
+        return bars;
+    at = tm_now_ms();
+    TmWifiStatus st;
+    if (!tm_wifi_available() || !tm_wifi_running())
+        bars = -1;
+    else
+        bars = tm_wifi_status(&st) == 0 && strcmp(st.state, "COMPLETED") == 0 && st.ip[0] ? 4 : 0;
+    return bars;
+}
+
 /* ------------------------------------------------------------ widgets */
+
+int app_game_cover(const TmGame *g, char *out, size_t size)
+{
+    if (!tm_ini_get_long(&A.settings, "covers", "show", 1))
+        return -1;
+    const TmSystem *sys = &A.cat.systems[g->system];
+    if (tm_scrape_cover_path(A.paths.sd, g->relpath, sys->id, out, size) == 0 && tm_file_exists(out))
+        return 0;
+    if (sys->app_folders) { /* stock TrimUI port: the icon of its folder */
+        char dir[TM_PATH_MAX];
+        TmApp app;
+        if (tm_path_join(dir, sizeof dir, A.paths.sd, g->relpath) == 0) {
+            char *slash = strrchr(dir, '/');
+            if (slash)
+                *slash = '\0';
+            if (tm_app_load(dir, "en", &app) == 0 && app.icon[0])
+                return tm_strlcpy(out, app.icon, size);
+        }
+    }
+    /* no cover yet: the path where a downloaded one will appear */
+    return tm_scrape_cover_path(A.paths.sd, g->relpath, sys->id, out, size);
+}
+
+void app_panel(int x, int y, int w, int h, uint32_t band)
+{
+    const TmTheme *t = gfx_theme();
+    gfx_shadow(x, y, w, h, S(14), S(10));
+    gfx_round_rect(x, y, w, h, S(14), t->panel);
+    if (band) { /* the platform colour fading in from the top */
+        gfx_round_rect(x, y, w, S(28), S(14), gfx_mix(t->panel, band, 45));
+        gfx_gradient(x, y + S(14), w, S(150), gfx_mix(t->panel, band, 45), t->panel, 255, 255);
+    }
+}
+
+void app_empty(const char *msg, int star)
+{
+    const TmTheme *t = gfx_theme();
+    int cy = gfx_h() * 40 / 100, bw = gfx_w() * 70 / 100, bx = (gfx_w() - bw) / 2;
+    if (star) {
+        gfx_round_rect_a(gfx_w() / 2 - S(60), cy - S(150), S(120), S(120), S(60), t->panel2, 255);
+        gfx_star(gfx_w() / 2, cy - S(90), S(38), t->warn);
+    }
+    int lines = 0, lw = 0;
+    /* centre short messages; long ones wrap inside the box */
+    if ((lw = gfx_text_width(FONT_M, msg)) <= bw)
+        gfx_text(FONT_M, gfx_w() / 2, cy, t->dim, ALIGN_CENTER, 0, msg);
+    else
+        lines = gfx_text_wrap(FONT_M, bx, cy, bw, 8, t->dim, msg);
+    (void)lines;
+}
 
 void app_header(const char *title)
 {
     const TmTheme *t = gfx_theme();
     int h = S(64);
-    gfx_rect(0, 0, gfx_w(), h, t->panel);
-    gfx_text(FONT_M, S(24), (h - gfx_font_height(FONT_M)) / 2, t->text, ALIGN_LEFT, gfx_w() - S(330), title);
+    gfx_gradient(0, 0, gfx_w(), h, gfx_mix(t->panel, t->text, 4), t->panel, 255, 255);
+    gfx_rect_a(0, h - 1, gfx_w(), 1, t->text, 18);
+    int ty = (h - gfx_font_height(FONT_M)) / 2, tx = S(24);
+    if (strncmp(title, "TriMux", 6) == 0) { /* the name in two tones */
+        tx += gfx_text(FONT_M, tx, ty, t->text, ALIGN_LEFT, 0, "Tri");
+        tx += gfx_text(FONT_M, tx, ty, t->accent, ALIGN_LEFT, 0, "Mux");
+        title += 6;
+    }
+    gfx_text(FONT_M, tx, ty, t->text, ALIGN_LEFT, gfx_w() - S(380) - tx, title);
     int x = gfx_w() - S(24);
     app_refresh_sysinfo(0);
     if (A.si.battery_pct >= 0) {
@@ -418,7 +544,12 @@ void app_header(const char *title)
     if (localtime_r(&now, &tmv) && tmv.tm_year + 1900 >= 2024) { /* RTC set */
         char c[16];
         strftime(c, sizeof c, "%H:%M", &tmv);
-        gfx_text(FONT_S, x, (h - gfx_font_height(FONT_S)) / 2, t->dim, ALIGN_RIGHT, 0, c);
+        x -= gfx_text(FONT_S, x, (h - gfx_font_height(FONT_S)) / 2, t->dim, ALIGN_RIGHT, 0, c) + S(18);
+    }
+    int bars = wifi_bars();
+    if (bars >= 0) {
+        int wh = S(20);
+        gfx_wifi(x - wh * 13 / 10, (h - wh) / 2, wh, bars, t->text, gfx_mix(t->panel, t->dim, 40));
     }
 }
 
@@ -427,7 +558,8 @@ void app_footer(const char *hints)
 {
     const TmTheme *t = gfx_theme();
     int h = S(52), y = gfx_h() - h;
-    gfx_rect(0, y, gfx_w(), h, t->panel);
+    gfx_gradient(0, y, gfx_w(), h, t->panel, gfx_mix(t->panel, t->bg, 40), 255, 255);
+    gfx_rect_a(0, y, gfx_w(), 1, t->text, 18);
     char buf[512];
     tm_strlcpy(buf, hints, sizeof buf);
     int x = S(20);
@@ -450,12 +582,22 @@ void app_footer(const char *hints)
     }
 }
 
+void app_list_highlight(int x, int y, int w, int h)
+{
+    const TmTheme *t = gfx_theme();
+    int slot = A.screen == SCR_HOME ? 0 : A.screen == SCR_GAMES ? 1 : 2;
+    int hy = app_anim(slot, y, h);
+    gfx_shadow(x, hy + S(2), w, h - S(4), S(10), S(8));
+    gfx_round_rect(x, hy + S(2), w, h - S(4), S(10), t->sel);
+    gfx_gradient(x + S(6), hy + S(4), w - S(12), (h - S(8)) / 2, 0xffffff, 0xffffff, 34, 0);
+}
+
 void app_draw_list_row(int x, int y, int w, int h, int selected, const char *label, const char *value,
                        int enabled, uint32_t badge_color, const char *badge, int star)
 {
     const TmTheme *t = gfx_theme();
-    if (selected)
-        gfx_round_rect(x, y + S(2), w, h - S(4), S(10), t->sel);
+    if (selected == 1) /* lists that draw their highlight first pass 2 */
+        app_list_highlight(x, y, w, h);
     uint32_t fg = selected ? t->accent_text : enabled ? t->text : t->dim;
     int tx = x + S(18);
     int fy = y + (h - gfx_font_height(FONT_M)) / 2;
@@ -482,8 +624,10 @@ static void draw_dialog(void)
     int th = gfx_font_height(FONT_S) * 8;
     int h = S(120) + th + S(70);
     int y = (gfx_h() - h) / 2;
+    gfx_shadow(x, y, w, h, S(16), S(16));
     gfx_round_rect(x, y, w, h, S(16), t->panel);
-    gfx_frame(x, y, w, h, 2, t->accent);
+    gfx_round_rect(x, y, w, S(8), S(4), t->accent); /* accent strip on top */
+    gfx_rect(x, y + S(4), w, S(4), t->panel);
     gfx_text(FONT_L, x + S(28), y + S(20), t->text, ALIGN_LEFT, w - S(56), d->title);
     gfx_text_wrap(FONT_S, x + S(28), y + S(84), w - S(56), 8, t->text, d->text);
     int by = y + h - S(70), bw = S(200), bh = S(50);
@@ -542,9 +686,14 @@ static void draw_toast(void)
     const TmTheme *t = gfx_theme();
     int w = gfx_text_width(FONT_S, A.toast) + S(48);
     int h = S(52), x = (gfx_w() - w) / 2, y = gfx_h() - S(52) - h - S(18);
-    gfx_round_rect(x, y, w, h, S(12), t->panel2);
-    gfx_frame(x, y, w, h, 2, t->accent);
-    gfx_text(FONT_S, gfx_w() / 2, y + (h - gfx_font_height(FONT_S)) / 2, t->text, ALIGN_CENTER, 0, A.toast);
+    if (w > gfx_w() - S(40)) {
+        w = gfx_w() - S(40);
+        x = S(20);
+    }
+    gfx_shadow(x, y, w, h, h / 2, S(10));
+    gfx_round_rect(x, y, w, h, h / 2, t->accent);           /* a pill in the accent colour */
+    gfx_round_rect(x + 2, y + 2, w - 4, h - 4, h / 2 - 2, t->panel2);
+    gfx_text(FONT_S, gfx_w() / 2, y + (h - gfx_font_height(FONT_S)) / 2, t->text, ALIGN_CENTER, w - S(32), A.toast);
 }
 
 /* ------------------------------------------------------------ volume / brightness indicator */
@@ -619,7 +768,9 @@ static void draw_osd(void)
 
 static void draw(void)
 {
+    g_animating = 0;
     gfx_clear();
+    draw_background();
     switch (A.screen) {
     case SCR_HOME: home_draw(); break;
     case SCR_GAMES: games_draw(); break;
@@ -819,6 +970,8 @@ int app_main(int argc, char **argv)
     A.dirty = 1;
     A.last_input = tm_now_ms();
 
+    if (script || shot)
+        g_anim_off = 1; /* screenshots and tests see the final frame */
     if (shot) {
         draw();
         gfx_screenshot(shot);
@@ -858,7 +1011,9 @@ int app_main(int argc, char **argv)
             }
         }
         /* 200 ms: the volume/brightness indicator follows the keys closely */
-        int timeout = (input_any_held() || A.screen == SCR_CTRLTEST) ? 16 : 200;
+        int timeout = (input_any_held() || A.screen == SCR_CTRLTEST || g_animating) ? 16 : 200;
+        if (g_animating)
+            A.dirty = 1; /* next animation frame */
         if (SDL_WaitEventTimeout(&ev, timeout)) {
             do {
                 if (ev.type == SDL_QUIT)

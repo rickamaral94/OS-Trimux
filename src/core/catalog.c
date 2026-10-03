@@ -70,6 +70,10 @@ int tm_catalog_load(TmCatalog *cat, const char *systems_ini, const char *emulato
         sys->bios_required = (int)tm_ini_get_long(&s, id, "bios_required", 0);
         sys->experimental = (int)tm_ini_get_long(&s, id, "experimental", 0);
         sys->max_depth = (int)tm_ini_get_long(&s, id, "max_depth", 3);
+        sys->app_folders = (int)tm_ini_get_long(&s, id, "app_folders", 0);
+        tm_strlcpy(sys->root_folder, tm_ini_get(&s, id, "root_folder", ""), sizeof sys->root_folder);
+        if (!tm_name_is_safe(sys->root_folder))
+            sys->root_folder[0] = '\0';
         if (sys->max_depth < 1 || sys->max_depth > 3)
             sys->max_depth = 3;
         sys->color = (unsigned)strtoul(tm_ini_get(&s, id, "color", "607080"), NULL, 16) & 0xFFFFFFu;

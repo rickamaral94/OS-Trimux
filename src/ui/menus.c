@@ -170,6 +170,9 @@ static void page_appearance(Menu *m)
     it = add(m, ACT_TOGGLE, tr("settings.show_empty"), onoff((int)setting_long("general", "show_empty", 0)),
              tr("settings.show_empty.desc"));
     tm_strlcpy(it->sarg, "general/show_empty", sizeof it->sarg);
+    it = add(m, ACT_TOGGLE, tr("settings.animations"), onoff((int)setting_long("general", "animations", 1)),
+             tr("settings.animations.desc"));
+    tm_strlcpy(it->sarg, "general/animations", sizeof it->sarg);
 }
 
 static void page_controls(Menu *m)
@@ -1687,6 +1690,8 @@ void menu_draw(void)
         m->top = m->sel;
     if (m->sel >= m->top + visible)
         m->top = m->sel - visible + 1;
+    if (m->n && m->sel >= m->top && m->sel < m->top + visible)
+        app_list_highlight(S(14), top + (m->sel - m->top) * row, listw - S(22), row);
     for (int i = 0; i < visible && m->top + i < m->n; i++) {
         MenuItem *it = &m->items[m->top + i];
         int header = it->id == ACT_NONE && !it->enabled && m->page != PAGE_LOG && m->page != PAGE_ADD_GAMES;
@@ -1695,11 +1700,11 @@ void menu_draw(void)
                      listw - S(40), it->label);
             continue;
         }
-        app_draw_list_row(S(14), top + i * row, listw - S(22), row, m->top + i == m->sel, it->label, it->value,
+        app_draw_list_row(S(14), top + i * row, listw - S(22), row, m->top + i == m->sel ? 2 : 0, it->label, it->value,
                           it->enabled, it->badge_color, it->badge[0] ? it->badge : NULL, 0);
     }
     int px = listw + S(4), pw = gfx_w() - listw - S(20);
-    gfx_round_rect(px, top, pw, bottom - top, S(14), t->panel);
+    app_panel(px, top, pw, bottom - top, 0);
     if (m->n) {
         MenuItem *it = &m->items[m->sel];
         int y = top + S(20);
