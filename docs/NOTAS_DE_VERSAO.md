@@ -19,6 +19,9 @@
   arredondados.
 * **Informações do aparelho** em cartões, com barras de bateria, temperatura
   (verde, amarela ou vermelha), memória e espaço no cartão.
+* **Teclado na tela:** a tecla escolhida "levanta" com sombra e brilho, e a
+  caixa de texto ganhou borda de destaque.
+* O ranking de popularidade aparece como uma etiqueta no painel do jogo.
 
 # TriMux 0.5.1 (pré-lançamento)
 

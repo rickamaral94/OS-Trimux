@@ -197,9 +197,14 @@ static void draw_panel(const TmGame *g, int x, int y, int w, int h)
         py += gfx_text_wrap(FONT_S, px, py, pw, 4, t->dim, tr(em->note_key)) + S(8);
     long gi = g - A.lib.games;
     int rank = games_rank(gi);
-    if (rank > 0) {
+    if (rank > 0) { /* a chip: "Nº 3 entre os mais vendidos do NES" */
         snprintf(buf, sizeof buf, tr("games.rank"), rank, sys->short_name);
-        py += gfx_text_wrap(FONT_S, px, py, pw, 2, t->accent, buf) + S(4);
+        int cw = gfx_text_width(FONT_S, buf) + S(24), chh = gfx_font_height(FONT_S) + S(10);
+        if (cw > pw)
+            cw = pw;
+        gfx_round_rect(px, py, cw, chh, chh / 2, gfx_mix(t->panel, t->accent, 30));
+        gfx_text(FONT_S, px + S(12), py + S(5), t->text, ALIGN_LEFT, cw - S(24), buf);
+        py += chh + S(8);
     }
     TmPlays pl;
     tm_plays_get(&A.plays, g->relpath, &pl);
