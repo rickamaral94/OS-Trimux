@@ -93,6 +93,7 @@ void app_rescan(void)
 {
     draw_progress_message(tr("library.scanning"));
     tm_library_scan(&A.lib, &A.cat, A.paths.sd, (int)tm_ini_get_long(&A.settings, "general", "clean_names", 1));
+    A.ranks_valid = 0;
     if (tm_library_save(&A.lib, &A.cat, A.paths.library) != 0)
         LOGW("library: index not saved (card read-only or full?)");
     home_build();
@@ -695,6 +696,11 @@ static int load_everything(void)
     tm_list_load(&A.fav, A.paths.favorites);
     tm_list_load(&A.recent, A.paths.recents);
     tm_library_init(&A.lib);
+    tm_popular_load(&A.pop, &A.cat, A.paths.share);
+    char plays[TM_PATH_MAX];
+    tm_ini_init(&A.plays);
+    if (tm_path_join(plays, sizeof plays, A.paths.state, "plays.ini") == 0)
+        tm_ini_load(&A.plays, plays);
     tm_power_detect(&A.power);
     tm_leds_detect(&A.leds);
     return 0;

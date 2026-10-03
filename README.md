@@ -45,6 +45,9 @@ cartão devolve o aparelho ao estado original.
   visual (Pixel suave, Tela de LCD, TV antiga), resolução interna no
   PlayStation, DOOM e Quake, cores e rastro de LCD nos portáteis e texturas
   HD no NES. [docs/IMAGEM.md](docs/IMAGEM.md).
+* **Ordem dos jogos** por nome, por popularidade (mais vendidos da
+  plataforma, das listas de vendas da Wikipedia) ou pelos que você mais
+  jogou (tempo contado no aparelho).
 * **Aplicativos** em uma seção própria, separada dos jogos (formato TrimUI:
   pasta `Apps/` do cartão, apps da memória interna e os do sistema).
 * **Data e hora** com fuso, ajuste pela internet e manual; indicador de

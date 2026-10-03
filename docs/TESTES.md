@@ -86,6 +86,8 @@ Marque com data, firmware, versão do TriMux e observações ao executar.
 | H59 | *Resolução interna 2x* no PlayStation: modelos 3D mais nítidos; anotar FPS e temperatura em 2 jogos 3D | pendente |
 | H60 | DOOM 640×400 e Quake 640×480: jogo abre na resolução escolhida e roda liso | pendente |
 | H61 | *Texturas HD*: um pacote Mesen em `Bios/HdPacks/<jogo>/` é carregado pelo FCEUmm; desligar a opção volta aos gráficos originais | pendente |
+| H62 | *Ordem dos jogos › Popularidade*: no SNES, Super Mario World, Donkey Kong Country e Zelda (nomes No-Intro) aparecem antes dos outros; o painel mostra a posição | pendente |
+| H63 | *Mais jogados*: depois de jogar um jogo por alguns minutos, ele sobe para o topo e o painel mostra vezes e tempo; jogos abertos por menos de 10 s não contam | pendente |
 | H47 | Tela de início do TriMux aparece logo depois do logotipo da TrimUI e enquanto os jogos são indexados | pendente |
 | H15 | Primeiro boot de um cartão de 32 GB e de 128 GB gravado com a imagem: expansão automática, um reinício, aviso com o espaço total; `chkdsk`/`fsck` limpo depois. Repetir pela opção do menu num cartão regravado | pendente |
 | H16 | Cartão cheio: aviso em Armazenamento; salvar estado falha sem corromper | pendente |

@@ -402,3 +402,18 @@ def test_image_resolution_and_missing_shader(rig):
     assert 'video_shader_enable = "false"' in app and 'aspect_ratio_index = "24"' in app
     o = read(os.path.join(rig["card"], "TriMuxData/retroarch/config/PCSX-ReARMed/PCSX-ReARMed.opt"))
     assert o.strip() == 'pcsx_rearmed_neon_enhancement_enable = "enabled"'
+
+
+def test_play_time_is_recorded_after_a_real_session(rig):
+    """"Mais jogados": a session over 10 s is counted in plays.ini; the
+    immediate exits of the other tests are not."""
+    os.makedirs(rig["tmp"], exist_ok=True)
+    write(os.path.join(rig["tm"], "retroarch", "retroarch"), "#!/bin/sh\nsleep 11\nexit 0\n", 0o755)
+    write(os.path.join(rig["tmp"], "launch.ini"),
+          "[launch]\nsystem = FC\nrom = Roms/FC/Micro Mages (World).nes\nemulator = fceumm\n")
+    scripted_ui(rig, [10, 20])
+    run_supervisor(rig, timeout=60)
+    plays = read(os.path.join(rig["card"], "TriMuxData/state/plays.ini"))
+    line = [l for l in plays.splitlines() if l.startswith("Roms/FC/Micro Mages (World).nes")][0]
+    times, seconds, last = line.split("=")[1].split()
+    assert times == "1" and int(seconds) >= 10 and int(last) > 1700000000

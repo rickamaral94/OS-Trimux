@@ -38,6 +38,7 @@ verificados pelo `scripts/fetch_sources.sh`.
 | TyrQuake | Quake | GPL-2.0-or-later | libretro/tyrquake |
 | NXEngine | Cave Story | GPL-3.0-only | libretro/nxengine-libretro |
 | Shaders GLSL `sharp-bilinear-simple`, `zfast-crt`, `zfast-lcd` | filtros de imagem (Pixel suave, TV antiga, Tela de LCD) | domínio público (sharp-bilinear-simple); GPL-2.0-or-later (zfast) | libretro/glsl-shaders |
+| Listas de popularidade (`share/popular/*.txt`) | ordem "Popularidade" | CC BY-SA 4.0 (Wikipedia; artigo e data no topo de cada arquivo) | en.wikipedia.org, "List of best-selling … video games" |
 | stb_truetype v1.26 | renderização de fonte no menu | MIT / domínio público | github.com/nothings/stb (commit em `src/ui/third_party/STB_COMMIT`) |
 | DejaVu Sans | fonte do menu | Bitstream Vera / DejaVu (livre) | pacote Debian `fonts-dejavu-core` |
 

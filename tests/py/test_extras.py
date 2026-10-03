@@ -200,3 +200,40 @@ def test_image_page_extras_follow_the_emulator(env, tmp_path):
     shot = str(tmp_path / "hd.bmp")
     assert ui(env, EMULATORS + ",DOWN,A,DOWN,DOWN,DOWN,shot=%s,A,B,B,B" % shot).returncode == 0
     assert "hdpacks = 0" in read(cfg)
+
+
+# ---- game order (Settings > Library) ----
+LIBRARY = "UP,A" + ",DOWN" * 7 + ",A"           # Configurações -> Biblioteca
+
+
+@needs_ui
+def test_game_order_popularity_and_most_played(env):
+    sd = env["TRIMUX_SDCARD"]
+    for f in ("Aaa Homebrew (World).nes", "Tetris (USA).nes", "Super Mario Bros. 3 (USA) (Rev 1).nes"):
+        write(os.path.join(sd, "Roms/FC", f), "")
+    cfg = os.path.join(sd, "TriMuxData/config/trimux.ini")
+
+    def first_game(sort):
+        write(cfg, "[general]\nwizard_done = 1\nsort = %s\n" % sort)
+        for f in (os.path.join(sd, "TriMuxData/config/recent.txt"), os.path.join(env["TRIMUX_TMP"], "ui_state.ini")):
+            if os.path.exists(f):
+                os.unlink(f)                                  # start from the home screen each time
+        assert ui(env, "DOWN,A,A").returncode == 10          # Todos os jogos -> play the first one
+        return read(os.path.join(env["TRIMUX_TMP"], "launch.ini"))
+
+    assert "Aaa Homebrew" in first_game("name")
+    # NES list: Super Mario Bros. 3 is 3rd, Tetris 4th; the other games have no rank
+    assert "Super Mario Bros. 3" in first_game("popular")
+    write(os.path.join(sd, "TriMuxData/state/plays.ini"),
+          "[plays]\nRoms/GBA/Celeste Classic (World).gba = 2 600 0\nRoms/FC/Micro Mages (World).nes = 1 1200 0\n")
+    assert "Micro Mages" in first_game("played")
+
+
+@needs_ui
+def test_game_order_menu_cycles(env):
+    cfg = os.path.join(env["TRIMUX_SDCARD"], "TriMuxData/config/trimux.ini")
+    # Biblioteca: last item is "Ordem dos jogos"
+    assert ui(env, LIBRARY + ",UP,RIGHT,B,B,B").returncode == 0
+    assert "sort = popular" in read(cfg)
+    assert ui(env, LIBRARY + ",UP,RIGHT,B,B,B").returncode == 0
+    assert "sort = played" in read(cfg)

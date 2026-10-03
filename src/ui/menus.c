@@ -30,7 +30,7 @@ enum {
     ACT_SSH_TOGGLE, ACT_FTP, ACT_CHEEVOS_USER, ACT_CHEEVOS_PASS, ACT_CLEAR_LOGS, ACT_COVERS_RUN, ACT_COVERS_RETRY, ACT_COVERS_SHOW, ACT_COVERS_KIND,
     ACT_UPDATE_CHECK, ACT_UPDATE_INSTALL, ACT_UPDATE_ROLLBACK, ACT_UPDATE_REBOOT,
     ACT_LED_POWER, ACT_TZ, ACT_TIME_SYNC, ACT_TIME_FIELD, ACT_TIME_APPLY, ACT_APP,
-    ACT_VID_ASPECT, ACT_VID_FILTER, ACT_VID_RES, ACT_VID_COLORS, ACT_VID_GHOST, ACT_VID_HD,
+    ACT_VID_ASPECT, ACT_VID_FILTER, ACT_VID_RES, ACT_VID_COLORS, ACT_VID_GHOST, ACT_VID_HD, ACT_SORT,
 };
 
 static const struct {
@@ -341,6 +341,18 @@ static void page_led_zone(Menu *m)
     tm_strlcpy(it->sarg, all ? "*" : z->id, sizeof it->sarg);
 }
 
+static const char *const k_sort_ids[] = {"name", "popular", "played"};
+static const char *const k_sort_keys[] = {"sort.name", "sort.popular", "sort.played"};
+
+static void add_sort_item(Menu *m)
+{
+    int mode = games_sort_mode();
+    char desc[600], k[32];
+    snprintf(k, sizeof k, "%s.desc", k_sort_keys[mode]);
+    snprintf(desc, sizeof desc, "%s\n\n%s", tr("sort.desc"), tr(k));
+    add(m, ACT_SORT, tr("sort.title"), tr(k_sort_keys[mode]), desc);
+}
+
 static void page_library(Menu *m)
 {
     tm_strlcpy(m->title, tr("settings.library"), sizeof m->title);
@@ -352,6 +364,7 @@ static void page_library(Menu *m)
     add(m, ACT_MKDIRS, tr("library.mkdirs"), "", tr("library.mkdirs.desc"));
     add_page(m, PAGE_BIOS, tr("library.bios"), tr("library.bios.desc"));
     add_page(m, PAGE_COVERS, tr("covers.title"), tr("covers.desc"));
+    add_sort_item(m);
 }
 
 static void page_add_games(Menu *m)
@@ -614,6 +627,7 @@ static void page_game_options(Menu *m)
     }
     add(m, ACT_SEARCH, tr("game.search"), "Y", tr("game.search.desc"));
     add(m, ACT_FAV_ONLY, tr("game.fav_only"), onoff(A.fav_only), tr("game.fav_only.desc"));
+    add_sort_item(m);
 }
 
 static int grow_plan(TmFatGrowPlan *plan, char *err, size_t errsz)
@@ -1938,6 +1952,16 @@ static void activate(MenuItem *it, TmButton b)
         if (b == BTN_A)
             app_exit(EXIT_REBOOT);
         return;
+    case ACT_SORT: {
+        int mode = (games_sort_mode() + (b == BTN_LEFT ? 2 : 1)) % 3;
+        tm_ini_set(&A.settings, "general", "sort", k_sort_ids[mode]);
+        app_mark_settings();
+        app_save_all();
+        A.games_sel = A.games_top = 0; /* the list starts again from the top */
+        if (A.menu_return == SCR_GAMES || A.screen == SCR_GAMES)
+            games_rebuild();
+        break;
+    }
     case ACT_VID_ASPECT:
     case ACT_VID_FILTER: {
         int asp = it->id == ACT_VID_ASPECT;

@@ -1,3 +1,24 @@
+# TriMux 0.4.7 (pré-lançamento)
+
+**Estado: não testado em um Brick Pro físico.** Novidade:
+
+* **Ordem dos jogos:** em *Configurações › Biblioteca › Ordem dos jogos* ou
+  pelo **START** na lista. Três opções, que valem para todas as plataformas:
+  * **Nome (A–Z):** como antes.
+  * **Popularidade:** os jogos mais vendidos da plataforma primeiro. Os que
+    não estão no ranking vêm depois, em ordem alfabética. O painel mostra a
+    posição, por exemplo "Nº 3 entre os mais vendidos do NES". Há ranking
+    para NES, SNES, Game Boy e Game Boy Color, GBA, Mega Drive e
+    PlayStation. As listas vêm das tabelas de vendas da Wikipedia (CC BY-SA
+    4.0, com a fonte no topo de cada arquivo em
+    `TriMux/share/popular/`). O jogo é reconhecido pelo nome do arquivo, no
+    padrão No-Intro. Arquivos com outros nomes ficam sem ranking.
+  * **Mais jogados:** os jogos em que você passou mais tempo primeiro. O
+    TriMux passou a contar, no aparelho, quantas vezes e por quanto tempo
+    cada jogo foi jogado (sessões acima de 10 s), em
+    `TriMuxData/state/plays.ini`. O painel mostra, por exemplo, "Jogado 5
+    vezes · 3 h 20 min".
+
 # TriMux 0.4.6 (pré-lançamento)
 
 **Estado: não testado em um Brick Pro físico.** Novidade:
