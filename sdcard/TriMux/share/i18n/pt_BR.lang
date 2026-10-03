@@ -801,3 +801,6 @@ web.needs_wifi = Conecte o Wi-Fi primeiro (Configurações › Rede).
 web.failed = Não foi possível iniciar o servidor de arquivos. Veja o Registro.
 web.running = No computador ou no celular, na mesma rede Wi-Fi, abra no navegador:\n\nhttp://%s:%d\n\nSem senha: qualquer aparelho desta rede pode ver e mudar os arquivos enquanto esta janela estiver aberta. O aparelho não desliga sozinho enquanto ela estiver aberta.\n\nA ou B: fechar e desligar o servidor.
 emu.ppsspp.note = PlayStation Portable. Não precisa de BIOS: as fontes e arquivos do sistema do PSP vêm com o TriMux (Bios/PPSSPP). Jogos em .iso, .cso, .chd ou .pbp (os .cso ocupam menos espaço). Jogos 2D e leves rodam bem; os 3D pesados podem ficar lentos com a resolução 2x.
+covers.systems = PLATAFORMAS PARA BAIXAR
+covers.system.desc = %s: %zu jogos.\n\nA: ligar ou desligar. As plataformas desligadas ficam de fora do download de capas (manual e automático), para baixar primeiro só o que você quer. As capas já baixadas continuam aparecendo.
+covers.waiting = %d de %d: esperando o Wi-Fi voltar…

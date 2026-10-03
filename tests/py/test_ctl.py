@@ -258,6 +258,42 @@ def test_scrape_interrupted_by_a_restart_does_not_loop(env, device, card):
     assert len(curl_calls(device)) > curl_n
 
 
+def test_scrape_skips_platforms_turned_off(env, device, card):
+    connect(device)
+    write(os.path.join(card, "TriMuxData/config/trimux.ini"), "[covers]\nskip = FC, gb\n")
+    ctl(env, "scrape")
+    calls = curl_calls(device)
+    assert calls and any("Game%20Boy%20Advance" in c for c in calls)
+    assert not any("Nintendo%20Entertainment%20System" in c for c in calls)
+    assert not any("Nintendo%20-%20Game%20Boy/" in c for c in calls)
+
+
+def test_scrape_waits_for_the_wifi_after_a_suspend(env, device, card):
+    """The Wi-Fi disappears during a download (the device was suspended):
+    the scraper waits, turns the Wi-Fi back on, and continues when it is
+    connected again instead of stopping."""
+    import subprocess
+    from conftest import CTL
+    connect(device)
+    write(os.path.join(device, "netstate/covers"), GBA + "Celeste%20Classic%20%28World%29.png\n")
+    write(os.path.join(device, "netstate/drop"), "")
+    proc = subprocess.Popen([CTL, "scrape"], env=env)
+    log = os.path.join(card, "TriMuxData/logs/trimux.log")
+    for _ in range(80):
+        if os.path.exists(log) and "turning the Wi-Fi back on" in read(log):
+            break
+        time.sleep(0.25)
+    assert "waiting for it to come back" in read(log)
+    assert "state=waiting" in ctl(env, "scrape", "--status").stdout
+    assert "wpa_supplicant -B" in net_log(device)          # turned back on, as it was when the download began
+    write(os.path.join(device, "netstate/status"), "wpa_state=COMPLETED\nssid=Casa\nip_address=10.0.0.5\n")
+    assert proc.wait(timeout=60) == 0
+    assert os.path.exists(os.path.join(card, "Imgs/GBA/Celeste Classic (World).png"))
+    assert "Wi-Fi back after" in read(log)
+    st = ctl(env, "scrape", "--status").stdout
+    assert "state=done" in st and "found=1" in st
+
+
 def test_card_grow_auto_needs_the_image_marker(env):
     # cards prepared on a computer (no marker) are never touched automatically
     write(os.path.join(env["TRIMUX_SYSFS_ROOT"], "proc/mounts"), "/dev/mmcblk1p1 %s vfat rw 0 0\n" % env["TRIMUX_SDCARD"])

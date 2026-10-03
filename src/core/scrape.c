@@ -14,6 +14,7 @@
 #include <string.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>
 
 #define BASE_URL "https://thumbnails.libretro.com"
@@ -327,6 +328,65 @@ static int stop_requested(const TmPaths *p)
     return status_path(p, "scrape.stop", path, sizeof path) == 0 && tm_file_exists(path);
 }
 
+/* Seconds the device spent suspended so far (BOOTTIME counts suspend,
+ * MONOTONIC does not). */
+static long suspended_s(void)
+{
+    struct timespec b, m;
+    if (clock_gettime(CLOCK_BOOTTIME, &b) != 0 || clock_gettime(CLOCK_MONOTONIC, &m) != 0)
+        return 0;
+    return (long)(b.tv_sec - m.tv_sec);
+}
+
+#define WIFI_WAIT_S (15 * 60)
+#define WIFI_RESTART_S 6
+
+/* The Wi-Fi went away in the middle (usually the device was suspended with
+ * POWER: nothing runs while it sleeps, and the firmware may take the Wi-Fi
+ * down). Waits for it to come back, turning it on again if it is off, since
+ * it was on when the download started. Returns 1 when connected again. */
+static int wait_for_wifi(const TmPaths *p, TmScrapeStatus *st, long *suspend_mark)
+{
+    long slept = suspended_s() - *suspend_mark;
+    if (slept > 2)
+        LOGI("scrape: the device was suspended for %ld s", slept);
+    *suspend_mark = suspended_s();
+    LOGI("scrape: Wi-Fi disconnected, waiting for it to come back");
+    tm_strlcpy(st->state, "waiting", sizeof st->state);
+    status_write(p, st);
+    time_t start = time(NULL), last_on = 0;
+    while (time(NULL) - start < WIFI_WAIT_S && !stop_requested(p)) {
+        if (wifi_ready()) {
+            LOGI("scrape: Wi-Fi back after %ld s, continuing", (long)(time(NULL) - start));
+            tm_strlcpy(st->state, "running", sizeof st->state);
+            status_write(p, st);
+            return 1;
+        }
+        if (time(NULL) - start >= WIFI_RESTART_S && !tm_wifi_running() && time(NULL) - last_on >= 60) {
+            LOGI("scrape: turning the Wi-Fi back on");
+            tm_wifi_set(1);
+            last_on = time(NULL);
+        }
+        sleep(2);
+    }
+    return 0;
+}
+
+/* [covers] skip = GBA, PS: platforms left out of the download */
+static int skipped(const char *skip, const char *id)
+{
+    size_t n = strlen(id);
+    for (const char *s = skip; s && *s;) {
+        while (*s == ' ' || *s == ',')
+            s++;
+        size_t len = strcspn(s, ", ");
+        if (len == n && strncasecmp(s, id, n) == 0)
+            return 1;
+        s += len;
+    }
+    return 0;
+}
+
 /* Covers download in the background; while a game runs, it waits. */
 static void wait_while_in_game(const TmPaths *p)
 {
@@ -457,8 +517,9 @@ int tm_scrape_run(const TmPaths *p, const TmCatalog *cat, const TmLibrary *lib, 
     for (size_t i = 0; i < lib->count; i++) {
         const TmGame *g = &lib->games[i];
         const TmSystem *sys = &cat->systems[g->system];
-        if (sys->thumbs[0] && tm_scrape_cover_path(p->sd, g->relpath, sys->id, cover, sizeof cover) == 0 &&
-            !tm_file_exists(cover) && !set_has(&miss, g->relpath))
+        if (sys->thumbs[0] && !skipped(o->skip, sys->id) &&
+            tm_scrape_cover_path(p->sd, g->relpath, sys->id, cover, sizeof cover) == 0 && !tm_file_exists(cover) &&
+            !set_has(&miss, g->relpath))
             st.total++;
     }
     tm_strlcpy(st.state, "running", sizeof st.state);
@@ -467,6 +528,7 @@ int tm_scrape_run(const TmPaths *p, const TmCatalog *cat, const TmLibrary *lib, 
 
     FILE *missf = fopen(missfile, "a");
     int net_errors = 0, tried = 0;
+    long suspend_mark = suspended_s();
     TmPowerCaps caps;
     tm_power_detect(&caps);
     if (st.total > 0) {
@@ -476,8 +538,9 @@ int tm_scrape_run(const TmPaths *p, const TmCatalog *cat, const TmLibrary *lib, 
     for (size_t i = 0; i < lib->count && strcmp(st.state, "running") == 0; i++) {
         const TmGame *g = &lib->games[i];
         const TmSystem *sys = &cat->systems[g->system];
-        if (!sys->thumbs[0] || tm_scrape_cover_path(p->sd, g->relpath, sys->id, cover, sizeof cover) != 0 ||
-            tm_file_exists(cover) || set_has(&miss, g->relpath))
+        if (!sys->thumbs[0] || skipped(o->skip, sys->id) ||
+            tm_scrape_cover_path(p->sd, g->relpath, sys->id, cover, sizeof cover) != 0 || tm_file_exists(cover) ||
+            set_has(&miss, g->relpath))
             continue;
         if (tried++ > 0)
             usleep(250000); /* a lighter, steadier pace for the Wi-Fi and the card */
@@ -528,8 +591,16 @@ int tm_scrape_run(const TmPaths *p, const TmCatalog *cat, const TmLibrary *lib, 
             net_errors = 0;
             LOGD("scrape: cover for %s", g->relpath);
         } else if (net_fail) {
-            st.done--; /* will be tried again next time */
-            if (++net_errors >= 3) {
+            st.done--; /* tried again: right away once the Wi-Fi is back, or next time */
+            if (!wifi_ready()) {
+                if (wait_for_wifi(p, &st, &suspend_mark)) {
+                    i--; /* the same game again */
+                    net_errors = 0;
+                } else {
+                    tm_strlcpy(st.state, stop_requested(p) ? "stopped" : "nowifi", sizeof st.state);
+                    LOGW("scrape: the Wi-Fi did not come back, stopping");
+                }
+            } else if (++net_errors >= 3) {
                 tm_strlcpy(st.state, "network", sizeof st.state);
                 LOGW("scrape: repeated network errors, stopping");
             }

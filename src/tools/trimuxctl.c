@@ -831,7 +831,9 @@ static int cmd_scrape(int argc, char **argv)
     }
     TmIni ini;
     tm_settings_load(&ini, &P);
-    TmScrapeOptions o = {tm_thumb_kind_parse(tm_ini_get(&ini, "covers", "kind", "boxart")), retry, wait_s, autorun};
+    char skip[512];
+    tm_strlcpy(skip, tm_ini_get(&ini, "covers", "skip", ""), sizeof skip);
+    TmScrapeOptions o = {tm_thumb_kind_parse(tm_ini_get(&ini, "covers", "kind", "boxart")), retry, wait_s, autorun, skip};
     int enabled = (int)tm_ini_get_long(&ini, "covers", "auto", 0);
     int clean = (int)tm_ini_get_long(&ini, "general", "clean_names", 1);
     tm_ini_free(&ini);

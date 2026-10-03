@@ -12,6 +12,15 @@
     interna**: Original (480×272) ou 2x (960×544, mais nítida e mais pesada).
   * Ordem por popularidade com os 24 PSP mais vendidos (Wikipedia).
   * Os saves do PSP ficam em `Saves/PSP`.
+* **Capas:**
+  * **Escolha de plataformas:** em *Capas dos jogos › Plataformas para
+    baixar*, desligue as plataformas que não quer agora. O download passa por
+    cima delas.
+  * **Depois de suspender:** ao acordar o aparelho, o download espera o
+    Wi-Fi voltar (até 15 min), liga o Wi-Fi de novo se o firmware tiver
+    desligado e continua da mesma capa, em vez de parar com erro de rede.
+    Enquanto o aparelho está suspenso nada roda, então o download só anda com
+    ele acordado.
 * Lista de popularidade do Mega Drive corrigida: 4 jogos que se perdiam na
   leitura da tabela voltaram (23 no total).
 

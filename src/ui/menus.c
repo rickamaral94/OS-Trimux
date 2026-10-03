@@ -32,6 +32,7 @@ enum {
     ACT_UPDATE_CHECK, ACT_UPDATE_INSTALL, ACT_UPDATE_ROLLBACK, ACT_UPDATE_REBOOT,
     ACT_LED_POWER, ACT_TZ, ACT_TIME_SYNC, ACT_TIME_FIELD, ACT_TIME_APPLY, ACT_APP,
     ACT_VID_ASPECT, ACT_VID_FILTER, ACT_VID_RES, ACT_VID_COLORS, ACT_VID_GHOST, ACT_VID_HD, ACT_SORT, ACT_STORE,
+    ACT_COVERS_SYS,
 };
 
 static const struct {
@@ -1162,7 +1163,9 @@ static void covers_status_text(char *out, size_t size)
         tm_strlcpy(out, tr(running ? "covers.state.running" : "covers.state.none"), size);
         return;
     }
-    if (running || strcmp(st.state, "running") == 0)
+    if (running && strcmp(st.state, "waiting") == 0)
+        snprintf(out, size, tr("covers.waiting"), st.done, st.total);
+    else if (running || strcmp(st.state, "running") == 0)
         snprintf(out, size, tr("covers.progress"), st.done, st.total, st.found);
     else if (strcmp(st.state, "done") == 0)
         snprintf(out, size, tr("covers.done"), st.found, st.missing);
@@ -1198,6 +1201,20 @@ void covers_start(int autorun, int retry)
     LOGI("ui: cover download started (%s)", autorun ? "auto" : retry ? "retry" : "manual");
 }
 
+static int covers_skipped(const char *skip, const char *id)
+{
+    size_t n = strlen(id);
+    for (const char *s = skip; s && *s;) {
+        while (*s == ' ' || *s == ',')
+            s++;
+        size_t len = strcspn(s, ", ");
+        if (len == n && strncasecmp(s, id, n) == 0)
+            return 1;
+        s += len;
+    }
+    return 0;
+}
+
 static void page_covers(Menu *m)
 {
     tm_strlcpy(m->title, tr("covers.title"), sizeof m->title);
@@ -1215,6 +1232,46 @@ static void page_covers(Menu *m)
     add(m, ACT_COVERS_KIND, tr("covers.kind"), tr(k), tr("covers.kind.desc"));
     it = add(m, ACT_TOGGLE, tr("covers.auto"), onoff((int)setting_long("covers", "auto", 0)), tr("covers.auto.desc"));
     tm_strlcpy(it->sarg, "covers/auto", sizeof it->sarg);
+    /* platforms to download: only those with games and a cover repository */
+    header_row(m, tr("covers.systems"));
+    const char *skip = tm_ini_get(&A.settings, "covers", "skip", "");
+    for (size_t i = 0; i < A.cat.nsystems && m->n < MENU_MAX_ITEMS; i++) {
+        const TmSystem *sys = &A.cat.systems[i];
+        size_t n = tm_library_count_system(&A.lib, (int)i);
+        if (!sys->thumbs[0] || !n)
+            continue;
+        char d[512];
+        snprintf(d, sizeof d, tr("covers.system.desc"), sys->name, n);
+        it = add(m, ACT_COVERS_SYS, sys->name, onoff(!covers_skipped(skip, sys->id)), d);
+        tm_strlcpy(it->sarg, sys->id, sizeof it->sarg);
+        it->badge_color = sys->color;
+        tm_strlcpy(it->badge, sys->short_name, sizeof it->badge);
+    }
+}
+
+/* [covers] skip: comma-separated platform ids left out of the download */
+static void covers_toggle_system(const char *id)
+{
+    const char *cur = tm_ini_get(&A.settings, "covers", "skip", "");
+    char out[512] = "", tmp[512];
+    int was = covers_skipped(cur, id);
+    tm_strlcpy(tmp, cur, sizeof tmp);
+    for (char *save = NULL, *t = strtok_r(tmp, ", ", &save); t; t = strtok_r(NULL, ", ", &save)) {
+        if (strcasecmp(t, id) == 0)
+            continue;
+        if (strlen(out) + strlen(t) + 3 < sizeof out) {
+            if (out[0])
+                strcat(out, ", ");
+            strcat(out, t);
+        }
+    }
+    if (!was && strlen(out) + strlen(id) + 3 < sizeof out) {
+        if (out[0])
+            strcat(out, ", ");
+        strcat(out, id);
+    }
+    tm_ini_set(&A.settings, "covers", "skip", out);
+    app_mark_settings();
 }
 
 /* ------------------------------------------------------------ online update */
@@ -2029,6 +2086,7 @@ static void activate(MenuItem *it, TmButton b)
         tm_ini_set_long(&A.settings, "covers", "show", !setting_long("covers", "show", 1));
         app_mark_settings();
         break;
+    case ACT_COVERS_SYS: covers_toggle_system(it->sarg); break;
     case ACT_COVERS_KIND: {
         static const char *const kinds[] = {"boxart", "snap", "title"};
         int i = (int)tm_thumb_kind_parse(tm_ini_get(&A.settings, "covers", "kind", "boxart"));

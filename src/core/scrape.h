@@ -48,7 +48,7 @@ void tm_arcade_free(TmArcadeNames *a);
 /* ---- status shared with the menu (/tmp/trimux/scrape.status) ---- */
 
 typedef struct {
-    char state[16]; /* running, done, stopped, nowifi, network, error, interrupted */
+    char state[16]; /* running, waiting (for the Wi-Fi), done, stopped, nowifi, network, error, interrupted */
     int done, total, found, missing;
 } TmScrapeStatus;
 
@@ -64,6 +64,7 @@ typedef struct {
     int retry_missing; /* also try games that were not found before */
     int wait_wifi_s;   /* wait this long for a Wi-Fi connection */
     int autorun;       /* started by itself (boot, after a rescan), not by the user */
+    const char *skip;  /* platforms left out, "GBA, PS" ([covers] skip) */
 } TmScrapeOptions;
 
 /* While downloading, TriMuxData/state/scrape_active exists on the card. If

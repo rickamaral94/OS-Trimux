@@ -77,6 +77,14 @@ oficial da TrimUI**, então as capas aparecem nos dois sistemas.
 * Arquivos maiores que 8 MB ou que não sejam PNG/JPEG são descartados.
 * O download roda com prioridade baixa e para sozinho depois de 3 erros de
   rede seguidos.
+* **Suspensão (POWER):** enquanto o aparelho dorme, nada roda. O download
+  fica parado, e o firmware pode desligar o Wi-Fi. Ao acordar, o download
+  não desiste: espera o Wi-Fi voltar, até 15 minutos. Se o Wi-Fi estiver
+  desligado, o TriMux liga de novo, porque ele estava ligado quando o
+  download começou. Depois continua da mesma capa. Enquanto espera, o status
+  mostra *esperando o Wi-Fi voltar*. Para não parar, deixe a tela ligada
+  (desligar a tela pelo POWER suspende o aparelho; isso é do firmware e o
+  TriMux não muda).
 * Há uma pausa de 0,25 s entre uma capa e outra, para não manter o Wi-Fi e o
   cartão no limite por horas seguidas.
 * **Sem ciclo de reinício**: enquanto baixa, existe o arquivo
@@ -90,6 +98,13 @@ oficial da TrimUI**, então as capas aparecem nos dois sistemas.
   gravada no cartão na hora. Se o aparelho reiniciar, a última dessas linhas
   mostra até onde foi e em que condições.
 
+## Escolher as plataformas
+
+Em *Capas dos jogos › Plataformas para baixar* aparecem as plataformas com
+jogos no cartão. Desligue as que não quer agora, e o download (manual e
+automático) passa por cima delas. Com bibliotecas grandes, dá para baixar
+primeiro só o que você mais joga. As capas já baixadas continuam aparecendo.
+
 ## Configurações (`TriMuxData/config/trimux.ini`)
 
 ```ini
@@ -97,6 +112,7 @@ oficial da TrimUI**, então as capas aparecem nos dois sistemas.
 show = 1        ; mostrar capas na lista
 kind = boxart   ; boxart | snap | title
 auto = 0        ; capas automáticas
+skip =          ; plataformas fora do download, ex.: PS, ARCADE
 ```
 
 Linha de comando (por SSH): `trimuxctl scrape` (baixa),
