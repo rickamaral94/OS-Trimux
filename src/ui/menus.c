@@ -10,6 +10,7 @@
 #include "../core/scrape.h"
 #include "../core/update.h"
 #include "../core/util.h"
+#include "../core/video.h"
 
 #include <fcntl.h>
 #include <stdio.h>
@@ -29,6 +30,7 @@ enum {
     ACT_SSH_TOGGLE, ACT_FTP, ACT_CHEEVOS_USER, ACT_CHEEVOS_PASS, ACT_CLEAR_LOGS, ACT_COVERS_RUN, ACT_COVERS_RETRY, ACT_COVERS_SHOW, ACT_COVERS_KIND,
     ACT_UPDATE_CHECK, ACT_UPDATE_INSTALL, ACT_UPDATE_ROLLBACK, ACT_UPDATE_REBOOT,
     ACT_LED_POWER, ACT_TZ, ACT_TIME_SYNC, ACT_TIME_FIELD, ACT_TIME_APPLY, ACT_APP,
+    ACT_VID_ASPECT, ACT_VID_FILTER, ACT_VID_RES, ACT_VID_COLORS, ACT_VID_GHOST, ACT_VID_HD,
 };
 
 static const struct {
@@ -400,6 +402,9 @@ static void page_bios(Menu *m)
 static void page_emulators(Menu *m)
 {
     tm_strlcpy(m->title, tr("settings.emulators"), sizeof m->title);
+    MenuItem *all = add(m, ACT_PAGE, tr("video.all"), "", tr("video.all.desc"));
+    all->arg = PAGE_EMU_PLATFORM;
+    tm_strlcpy(all->sarg, "*", sizeof all->sarg);
     for (size_t s = 0; s < A.cat.nsystems; s++) {
         const TmSystem *sys = &A.cat.systems[s];
         const TmEmulator *em = tm_catalog_resolve(&A.cat, sys, NULL, tm_ini_get(&A.settings, "emulators", sys->id, NULL), A.paths.cores);
@@ -428,14 +433,133 @@ static void emu_items(Menu *m, const TmSystem *sys, int id, long arg, const char
     }
 }
 
+/* ---- image (Settings > Emulators > <platform>) ---- */
+
+static int handheld_system(const char *id)
+{
+    static const char *const hh[] = {"GB", "GBC", "GBA", "GG", "NGP", "WS", "LYNX"};
+    for (size_t i = 0; i < TM_ARRAY_LEN(hh); i++)
+        if (strcmp(id, hh[i]) == 0)
+            return 1;
+    return 0;
+}
+
+static const char *video_get1(const char *sys_id, const char *key)
+{
+    char sec[48];
+    snprintf(sec, sizeof sec, "video.%s", sys_id);
+    return tm_ini_get(&A.settings, sec, key, NULL);
+}
+
+/* sys_id "*" is every platform: the value when they all agree, else NULL
+ * with *mixed set */
+static const char *video_get_m(const char *sys_id, const char *key, int *mixed)
+{
+    if (mixed)
+        *mixed = 0;
+    if (strcmp(sys_id, "*") != 0)
+        return video_get1(sys_id, key);
+    const char *first = A.cat.nsystems ? video_get1(A.cat.systems[0].id, key) : NULL;
+    for (size_t i = 1; i < A.cat.nsystems; i++) {
+        const char *v = video_get1(A.cat.systems[i].id, key);
+        if ((v == NULL) != (first == NULL) || (v && strcmp(v, first) != 0)) {
+            if (mixed)
+                *mixed = 1;
+            return NULL;
+        }
+    }
+    return first;
+}
+
+static const char *video_get(const char *sys_id, const char *key) { return video_get_m(sys_id, key, NULL); }
+
+static void video_set(const char *sys_id, const char *key, const char *val)
+{
+    char sec[48];
+    for (size_t i = 0; i < A.cat.nsystems; i++) {
+        if (strcmp(sys_id, "*") != 0 && strcmp(sys_id, A.cat.systems[i].id) != 0)
+            continue;
+        snprintf(sec, sizeof sec, "video.%s", A.cat.systems[i].id);
+        tm_ini_set(&A.settings, sec, key, val);
+    }
+    app_mark_settings();
+    app_save_all();
+}
+
+static void video_items(Menu *m, const char *sys_id, const TmEmulator *em)
+{
+    int all = strcmp(sys_id, "*") == 0;
+    char desc[700];
+    add(m, ACT_NONE, tr("video.header"), "", tr("video.header.desc"))->enabled = 0;
+    int mixed;
+    int ai = tm_video_index(tm_video_aspects, tm_video_naspects, video_get_m(sys_id, "aspect", &mixed), 0);
+    char k[64];
+    snprintf(k, sizeof k, "%s.desc", tm_video_aspects[ai].label_key);
+    snprintf(desc, sizeof desc, "%s\n\n%s", tr("video.aspect.desc"), mixed ? tr("video.mixed.desc") : tr(k));
+    MenuItem *it = add(m, ACT_VID_ASPECT, tr("video.aspect"), mixed ? tr("video.mixed") : tr(tm_video_aspects[ai].label_key), desc);
+    tm_strlcpy(it->sarg, sys_id, sizeof it->sarg);
+
+    int fi = tm_video_index(tm_video_filters, tm_video_nfilters, video_get_m(sys_id, "filter", &mixed), 0);
+    snprintf(k, sizeof k, "%s.desc", tm_video_filters[fi].label_key);
+    snprintf(desc, sizeof desc, "%s\n\n%s\n\n%s", tr("video.filter.desc"), mixed ? tr("video.mixed.desc") : tr(k),
+             all ? tr("video.filter.tip.all") : tr(handheld_system(sys_id) ? "video.filter.tip.handheld" : "video.filter.tip.tv"));
+    it = add(m, ACT_VID_FILTER, tr("video.filter"), mixed ? tr("video.mixed") : tr(tm_video_filters[fi].label_key), desc);
+    tm_strlcpy(it->sarg, sys_id, sizeof it->sarg);
+    if (all)
+        return;
+
+    const TmVideoCaps *caps = em ? tm_video_caps(em->id) : NULL;
+    if (caps && caps->res_key) {
+        long r = strtol(video_get(sys_id, "res") ? video_get(sys_id, "res") : "0", NULL, 10);
+        if (r < 0 || r >= caps->nres)
+            r = 0;
+        it = add(m, ACT_VID_RES, tr("video.res"), tr(caps->res[r].label_key),
+                 tr(strcmp(em->id, "pcsx_rearmed") == 0 ? "video.res.desc.ps" : "video.res.desc"));
+        it->arg = caps->nres;
+        tm_strlcpy(it->sarg, sys_id, sizeof it->sarg);
+    } else {
+        /* focusable, so the explanation can be read */
+        add(m, ACT_VID_RES, tr("video.res"), tr("video.res.none"), tr("video.res.none.desc"))->arg = 0;
+    }
+    if (caps && caps->color_key) {
+        const char *v = video_get(sys_id, "colors");
+        it = add(m, ACT_VID_COLORS, tr("video.colors"), onoff(v ? atoi(v) : caps->color_def), tr("video.colors.desc"));
+        it->arg = v ? atoi(v) : caps->color_def;
+        tm_strlcpy(it->sarg, sys_id, sizeof it->sarg);
+    }
+    if (caps && caps->ghost_key) {
+        const char *v = video_get(sys_id, "ghost");
+        it = add(m, ACT_VID_GHOST, tr("video.ghost"), onoff(v && atoi(v)), tr("video.ghost.desc"));
+        it->arg = v && atoi(v);
+        tm_strlcpy(it->sarg, sys_id, sizeof it->sarg);
+    }
+    if (caps && caps->hd_key) {
+        const char *v = video_get(sys_id, "hdpacks");
+        int on = v ? atoi(v) : 1;
+        char bios[TM_PATH_MAX];
+        tm_path_join(bios, sizeof bios, A.paths.sd, "Bios");
+        snprintf(desc, sizeof desc, tr("video.hd.desc"), tm_video_count_hdpacks(bios));
+        it = add(m, ACT_VID_HD, tr("video.hd"), onoff(on), desc);
+        it->arg = on;
+        tm_strlcpy(it->sarg, sys_id, sizeof it->sarg);
+    }
+}
+
 static void page_emu_platform(Menu *m)
 {
+    if (strcmp(m->sctx, "*") == 0) {
+        tm_strlcpy(m->title, tr("video.all"), sizeof m->title);
+        video_items(m, "*", NULL);
+        return;
+    }
     long s = strtol(m->sctx, NULL, 10);
     if (s < 0 || (size_t)s >= A.cat.nsystems)
         return;
     const TmSystem *sys = &A.cat.systems[s];
     tm_strlcpy(m->title, sys->name, sizeof m->title);
     const TmEmulator *em = tm_catalog_resolve(&A.cat, sys, NULL, tm_ini_get(&A.settings, "emulators", sys->id, NULL), A.paths.cores);
+    if (!em || strcmp(em->type, "script") != 0)
+        video_items(m, sys->id, em);
     add(m, ACT_NONE, tr("emulators.default_for_platform"), "", tr("emulators.default_for_platform.desc"))->enabled = 0;
     emu_items(m, sys, ACT_SET_PLAT_EMU, s, em ? em->id : NULL);
     add(m, ACT_NONE, tr("emulators.restore_header"), "", tr("emulators.restore.desc"))->enabled = 0;
@@ -482,6 +606,9 @@ static void page_game_options(Menu *m)
         MenuItem *it = add(m, ACT_PAGE, tr("game.emulator"), "SELECT", tr("emulators.for_game.desc"));
         it->arg = PAGE_EMU_CHOOSE;
         snprintf(it->sarg, sizeof it->sarg, "%ld", gi);
+        it = add(m, ACT_PAGE, tr("game.image"), "", tr("game.image.desc"));
+        it->arg = PAGE_EMU_PLATFORM;
+        snprintf(it->sarg, sizeof it->sarg, "%d", (int)g->system);
         if (tm_list_index(&A.recent, g->relpath) >= 0)
             add(m, ACT_REMOVE_RECENT, tr("game.remove_recent"), "", tr("game.remove_recent.desc"))->arg = gi;
     }
@@ -1811,6 +1938,33 @@ static void activate(MenuItem *it, TmButton b)
         if (b == BTN_A)
             app_exit(EXIT_REBOOT);
         return;
+    case ACT_VID_ASPECT:
+    case ACT_VID_FILTER: {
+        int asp = it->id == ACT_VID_ASPECT;
+        const TmVideoOption *o = asp ? tm_video_aspects : tm_video_filters;
+        int n = (int)(asp ? tm_video_naspects : tm_video_nfilters);
+        int i = tm_video_index(o, (size_t)n, video_get(it->sarg, asp ? "aspect" : "filter"), 0);
+        i = ((i + (b == BTN_LEFT ? -1 : 1)) % n + n) % n;
+        video_set(it->sarg, asp ? "aspect" : "filter", o[i].id);
+        break;
+    }
+    case ACT_VID_RES: {
+        if (it->arg <= 0)
+            return; /* nothing to choose on this platform */
+        const char *v = video_get(it->sarg, "res");
+        long r = v ? strtol(v, NULL, 10) : 0, n = it->arg > 0 ? it->arg : 1;
+        r = ((r + (b == BTN_LEFT ? -1 : 1)) % n + n) % n;
+        char val[8];
+        snprintf(val, sizeof val, "%ld", r);
+        video_set(it->sarg, "res", val);
+        break;
+    }
+    case ACT_VID_COLORS:
+    case ACT_VID_GHOST:
+    case ACT_VID_HD:
+        video_set(it->sarg, it->id == ACT_VID_COLORS ? "colors" : it->id == ACT_VID_GHOST ? "ghost" : "hdpacks",
+                  it->arg ? "0" : "1");
+        break;
     case ACT_TZ: {
         /* position 0 is the firmware's zone, then the list; zones whose
          * zoneinfo file the firmware lacks are skipped */

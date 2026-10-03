@@ -347,3 +347,58 @@ def test_reboot_stops_cover_download_first(rig):
     run_supervisor(rig)
     assert "reboot" in read(rig["env"]["RIG_LOG"])
     assert os.path.exists(os.path.join(rig["tmp"], "scrape.stop"))     # asked to stop before rebooting
+
+
+def test_image_settings_reach_retroarch(rig):
+    """Settings > Emulators > <platform> > Image: RetroArch lines, the shader
+    preset and core options; the user's other core options are kept."""
+    os.makedirs(rig["tmp"], exist_ok=True)
+    shaders = os.path.join(rig["tm"], "retroarch", "shaders")
+    write(os.path.join(shaders, "zfast-lcd.glslp"), "shaders = 1\n")
+    opt = os.path.join(rig["card"], "TriMuxData/retroarch/config/gpSP/gpSP.opt")
+    write(opt, 'gpsp_frameskip = "auto"\ngpsp_color_correction = "disabled"\n')
+    write(os.path.join(rig["tmp"], "launch.ini"),
+          "[launch]\nsystem = GBA\nrom = Roms/GBA/Celeste Classic (World).gba\nemulator = gpsp\n")
+    write(os.path.join(rig["card"], "TriMuxData/config/trimux.ini"),
+          "[video.GBA]\naspect = integer\nfilter = lcd\ncolors = 1\nghost = 1\n")
+    scripted_ui(rig, [10, 20])
+    run_supervisor(rig)
+    args = read(os.path.join(rig["dir"], "ra_args")).split()
+    assert "--set-shader=" + os.path.join(shaders, "zfast-lcd.glslp") in args
+    assert args.index("--appendconfig") < args.index("-L") and args[-1].endswith(".gba")
+    app = read(os.path.join(rig["dir"], "ra_append"))
+    assert 'video_scale_integer = "true"' in app and 'aspect_ratio_index = "22"' in app
+    assert 'video_shader_enable = "true"' in app
+    o = read(opt)
+    assert 'gpsp_frameskip = "auto"' in o                       # untouched
+    assert 'gpsp_color_correction = "enabled"' in o and o.count("gpsp_color_correction") == 1
+    assert 'gpsp_frame_mixing = "enabled"' in o
+
+
+def test_image_defaults_change_nothing(rig):
+    os.makedirs(rig["tmp"], exist_ok=True)
+    write(os.path.join(rig["tmp"], "launch.ini"),
+          "[launch]\nsystem = PS\nrom = Roms/PS/Demo.m3u\nemulator = pcsx_rearmed\n")
+    scripted_ui(rig, [10, 20])
+    run_supervisor(rig)
+    args = read(os.path.join(rig["dir"], "ra_args"))
+    assert "--set-shader" not in args
+    app = read(os.path.join(rig["dir"], "ra_append"))
+    assert "video_shader" not in app and "aspect_ratio_index" not in app
+    assert not os.path.exists(os.path.join(rig["card"], "TriMuxData/retroarch/config/PCSX-ReARMed/PCSX-ReARMed.opt"))
+
+
+def test_image_resolution_and_missing_shader(rig):
+    """PS 2x writes the PCSX option; a missing preset falls back to the plain
+    picture instead of a broken RetroArch start."""
+    os.makedirs(rig["tmp"], exist_ok=True)
+    write(os.path.join(rig["tmp"], "launch.ini"),
+          "[launch]\nsystem = PS\nrom = Roms/PS/Demo.m3u\nemulator = pcsx_rearmed\n")
+    write(os.path.join(rig["card"], "TriMuxData/config/trimux.ini"), "[video.PS]\nres = 1\nfilter = crt\naspect = full\n")
+    scripted_ui(rig, [10, 20])
+    run_supervisor(rig)
+    assert "--set-shader" not in read(os.path.join(rig["dir"], "ra_args"))
+    app = read(os.path.join(rig["dir"], "ra_append"))
+    assert 'video_shader_enable = "false"' in app and 'aspect_ratio_index = "24"' in app
+    o = read(os.path.join(rig["card"], "TriMuxData/retroarch/config/PCSX-ReARMed/PCSX-ReARMed.opt"))
+    assert o.strip() == 'pcsx_rearmed_neon_enhancement_enable = "enabled"'

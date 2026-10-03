@@ -33,6 +33,7 @@
 #include "../core/sysinfo.h"
 #include "../core/update.h"
 #include "../core/util.h"
+#include "../core/video.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -368,9 +369,9 @@ static void perf_sample(TmPerf *perf, TmPowerCaps *caps, int have_power, const c
     tm_perf_sample(perf, tm_now_ms(), cur, mx, caps->has_temp ? tm_power_temp_mc(caps) : -1, bat, chg, profile);
 }
 
-static int run_retroarch(const char *ra, const char *cfg, const char *append, const TmLaunch *l, TmPowerCaps *caps,
-                         int have_power, int guard_on, const TmPowerProfile *prof, uint64_t *elapsed_ms,
-                         TmPerf *perf)
+static int run_retroarch(const char *ra, const char *cfg, const char *append, const char *shader, const TmLaunch *l,
+                         TmPowerCaps *caps, int have_power, int guard_on, const TmPowerProfile *prof,
+                         uint64_t *elapsed_ms, TmPerf *perf)
 {
     uint64_t t0 = tm_now_ms();
     pid_t pid = fork();
@@ -399,8 +400,15 @@ static int run_retroarch(const char *ra, const char *cfg, const char *append, co
         setenv("HOME", P.ra_home, 1);
         if (chdir(P.retroarch) != 0)
             _exit(127);
+        /* image filter chosen in TriMux: a shader preset for this game only */
+        char set_shader[TM_PATH_MAX + 16];
+        snprintf(set_shader, sizeof set_shader, "--set-shader=%s", shader ? shader : "");
         char *args[] = {(char *)ra, "-c", (char *)cfg, "--appendconfig", (char *)append, "-L",
-                        (char *)l->core_abs, (char *)l->rom_abs, NULL};
+                        (char *)l->core_abs, (char *)l->rom_abs, NULL, NULL};
+        if (shader && *shader) { /* before -L, after the config files */
+            memmove(&args[6], &args[5], 3 * sizeof args[0]);
+            args[5] = set_shader;
+        }
         execv(ra, args);
         _exit(127);
     }
@@ -500,6 +508,17 @@ static int cmd_launch(void)
                         "\nlog_verbosity = \"true\"\nlog_to_file = \"true\"\nlog_to_file_timestamp = \"false\"\n"
                         "frontend_log_level = \"1\"\nlibretro_log_level = \"1\"\nlog_dir = \"%s\"",
                         ralog);
+    /* Settings > Emulators > <platform> > Image */
+    char shaders[TM_PATH_MAX], shader[TM_PATH_MAX] = "", vlines[512] = "";
+    tm_path_join(shaders, sizeof shaders, P.retroarch, "shaders");
+    if (tm_video_ra_lines(&ini, l.system->id, shaders, vlines, sizeof vlines, shader, sizeof shader) == 0 && vlines[0] &&
+        len > 0 && (size_t)len < sizeof extra)
+        len += snprintf(extra + len, sizeof extra - (size_t)len, "\n%s", vlines);
+    const TmVideoCaps *vcaps = tm_video_caps(l.emu->id);
+    char opt[TM_PATH_MAX], optrel[TM_PATH_MAX];
+    if (vcaps && tm_snprintf(optrel, sizeof optrel, "config/%s/%s.opt", l.emu->config_name, l.emu->config_name) == 0 &&
+        tm_path_join(opt, sizeof opt, P.ra_home, optrel) == 0 && tm_video_core_options(&ini, l.system->id, vcaps, opt) != 0)
+        LOGW("launch: could not write the image options of %s", l.emu->config_name);
     int perf_on = (int)tm_ini_get_long(&ini, "diag", "perf", 0);
     char ra[TM_PATH_MAX], cfg[TM_PATH_MAX], append[TM_PATH_MAX], cache[TM_PATH_MAX];
     tm_path_join(ra, sizeof ra, P.retroarch, "retroarch");
@@ -535,7 +554,7 @@ static int cmd_launch(void)
             LOGW("perf: could not create the performance log");
     }
     uint64_t elapsed = 0;
-    int code = run_retroarch(ra, cfg, append, &l, &caps, have_power, guard_on, prof, &elapsed, perf);
+    int code = run_retroarch(ra, cfg, append, shader, &l, &caps, have_power, guard_on, prof, &elapsed, perf);
     if (code != 0 && elapsed < 5000 && strcmp(l.emu->type, "retroarch") == 0) {
         /* Failed right away: retry once with RetroArch's SDL2 renderer, in
          * case the GLES context could not be created on this firmware. */
@@ -544,7 +563,7 @@ static int cmd_launch(void)
         char extra2[2100];
         snprintf(extra2, sizeof extra2, "%s\nvideo_driver = \"sdl2\"", extra);
         if (tm_launch_write_ra_append(&P, &l, extra2, append, sizeof append) == 0)
-            code = run_retroarch(ra, cfg, append, &l, &caps, have_power, guard_on, prof, &elapsed, perf);
+            code = run_retroarch(ra, cfg, append, NULL, &l, &caps, have_power, guard_on, prof, &elapsed, perf);
     }
     unlink(marker);
     if (perf) {

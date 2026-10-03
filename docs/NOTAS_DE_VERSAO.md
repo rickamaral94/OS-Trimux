@@ -1,3 +1,27 @@
+# TriMux 0.4.6 (pré-lançamento)
+
+**Estado: não testado em um Brick Pro físico.** Novidade:
+
+* **Imagem dos jogos** ([IMAGEM.md](IMAGEM.md)): em *Configurações ›
+  Emuladores › <plataforma>* (ou **START › Imagem da plataforma** num jogo),
+  cada plataforma ganhou opções explicadas na própria tela:
+  * **Formato da tela:** Original, Pixels perfeitos ou Tela cheia.
+  * **Visual:** Nítido, Suave, Pixel suave, Tela de LCD ou TV antiga. São
+    três shaders leves, feitos para GPU de celular, e a tela sugere o melhor
+    para cada plataforma.
+  * **Resolução interna:** 2x no PlayStation (modelos 3D mais nítidos, mais
+    pesado), até 960×600 no DOOM e até 1024×768 no Quake. Nos consoles 2D a
+    tela explica que quem melhora a imagem é o Visual.
+  * **Cores do aparelho original** e **Rastro de tela LCD** no Game Boy, GBC
+    e GBA. O rastro também está no Game Gear e no Lynx.
+  * **Texturas HD no NES:** o FCEUmm lê pacotes Mesen HD Pack em
+    `Bios/HdPacks/<jogo>/`. A tela mostra quantos pacotes foram encontrados.
+    Os pacotes não vêm com o TriMux.
+  * **Imagem de todas as plataformas** muda formato e visual de todas de uma
+    vez.
+  * Enquanto você não escolhe nada, nada muda: vale o que já estava no
+    RetroArch.
+
 # TriMux 0.4.5 (pré-lançamento)
 
 **Estado: não testado em um Brick Pro físico.** Correção da 0.4.4:

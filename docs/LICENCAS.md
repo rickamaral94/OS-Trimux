@@ -37,6 +37,7 @@ verificados pelo `scripts/fetch_sources.sh`.
 | PrBoom (+ `prboom.wad`) | DOOM | GPL-2.0-or-later | libretro/libretro-prboom |
 | TyrQuake | Quake | GPL-2.0-or-later | libretro/tyrquake |
 | NXEngine | Cave Story | GPL-3.0-only | libretro/nxengine-libretro |
+| Shaders GLSL `sharp-bilinear-simple`, `zfast-crt`, `zfast-lcd` | filtros de imagem (Pixel suave, TV antiga, Tela de LCD) | domínio público (sharp-bilinear-simple); GPL-2.0-or-later (zfast) | libretro/glsl-shaders |
 | stb_truetype v1.26 | renderização de fonte no menu | MIT / domínio público | github.com/nothings/stb (commit em `src/ui/third_party/STB_COMMIT`) |
 | DejaVu Sans | fonte do menu | Bitstream Vera / DejaVu (livre) | pacote Debian `fonts-dejavu-core` |
 

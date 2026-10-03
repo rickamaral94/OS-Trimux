@@ -81,6 +81,11 @@ Marque com data, firmware, versão do TriMux e observações ao executar.
 | H54 | Capas baixadas continuam em `Imgs/` depois de reiniciar, desligar pelo menu e atualizar pelo menu; nenhum `FSCK*.REC` aparece na raiz do cartão | pendente |
 | H55 | *LEDs › Todas as luzes*: mudar a cor muda todas as zonas ao mesmo tempo; depois uma zona sozinha ainda pode ter outra cor | pendente |
 | H56 | Jogo com nome em japonês ou chinês (ex.: `0001 ゼルダの伝説.nes`) aparece com os caracteres certos na lista e no painel, sem `?` | pendente |
+| H57 | *Visual*: Pixel suave, Tela de LCD e TV antiga aparecem no jogo (shader carregado) sem queda de FPS em NES, SNES, GBA e PS1 (FPS na tela ligado) | pendente |
+| H58 | *Formato da tela*: Pixels perfeitos mostra bordas pretas e pixels iguais; Tela cheia ocupa a tela toda | pendente |
+| H59 | *Resolução interna 2x* no PlayStation: modelos 3D mais nítidos; anotar FPS e temperatura em 2 jogos 3D | pendente |
+| H60 | DOOM 640×400 e Quake 640×480: jogo abre na resolução escolhida e roda liso | pendente |
+| H61 | *Texturas HD*: um pacote Mesen em `Bios/HdPacks/<jogo>/` é carregado pelo FCEUmm; desligar a opção volta aos gráficos originais | pendente |
 | H47 | Tela de início do TriMux aparece logo depois do logotipo da TrimUI e enquanto os jogos são indexados | pendente |
 | H15 | Primeiro boot de um cartão de 32 GB e de 128 GB gravado com a imagem: expansão automática, um reinício, aviso com o espaço total; `chkdsk`/`fsck` limpo depois. Repetir pela opção do menu num cartão regravado | pendente |
 | H16 | Cartão cheio: aviso em Armazenamento; salvar estado falha sem corromper | pendente |

@@ -21,3 +21,4 @@ fbneo|https://github.com/libretro/FBNeo|a4012b161e48b33b94940f07987323574c237448
 prboom|https://github.com/libretro/libretro-prboom|e5db549b6c85fc500b3a559efe2dc00870521c5d|GPL-2.0-or-later
 tyrquake|https://github.com/libretro/tyrquake|e57bb11597e8a00380f30f2627d219da960cf69a|GPL-2.0-or-later
 nxengine|https://github.com/libretro/nxengine-libretro|fd1c0686f8b4c0aea9b5addbc077e3ad7da23bb7|GPL-3.0-only
+glsl_shaders|https://github.com/libretro/glsl-shaders|f8e23ff880668f0f0e837a05a316534d82a7f31b|per-shader (see docs/LICENCAS.md)

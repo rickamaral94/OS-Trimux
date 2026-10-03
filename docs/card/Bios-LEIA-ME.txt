@@ -11,3 +11,8 @@ Coloque aqui as BIOS (cópias dos seus próprios aparelhos), com estes nomes:
 
 Os nomes diferenciam maiúsculas/minúsculas no emulador. O TriMux mostra o que
 falta em Configurações > Biblioteca > Verificar BIOS.
+
+Texturas HD do NES (opcional): pacotes no formato Mesen HD Pack vão em
+HdPacks/<nome do arquivo do jogo, sem a extensão>/, com o hires.txt dentro.
+Exemplo: Roms/FC/Jogo.nes -> Bios/HdPacks/Jogo/hires.txt. Veja
+Configurações > Emuladores > Nintendo (NES / Famicom) > Texturas HD.

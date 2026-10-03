@@ -48,6 +48,25 @@ cp build/src/retroarch/deps/rcheevos/LICENSE "$TM/licenses/rcheevos.txt"
     cat /usr/share/common-licenses/Apache-2.0
 } > "$TM/licenses/mbedtls.txt"
 
+# Image filters (Settings > Emulators > <platform> > Look): three light GLSL
+# presets from libretro/glsl-shaders that run on GLES (PowerVR GE8300).
+SH=$TM/retroarch/shaders
+mkdir -p "$SH/shaders"
+for p in interpolation/sharp-bilinear-simple crt/zfast-crt handheld/zfast-lcd; do
+    src=build/src/glsl_shaders/$p.glslp
+    cp "$src" "$SH/"
+    glsl=$(sed -n 's/^shader0 *= *//p' "$src" | tr -d '"\r')
+    cp "$(dirname "$src")/$glsl" "$SH/$glsl"
+done
+{
+    echo "GLSL shaders from https://github.com/libretro/glsl-shaders (commit in sources.lock):"
+    echo "  sharp-bilinear-simple: rsn8887 (based on TheMaister), public domain"
+    echo "  zfast-crt, zfast-lcd: Copyright (C) 2017 Greg Hogan (SoltanGris42), GPL-2.0-or-later"
+    echo "The license notice is also at the top of each .glsl file."
+    echo
+    cat /usr/share/common-licenses/GPL-2
+} > "$TM/licenses/glsl_shaders.txt"
+
 # Game covers: CA certificates for HTTPS (the firmware ships none) and the
 # arcade zip name -> title list from the FinalBurn Neo DAT.
 cp /etc/ssl/certs/ca-certificates.crt "$TM/share/cacert.pem"
