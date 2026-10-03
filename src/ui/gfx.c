@@ -288,7 +288,11 @@ int gfx_init(const char *font_path, const char *fallback_font, int want_w, int w
 
 /* ------------------------------------------------------------ images (covers) */
 
-#define IMG_CACHE 6
+#define IMG_CACHE 32 /* the cover grid shows up to 15 at a time */
+#define IMG_LOADS_PER_FRAME 2 /* decoding is slow on the A133P: spread new covers over frames */
+static int g_img_loads, g_img_pending, g_img_budget = IMG_LOADS_PER_FRAME;
+
+void gfx_set_load_budget(int n) { g_img_budget = n; }
 static struct {
     char path[1024];
     SDL_Texture *tex; /* NULL: file missing or unreadable */
@@ -304,8 +308,17 @@ static void img_drop(int i)
     memset(&g_img[i], 0, sizeof g_img[i]);
 }
 
+int gfx_image_pending(void) { return g_img_pending; }
+
 int gfx_image(const char *path, int x, int y, int max_w, int max_h)
 {
+    int w, h;
+    return gfx_image_box(path, x, y, max_w, max_h, &w, &h) > 0 ? h : 0;
+}
+
+int gfx_image_box(const char *path, int x, int y, int max_w, int max_h, int *out_w, int *out_h)
+{
+    *out_w = *out_h = 0;
     if (!g_ren || !path || !path[0] || max_w <= 0 || max_h <= 0)
         return 0;
     uint32_t now = SDL_GetTicks();
@@ -321,6 +334,11 @@ int gfx_image(const char *path, int x, int y, int max_w, int max_h)
         slot = -1;
     }
     if (slot < 0) {
+        if (g_img_budget > 0 && g_img_loads >= g_img_budget) {
+            g_img_pending = 1; /* drawn on a later frame */
+            return -1;
+        }
+        g_img_loads++;
         slot = lru;
         img_drop(slot);
         snprintf(g_img[slot].path, sizeof g_img[slot].path, "%s", path);
@@ -351,7 +369,9 @@ int gfx_image(const char *path, int x, int y, int max_w, int max_h)
     SDL_Rect r = {0, y, (int)(g_img[slot].w * s), (int)(g_img[slot].h * s)};
     r.x = x + (max_w - r.w) / 2;
     SDL_RenderCopy(g_ren, g_img[slot].tex, NULL, &r);
-    return r.h;
+    *out_w = r.w;
+    *out_h = r.h;
+    return 1;
 }
 
 void gfx_quit(void)
@@ -380,6 +400,8 @@ void gfx_quit(void)
 
 void gfx_clear(void)
 {
+    g_img_loads = 0;
+    g_img_pending = 0;
     set_color(g_theme.bg, 255);
     SDL_RenderClear(g_ren);
 }
@@ -502,14 +524,16 @@ void gfx_star(int cx, int cy, int r, uint32_t rgb)
 
 void gfx_battery(int x, int y, int h, int pct, int charging)
 {
-    int w = h * 2;
+    int w = h * 2, r = h / 4;
     const TmTheme *t = &g_theme;
-    gfx_frame(x, y, w, h, 2, t->text);
-    gfx_rect(x + w, y + h / 4, 3, h / 2, t->text);
+    gfx_round_rect(x, y, w, h, r, t->text);                 /* outline */
+    gfx_round_rect(x + 2, y + 2, w - 4, h - 4, r - 1, t->panel);
+    gfx_round_rect(x + w + 1, y + h / 4, 3, h / 2, 1, t->text);
     if (pct >= 0) {
-        int fill = (w - 6) * (pct > 100 ? 100 : pct) / 100;
+        int fill = (w - 8) * (pct > 100 ? 100 : pct) / 100;
         uint32_t col = pct <= 15 ? t->danger : charging > 0 ? t->ok : t->text;
-        gfx_rect(x + 3, y + 3, fill, h - 6, col);
+        if (fill > 0)
+            gfx_round_rect(x + 4, y + 4, fill, h - 8, r / 2, col);
     }
 }
 

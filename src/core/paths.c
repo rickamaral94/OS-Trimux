@@ -72,6 +72,7 @@ int tm_settings_load(TmIni *ini, const TmPaths *p)
     def(ini, "general", "clean_names", "1");
     def(ini, "general", "show_empty", "0");
     def(ini, "general", "animations", "1");
+    def(ini, "general", "games_view", "list");
     def(ini, "general", "idle_poweroff_min", "0");
     def(ini, "input", "swap_ab", "0");
     def(ini, "power", "profile", "auto");

@@ -197,9 +197,14 @@ static void draw_panel(const TmGame *g, int x, int y, int w, int h)
         py += gfx_text_wrap(FONT_S, px, py, pw, 4, t->dim, tr(em->note_key)) + S(8);
     long gi = g - A.lib.games;
     int rank = games_rank(gi);
-    if (rank > 0) {
+    if (rank > 0) { /* a chip: "Nº 3 entre os mais vendidos do NES" */
         snprintf(buf, sizeof buf, tr("games.rank"), rank, sys->short_name);
-        py += gfx_text_wrap(FONT_S, px, py, pw, 2, t->accent, buf) + S(4);
+        int cw = gfx_text_width(FONT_S, buf) + S(24), chh = gfx_font_height(FONT_S) + S(10);
+        if (cw > pw)
+            cw = pw;
+        gfx_round_rect(px, py, cw, chh, chh / 2, gfx_mix(t->panel, t->accent, 30));
+        gfx_text(FONT_S, px + S(12), py + S(5), t->text, ALIGN_LEFT, cw - S(24), buf);
+        py += chh + S(8);
     }
     TmPlays pl;
     tm_plays_get(&A.plays, g->relpath, &pl);
@@ -213,6 +218,77 @@ static void draw_panel(const TmGame *g, int x, int y, int w, int h)
     }
     const char *file = strrchr(g->relpath, '/');
     gfx_text_wrap(FONT_S, px, y + h - S(80), pw, 2, t->dim, file ? file + 1 : g->relpath);
+}
+
+
+/* ---- cover grid ([general] games_view = grid) ---- */
+
+#define GRID_COLS 5
+#define GRID_ROWS 2
+
+int games_grid(void) { return strcmp(tm_ini_get(&A.settings, "general", "games_view", "list"), "grid") == 0; }
+
+/* one card: cover (or a placeholder in the platform colour) and the name */
+static void grid_card(const TmGame *g, int x, int y, int w, int h, int selected)
+{
+    const TmTheme *t = gfx_theme();
+    const TmSystem *sys = &A.cat.systems[g->system];
+    int name_h = gfx_font_height(FONT_S) + S(10);
+    int ch = h - name_h;
+    char cover[TM_PATH_MAX];
+    int dw = 0, dh = 0, drawn = 0;
+    (void)dw;
+    (void)dh;
+    if (app_game_cover(g, cover, sizeof cover) == 0)
+        drawn = gfx_image_box(cover, x + S(8), y + S(8), w - S(16), ch - S(16), &dw, &dh);
+    if (drawn <= 0) { /* no cover: a card with the platform colour */
+        int cw = (w - S(16)) * 9 / 10, cx = x + (w - cw) / 2;
+        gfx_gradient(cx, y + S(8), cw, ch - S(16), gfx_mix(t->panel2, sys->color, 55), gfx_mix(t->panel2, sys->color, 20), 255, 255);
+        gfx_badge(cx + S(10), y + S(18), S(28), sys->color, sys->short_name);
+        gfx_text_wrap(FONT_S, cx + S(10), y + S(60), cw - S(20), 4, t->text, g->name);
+    }
+    if (!selected) /* the others step back a little */
+        gfx_rect_a(x + S(8), y + S(8), w - S(16), ch - S(16), t->bg, 70);
+    if (tm_list_index(&A.fav, g->relpath) >= 0)
+        gfx_star(x + w - S(22), y + S(22), S(12), t->warn);
+    gfx_text(FONT_S, x + w / 2, y + ch + S(2), selected ? t->text : t->dim, ALIGN_CENTER, w - S(12), g->name);
+}
+
+static void draw_grid(int top, int bottom)
+{
+    const TmTheme *t = gfx_theme();
+    int gx = S(14), gw = gfx_w() - S(28);
+    int cw = gw / GRID_COLS, chh = (bottom - top) / GRID_ROWS;
+    int sel_row = A.games_sel / GRID_COLS;
+    int top_row = A.games_top / GRID_COLS;
+    if (sel_row < top_row)
+        top_row = sel_row;
+    if (sel_row >= top_row + GRID_ROWS)
+        top_row = sel_row - GRID_ROWS + 1;
+    A.games_top = top_row * GRID_COLS;
+    /* highlight behind the selected card, gliding like the lists */
+    int sx = gx + (A.games_sel % GRID_COLS) * cw, sy = top + (sel_row - top_row) * chh;
+    int hx = app_anim(3, sx, cw), hy = app_anim(1, sy, chh);
+    gfx_shadow(hx + S(2), hy + S(2), cw - S(4), chh - S(4), S(14), S(10));
+    gfx_round_rect(hx + S(2), hy + S(2), cw - S(4), chh - S(4), S(14), t->sel);
+    gfx_round_rect(hx + S(7), hy + S(7), cw - S(14), chh - S(14), S(10), gfx_mix(t->panel, t->sel, 25));
+    for (int r = 0; r < GRID_ROWS; r++)
+        for (int c = 0; c < GRID_COLS; c++) {
+            size_t i = (size_t)(top_row + r) * GRID_COLS + c;
+            if (i >= A.nview)
+                break;
+            grid_card(&A.lib.games[A.view[i]], gx + c * cw, top + r * chh, cw, chh, (int)i == A.games_sel);
+        }
+    /* the selected game's details in one line under the grid */
+    const TmGame *g = &A.lib.games[A.view[A.games_sel]];
+    const TmSystem *sys = &A.cat.systems[g->system];
+    char buf[256], pos[32];
+    snprintf(pos, sizeof pos, "%d / %zu", A.games_sel + 1, A.nview);
+    int y = bottom + S(4);
+    int bw = gfx_badge(gx, y, S(28), sys->color, sys->short_name);
+    snprintf(buf, sizeof buf, "%s", g->name);
+    int pw = gfx_text(FONT_S, gfx_w() - S(20), y + S(2), t->dim, ALIGN_RIGHT, 0, pos);
+    gfx_text(FONT_M, gx + bw + S(12), y - S(2), t->text, ALIGN_LEFT, gfx_w() - gx - bw - pw - S(60), buf);
 }
 
 uint32_t games_ambient(void)
@@ -251,6 +327,11 @@ void games_draw(void)
         app_footer(tr("games.hints_empty"));
         return;
     }
+    if (games_grid()) {
+        draw_grid(top, bottom - S(40));
+        app_footer(tr("games.hints"));
+        return;
+    }
     int visible = (bottom - top) / row;
     if (A.games_sel < A.games_top)
         A.games_top = A.games_sel;
@@ -265,14 +346,7 @@ void games_draw(void)
         app_draw_list_row(S(12), top + i * row, listw - S(20), row, A.games_top + i == A.games_sel ? 2 : 0, g->name, NULL,
                           1, sys->color, show_badge ? sys->short_name : NULL, fav);
     }
-    int track = bottom - top;
-    if ((int)A.nview > visible) {
-        int bar = track * visible / (int)A.nview;
-        if (bar < S(20))
-            bar = S(20);
-        int pos = (track - bar) * A.games_sel / (int)(A.nview - 1);
-        gfx_rect(listw - S(5), top + pos, S(4), bar, t->dim);
-    }
+    app_scrollbar(listw - S(6), top, bottom - top, A.games_sel, (int)A.nview, visible);
     char pos[32];
     snprintf(pos, sizeof pos, "%d / %zu", A.games_sel + 1, A.nview);
     gfx_text(FONT_S, gfx_w() - S(28), bottom - gfx_font_height(FONT_S) - S(6), t->dim, ALIGN_RIGHT, 0, pos);
@@ -299,9 +373,29 @@ static void jump_letter(int dir)
     A.games_sel = i;
 }
 
+static int grid_input(TmButton b)
+{
+    int n = (int)A.nview, s = A.games_sel;
+    if (!n)
+        return 0;
+    switch (b) {
+    case BTN_LEFT: s = s > 0 ? s - 1 : n - 1; break;
+    case BTN_RIGHT: s = s + 1 < n ? s + 1 : 0; break;
+    case BTN_UP: s = s >= GRID_COLS ? s - GRID_COLS : s; break;
+    case BTN_DOWN: s = s + GRID_COLS < n ? s + GRID_COLS : (s / GRID_COLS < (n - 1) / GRID_COLS ? n - 1 : s); break;
+    case BTN_L1: s = s >= GRID_COLS * GRID_ROWS ? s - GRID_COLS * GRID_ROWS : 0; break;
+    case BTN_R1: s = s + GRID_COLS * GRID_ROWS < n ? s + GRID_COLS * GRID_ROWS : n - 1; break;
+    default: return 0;
+    }
+    A.games_sel = s;
+    return 1;
+}
+
 void games_input(TmButton b)
 {
     long gi = games_selected_index();
+    if (games_grid() && grid_input(b))
+        return;
     switch (b) {
     case BTN_UP: if (A.nview) A.games_sel = A.games_sel > 0 ? A.games_sel - 1 : (int)A.nview - 1; break;
     case BTN_DOWN: if (A.nview) A.games_sel = (size_t)(A.games_sel + 1) < A.nview ? A.games_sel + 1 : 0; break;

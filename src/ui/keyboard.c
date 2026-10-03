@@ -77,7 +77,9 @@ void keyboard_draw(void)
     const TmTheme *t = gfx_theme();
     app_header(text_mode() ? A.kb_title : tr("search.title"));
     int y = S(64) + S(24);
-    gfx_round_rect(S(40), y, gfx_w() - S(80), S(64), S(12), t->panel);
+    gfx_shadow(S(40), y, gfx_w() - S(80), S(64), S(12), S(8));
+    gfx_round_rect(S(40), y, gfx_w() - S(80), S(64), S(12), t->accent); /* text box with an accent edge */
+    gfx_round_rect(S(42), y + S(2), gfx_w() - S(84), S(60), S(11), t->panel);
     const char *ph = text_mode() ? tr("kb.placeholder") : tr("search.placeholder");
     gfx_text(FONT_L, S(64), y + (S(64) - gfx_font_height(FONT_L)) / 2, A.kb_buf[0] ? t->text : t->dim, ALIGN_LEFT,
              gfx_w() - S(300), A.kb_buf[0] ? A.kb_buf : ph);
@@ -95,7 +97,14 @@ void keyboard_draw(void)
         for (int c = 0; c < n; c++) {
             int sel = r == A.kb_row && c == A.kb_col;
             int x = x0 + c * (kw + gap), yy = y + r * (kh + gap);
-            gfx_round_rect(x, yy, kw, kh, S(10), sel ? t->sel : t->panel2);
+            if (sel) { /* the chosen key lifts off the board */
+                gfx_shadow(x, yy, kw, kh, S(10), S(8));
+                gfx_round_rect(x, yy, kw, kh, S(10), t->sel);
+                gfx_gradient(x + S(4), yy + S(2), kw - S(8), kh / 2, 0xffffff, 0xffffff, 40, 0);
+            } else {
+                gfx_round_rect(x, yy, kw, kh, S(10), t->panel2);
+                gfx_rect_a(x + S(6), yy + kh - S(3), kw - S(12), S(2), 0x000000, 60); /* key edge */
+            }
             char ch[2] = {chars[c], 0};
             if (!text_mode() && ch[0] >= 'a' && ch[0] <= 'z')
                 ch[0] = (char)(ch[0] - 32);
@@ -121,6 +130,8 @@ void keyboard_draw(void)
     int x0 = (gfx_w() - (na * aw + (na - 1) * gap)) / 2, yy = y + 4 * (kh + gap);
     for (int c = 0; c < na; c++) {
         int sel = A.kb_row == 4 && A.kb_col == c;
+        if (sel)
+            gfx_shadow(x0 + c * (aw + gap), yy, aw, kh, S(10), S(8));
         gfx_round_rect(x0 + c * (aw + gap), yy, aw, kh, S(10), sel ? t->sel : t->panel2);
         gfx_text(FONT_M, x0 + c * (aw + gap) + aw / 2, yy + (kh - gfx_font_height(FONT_M)) / 2,
                  sel ? t->accent_text : t->text, ALIGN_CENTER, aw - S(10), labels[c]);

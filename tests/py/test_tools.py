@@ -223,3 +223,15 @@ def test_web_server_needs_wifi(env, card):
     r = ui(env, APPS + ",DOWN,DOWN,DOWN,A,A,B,B")
     assert r.returncode == 0
     assert not os.path.exists(os.path.join(env["TRIMUX_TMP"], "web.pid"))
+
+
+@needs_ui
+def test_cover_grid_moves_by_card_and_row(env, card):
+    """Grade de capas: the d-pad moves one card left/right and one row up/down."""
+    write(os.path.join(card, "TriMuxData/config/trimux.ini"), "[general]\nwizard_done = 1\ngames_view = grid\n")
+    for i in range(7):
+        write(os.path.join(card, "Roms/GBA/Zz Game %d (World).gba" % i), "")
+    # Todos os jogos, sorted by name: 5 of the test card first, then Zz Game 0..6
+    r = ui(env, "DOWN,A,DOWN,RIGHT,A")             # row 2, column 2 -> 7th game = Zz Game 1
+    assert r.returncode == 10
+    assert "rom = Roms/GBA/Zz Game 1 (World).gba" in read(os.path.join(env["TRIMUX_TMP"], "launch.ini"))

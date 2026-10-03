@@ -226,13 +226,7 @@ void home_draw(void)
         app_draw_list_row(S(16), top + i * row, listw - S(24), row, A.home_top + i == A.home_sel ? 2 : 0, label,
                           e->type == H_CONTINUE ? "" : value, 1, bc, badge, 0);
     }
-    if (g_n > (size_t)visible) { /* scroll indicator */
-        const TmTheme *t = gfx_theme();
-        int track = bottom - top;
-        int bar = track * visible / (int)g_n;
-        int pos = (track - bar) * A.home_sel / (int)(g_n - 1);
-        gfx_rect(listw - S(6), top + pos, S(4), bar, t->dim);
-    }
+    app_scrollbar(listw - S(6), top, bottom - top, A.home_sel, (int)g_n, visible);
     if (g_n)
         draw_panel(&g_entries[A.home_sel], listw + S(4), top, gfx_w() - listw - S(20), bottom - top);
     app_footer(tr("home.hints"));

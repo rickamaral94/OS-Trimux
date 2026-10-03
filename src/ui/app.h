@@ -164,6 +164,8 @@ void app_apply_language(void);
 int app_bios_status(const TmSystem *sys, char *missing, size_t size);
 /* Selection highlight of a list row (animated); draw it before the rows. */
 void app_list_highlight(int x, int y, int w, int h);
+/* Rounded scroll bar with a faint track (nothing when everything fits). */
+void app_scrollbar(int x, int top, int h, int sel, int total, int visible);
 void app_draw_list_row(int x, int y, int w, int h, int selected, const char *label, const char *value,
                        int enabled, uint32_t badge_color, const char *badge, int star);
 
@@ -184,6 +186,8 @@ int games_sort_mode(void);
 int games_rank(long gi);
 void games_draw(void);
 uint32_t games_ambient(void);
+/* 1 when the game list is shown as a cover grid */
+int games_grid(void);
 void games_input(TmButton b);
 long games_selected_index(void);
 

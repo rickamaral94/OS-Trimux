@@ -32,7 +32,7 @@ enum {
     ACT_UPDATE_CHECK, ACT_UPDATE_INSTALL, ACT_UPDATE_ROLLBACK, ACT_UPDATE_REBOOT,
     ACT_LED_POWER, ACT_TZ, ACT_TIME_SYNC, ACT_TIME_FIELD, ACT_TIME_APPLY, ACT_APP,
     ACT_VID_ASPECT, ACT_VID_FILTER, ACT_VID_RES, ACT_VID_COLORS, ACT_VID_GHOST, ACT_VID_HD, ACT_SORT, ACT_STORE,
-    ACT_COVERS_SYS,
+    ACT_COVERS_SYS, ACT_GAMES_VIEW,
 };
 
 static const struct {
@@ -170,6 +170,7 @@ static void page_appearance(Menu *m)
     it = add(m, ACT_TOGGLE, tr("settings.show_empty"), onoff((int)setting_long("general", "show_empty", 0)),
              tr("settings.show_empty.desc"));
     tm_strlcpy(it->sarg, "general/show_empty", sizeof it->sarg);
+    add(m, ACT_GAMES_VIEW, tr("view.title"), tr(games_grid() ? "view.grid" : "view.list"), tr("view.desc"));
     it = add(m, ACT_TOGGLE, tr("settings.animations"), onoff((int)setting_long("general", "animations", 1)),
              tr("settings.animations.desc"));
     tm_strlcpy(it->sarg, "general/animations", sizeof it->sarg);
@@ -635,6 +636,7 @@ static void page_game_options(Menu *m)
     add(m, ACT_SEARCH, tr("game.search"), "Y", tr("game.search.desc"));
     add(m, ACT_FAV_ONLY, tr("game.fav_only"), onoff(A.fav_only), tr("game.fav_only.desc"));
     add_sort_item(m);
+    add(m, ACT_GAMES_VIEW, tr("view.title"), tr(games_grid() ? "view.grid" : "view.list"), tr("view.desc"));
 }
 
 static int grow_plan(TmFatGrowPlan *plan, char *err, size_t errsz)
@@ -1695,14 +1697,18 @@ void menu_draw(void)
     for (int i = 0; i < visible && m->top + i < m->n; i++) {
         MenuItem *it = &m->items[m->top + i];
         int header = it->id == ACT_NONE && !it->enabled && m->page != PAGE_LOG && m->page != PAGE_ADD_GAMES;
-        if (header) {
-            gfx_text(FONT_S, S(30), top + i * row + row - gfx_font_height(FONT_S) - S(6), t->accent, ALIGN_LEFT,
-                     listw - S(40), it->label);
+        if (header) { /* section title: small accent text with a fading rule after it */
+            int ty = top + i * row + row - gfx_font_height(FONT_S) - S(6);
+            int tw = gfx_text(FONT_S, S(30), ty, t->accent, ALIGN_LEFT, listw - S(80), it->label);
+            int ly = ty + gfx_font_height(FONT_S) / 2;
+            if (S(30) + tw + S(14) < listw - S(30))
+                gfx_gradient(S(30) + tw + S(14), ly, listw - S(44) - tw - S(14), 1, t->accent, t->accent, 90, 90);
             continue;
         }
         app_draw_list_row(S(14), top + i * row, listw - S(22), row, m->top + i == m->sel ? 2 : 0, it->label, it->value,
                           it->enabled, it->badge_color, it->badge[0] ? it->badge : NULL, 0);
     }
+    app_scrollbar(listw - S(4), top, bottom - top, m->sel, m->n, visible);
     int px = listw + S(4), pw = gfx_w() - listw - S(20);
     app_panel(px, top, pw, bottom - top, 0);
     if (m->n) {
@@ -2092,6 +2098,11 @@ static void activate(MenuItem *it, TmButton b)
         app_mark_settings();
         break;
     case ACT_COVERS_SYS: covers_toggle_system(it->sarg); break;
+    case ACT_GAMES_VIEW:
+        tm_ini_set(&A.settings, "general", "games_view", games_grid() ? "list" : "grid");
+        app_mark_settings();
+        A.games_top = 0;
+        break;
     case ACT_COVERS_KIND: {
         static const char *const kinds[] = {"boxart", "snap", "title"};
         int i = (int)tm_thumb_kind_parse(tm_ini_get(&A.settings, "covers", "kind", "boxart"));
@@ -2433,10 +2444,86 @@ void info_draw(void)
     ROW("info.games", "%zu", A.lib.count);
     ROW("info.pad", "%s", input_state()->pad_name[0] ? input_state()->pad_name : tr("info.no_pad"));
     ROW("info.leds", "%s", tr(A.leds.available ? "common.yes" : "common.no"));
-    int y = S(64) + S(24), row = S(44);
-    for (int i = 0; i < n; i++) {
-        gfx_text(FONT_M, S(40), y + i * row, t->dim, ALIGN_LEFT, gfx_w() / 2 - S(60), rows[i][0]);
-        gfx_text(FONT_M, gfx_w() / 2 - S(20), y + i * row, t->text, ALIGN_LEFT, gfx_w() / 2 - S(20), rows[i][1]);
+    (void)rows;
+    (void)n;
+    /* six cards: device, battery, CPU, memory, card, library */
+    int top = S(64) + S(16), bottom = gfx_h() - S(52) - S(16), gap = S(14);
+    int cw = (gfx_w() - S(32) - 2 * gap) / 3, ch = (bottom - top - gap) / 2;
+    int lh = gfx_font_height(FONT_S) + S(6);
+    for (int c = 0; c < 6; c++) {
+        int x = S(16) + (c % 3) * (cw + gap), y = top + (c / 3) * (ch + gap);
+        int px = x + S(18), pw = cw - S(36), py = y + S(14);
+        uint32_t band = c == 1 ? t->ok : c == 2 ? t->warn : c == 3 || c == 4 ? t->accent : 0;
+        app_panel(x, y, cw, ch, band);
+        static const char *const titles[6] = {"info.card.device", "info.card.battery", "info.card.cpu",
+                                              "info.card.memory", "info.card.sd", "info.card.library"};
+        gfx_text(FONT_S, px, py, t->dim, ALIGN_LEFT, pw, tr(titles[c]));
+        py += lh + S(6);
+        char big[64] = "", l1[96] = "", l2[96] = "";
+        int frac = -1; /* 0..1000 for the meter */
+        uint32_t mc = t->accent;
+        switch (c) {
+        case 0:
+            tm_strlcpy(big, "TriMux " TRIMUX_VERSION, sizeof big);
+            snprintf(l1, sizeof l1, "%s", A.si.model);
+            snprintf(l2, sizeof l2, "%s %s", tr("info.firmware"), A.si.firmware);
+            break;
+        case 1:
+            if (A.si.battery_pct >= 0) {
+                snprintf(big, sizeof big, "%d%%", A.si.battery_pct);
+                frac = A.si.battery_pct * 10;
+                mc = A.si.battery_pct <= 15 ? t->danger : A.si.charging == 1 ? t->ok : t->text;
+            } else {
+                tm_strlcpy(big, tr("common.na"), sizeof big);
+            }
+            tm_strlcpy(l1, A.si.charging == 1 ? tr("info.charging") : "", sizeof l1);
+            break;
+        case 2:
+            if (temp >= 0) {
+                snprintf(big, sizeof big, "%.1f °C", temp / 1000.0);
+                localize_decimal(big);
+                frac = (int)((temp - 30000) * 1000 / 60000); /* 30..90 °C */
+                mc = temp < 60000 ? t->ok : temp < 75000 ? t->warn : t->danger;
+            } else {
+                tm_strlcpy(big, tr("common.na"), sizeof big);
+            }
+            if (cf > 0)
+                snprintf(l1, sizeof l1, "%ld MHz (%ld–%ld)", cf / 1000, mn / 1000, mx / 1000);
+            snprintf(l2, sizeof l2, "%s", gov);
+            break;
+        case 3:
+            snprintf(big, sizeof big, "%ld MB", A.si.mem_avail_kb / 1024);
+            snprintf(l1, sizeof l1, tr("info.free_of"), A.si.mem_total_kb / 1024);
+            snprintf(l2, sizeof l2, "%s: %s", tr("info.swap"), A.si.swap_total_kb > 0 ? tr("common.on") : tr("info.swap_off"));
+            if (A.si.mem_total_kb > 0)
+                frac = (int)((A.si.mem_total_kb - A.si.mem_avail_kb) * 1000 / A.si.mem_total_kb);
+            break;
+        case 4:
+            snprintf(big, sizeof big, "%s", a);
+            snprintf(l1, sizeof l1, tr("info.free_of_s"), b);
+            snprintf(l2, sizeof l2, "%s%s", A.si.sd_fstype[0] ? A.si.sd_fstype : "?", A.si.sd_readonly ? " RO" : "");
+            if (A.si.sd_total > 0)
+                frac = (int)((A.si.sd_total - A.si.sd_free) * 1000 / A.si.sd_total);
+            break;
+        default:
+            snprintf(big, sizeof big, tr("info.games_n"), A.lib.count);
+            snprintf(l1, sizeof l1, "%s: %s", tr("info.pad"), input_state()->pad_name[0] ? input_state()->pad_name : tr("info.no_pad"));
+            snprintf(l2, sizeof l2, "%s: %s", tr("info.leds"), tr(A.leds.available ? "common.yes" : "common.no"));
+        }
+        gfx_text(FONT_L, px, py, t->text, ALIGN_LEFT, pw, big);
+        py += gfx_font_height(FONT_L) + S(8);
+        if (frac >= 0) { /* meter */
+            if (frac > 1000)
+                frac = 1000;
+            gfx_round_rect(px, py, pw, S(10), S(5), t->panel2);
+            if (frac * pw / 1000 > S(10))
+                gfx_round_rect(px, py, frac * pw / 1000, S(10), S(5), mc);
+            py += S(22);
+        }
+        if (l1[0])
+            gfx_text(FONT_S, px, py, t->text, ALIGN_LEFT, pw, l1);
+        if (l2[0])
+            gfx_text(FONT_S, px, py + lh, t->dim, ALIGN_LEFT, pw, l2);
     }
     app_footer(tr("info.hints"));
 }
