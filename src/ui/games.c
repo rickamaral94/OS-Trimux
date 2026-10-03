@@ -171,7 +171,7 @@ static void draw_panel(const TmGame *g, int x, int y, int w, int h)
 {
     const TmTheme *t = gfx_theme();
     const TmSystem *sys = &A.cat.systems[g->system];
-    gfx_round_rect(x, y, w, h, S(14), t->panel);
+    app_panel(x, y, w, h, sys->color);
     int px = x + S(22), py = y + S(20), pw = w - S(44);
     /* cover (Imgs/<folder>/<game>.png, downloaded or copied by the user) */
     int cover_h = 0;
@@ -216,6 +216,13 @@ static void draw_panel(const TmGame *g, int x, int y, int w, int h)
     gfx_text_wrap(FONT_S, px, y + h - S(80), pw, 2, t->dim, file ? file + 1 : g->relpath);
 }
 
+uint32_t games_ambient(void)
+{
+    if (!A.nview || A.games_sel < 0 || (size_t)A.games_sel >= A.nview)
+        return 0;
+    return A.cat.systems[A.lib.games[A.view[A.games_sel]].system].color;
+}
+
 void games_draw(void)
 {
     const TmTheme *t = gfx_theme();
@@ -241,7 +248,7 @@ void games_draw(void)
                           : A.view_system == VIEW_FAVORITES ? tr("games.no_favorites")
                           : A.view_system == VIEW_RECENT ? tr("games.no_recent")
                                                          : tr("games.empty");
-        gfx_text_wrap(FONT_M, S(40), top + S(40), gfx_w() - S(80), 8, t->dim, msg);
+        app_empty(msg, !A.query[0] && A.view_system == VIEW_FAVORITES);
         app_footer(tr("games.hints_empty"));
         return;
     }
@@ -251,11 +258,12 @@ void games_draw(void)
     if (A.games_sel >= A.games_top + visible)
         A.games_top = A.games_sel - visible + 1;
     int show_badge = A.view_system < 0;
+    app_list_highlight(S(12), top + (A.games_sel - A.games_top) * row, listw - S(20), row);
     for (int i = 0; i < visible && (size_t)(A.games_top + i) < A.nview; i++) {
         const TmGame *g = &A.lib.games[A.view[A.games_top + i]];
         const TmSystem *sys = &A.cat.systems[g->system];
         int fav = tm_list_index(&A.fav, g->relpath) >= 0;
-        app_draw_list_row(S(12), top + i * row, listw - S(20), row, A.games_top + i == A.games_sel, g->name, NULL,
+        app_draw_list_row(S(12), top + i * row, listw - S(20), row, A.games_top + i == A.games_sel ? 2 : 0, g->name, NULL,
                           1, sys->color, show_badge ? sys->short_name : NULL, fav);
     }
     int track = bottom - top;

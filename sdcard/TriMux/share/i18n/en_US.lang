@@ -802,3 +802,6 @@ emu.ppsspp.note = PlayStation Portable. No BIOS needed: the PSP system fonts and
 covers.systems = PLATFORMS TO DOWNLOAD
 covers.system.desc = %s: %zu games.\n\nA: turn on or off. Platforms turned off are left out of the cover download (manual and automatic), so you can get what you want first. Covers already downloaded keep showing.
 covers.waiting = %d of %d: waiting for the Wi-Fi to come back…
+home.last_played = Last played
+settings.animations = Animations
+settings.animations.desc = The selection glides between items and the background colour follows the chosen platform. Turn off for a plainer menu (uses slightly less battery in the menu).

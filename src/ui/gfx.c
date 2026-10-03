@@ -408,13 +408,18 @@ void gfx_frame(int x, int y, int w, int h, int t, uint32_t rgb)
     gfx_rect(x + w - t, y, t, h, rgb);
 }
 
-void gfx_round_rect(int x, int y, int w, int h, int r, uint32_t rgb)
+void gfx_round_rect(int x, int y, int w, int h, int r, uint32_t rgb) { gfx_round_rect_a(x, y, w, h, r, rgb, 255); }
+
+/* rows never overlap, so a translucent fill stays even */
+void gfx_round_rect_a(int x, int y, int w, int h, int r, uint32_t rgb, uint8_t a)
 {
+    if (w <= 0 || h <= 0)
+        return;
     if (r * 2 > h)
         r = h / 2;
     if (r * 2 > w)
         r = w / 2;
-    set_color(rgb, 255);
+    set_color(rgb, a);
     SDL_Rect mid = {x, y + r, w, h - 2 * r};
     SDL_RenderFillRect(g_ren, &mid);
     for (int i = 0; i < r; i++) {
@@ -424,6 +429,51 @@ void gfx_round_rect(int x, int y, int w, int h, int r, uint32_t rgb)
         SDL_Rect bot = {x + r - dx, y + h - 1 - i, w - 2 * (r - dx), 1};
         SDL_RenderFillRect(g_ren, &top);
         SDL_RenderFillRect(g_ren, &bot);
+    }
+}
+
+uint32_t gfx_mix(uint32_t a, uint32_t b, int pct)
+{
+    if (pct <= 0)
+        return a;
+    if (pct >= 100)
+        return b;
+    uint32_t out = 0;
+    for (int sh = 0; sh <= 16; sh += 8) {
+        int ca = (int)((a >> sh) & 0xff), cb = (int)((b >> sh) & 0xff);
+        out |= (uint32_t)(ca + (cb - ca) * pct / 100) << sh;
+    }
+    return out;
+}
+
+void gfx_gradient(int x, int y, int w, int h, uint32_t top, uint32_t bottom, uint8_t a_top, uint8_t a_bottom)
+{
+    if (w <= 0 || h <= 0)
+        return;
+    SDL_Color ct = {(top >> 16) & 0xff, (top >> 8) & 0xff, top & 0xff, a_top};
+    SDL_Color cb = {(bottom >> 16) & 0xff, (bottom >> 8) & 0xff, bottom & 0xff, a_bottom};
+    SDL_Vertex v[4] = {
+        {{(float)x, (float)y}, ct, {0, 0}},
+        {{(float)(x + w), (float)y}, ct, {0, 0}},
+        {{(float)(x + w), (float)(y + h)}, cb, {0, 0}},
+        {{(float)x, (float)(y + h)}, cb, {0, 0}},
+    };
+    int idx[6] = {0, 1, 2, 0, 2, 3};
+    SDL_RenderGeometry(g_ren, NULL, v, 4, idx, 6);
+}
+
+void gfx_shadow(int x, int y, int w, int h, int r, int spread)
+{
+    for (int i = spread; i > 0; i -= spread / 4 > 0 ? spread / 4 : 1)
+        gfx_round_rect_a(x - i, y - i + spread / 2, w + 2 * i, h + 2 * i, r + i, 0x000000, 22);
+}
+
+void gfx_wifi(int x, int y, int h, int bars, uint32_t on, uint32_t off)
+{
+    int bw = h / 4, gap = h / 8;
+    for (int i = 0; i < 4; i++) {
+        int bh = h * (i + 1) / 4;
+        gfx_round_rect(x + i * (bw + gap), y + h - bh, bw, bh, bw / 3, i < bars ? on : off);
     }
 }
 

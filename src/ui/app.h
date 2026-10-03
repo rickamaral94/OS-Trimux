@@ -140,6 +140,13 @@ const char *tr(const char *key);
 void app_toast(const char *msg);
 void app_dialog(int id, const char *title, const char *text, long arg, const char *sarg, int info_only);
 void app_header(const char *title);
+/* Smoothly moving value for the selection highlight of list `slot`
+ * (0 home, 1 games, 2 menus); row = row height (long jumps snap). */
+int app_anim(int slot, int target, int row);
+/* Side panel with a soft shadow; band = platform colour washed in at the top (0: none). */
+void app_panel(int x, int y, int w, int h, uint32_t band);
+/* Centred message for an empty list (star: the favourites icon above it). */
+void app_empty(const char *msg, int star);
 void app_footer(const char *hints);
 void app_mark_settings(void);
 void app_save_all(void);
@@ -153,6 +160,8 @@ const TmEmulator *app_resolve_emu(const TmGame *g, int *is_override);
 void app_launch(long game_index);
 void app_apply_language(void);
 int app_bios_status(const TmSystem *sys, char *missing, size_t size);
+/* Selection highlight of a list row (animated); draw it before the rows. */
+void app_list_highlight(int x, int y, int w, int h);
 void app_draw_list_row(int x, int y, int w, int h, int selected, const char *label, const char *value,
                        int enabled, uint32_t badge_color, const char *badge, int star);
 
@@ -161,6 +170,8 @@ void home_build(void);
 void home_draw(void);
 void home_input(TmButton b);
 size_t home_count(void);
+/* colour of the selected platform, for the background (0: none) */
+uint32_t home_ambient(void);
 
 /* games.c */
 void games_open(int system);
@@ -170,6 +181,7 @@ int games_sort_mode(void);
 /* popularity rank of a library game (0 = not in the list) */
 int games_rank(long gi);
 void games_draw(void);
+uint32_t games_ambient(void);
 void games_input(TmButton b);
 long games_selected_index(void);
 

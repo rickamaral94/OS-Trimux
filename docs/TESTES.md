@@ -101,6 +101,7 @@ Marque com data, firmware, versão do TriMux e observações ao executar.
 | H74 | Limpeza: cartão preparado no macOS mostra os `._` em *Arquivos do computador*; depois de limpar, jogos e saves intactos | pendente |
 | H75 | PSP: um jogo 2D e um 3D (.iso e .cso) abrem com texto e som corretos (fontes do PPSSPP); salvar no jogo e reabrir; anotar FPS em Original e 2x | pendente |
 | H76 | Capas: suspender com POWER no meio do download e acordar depois de 1 e de 10 min; o status mostra *esperando o Wi-Fi*, o Wi-Fi volta e o download continua; plataformas desligadas não são baixadas | pendente |
+| H77 | Visual 0.5.1: a seleção desliza sem travar (menu fluido em listas de mil jogos), o fundo muda de cor com a plataforma, o ícone do Wi-Fi acende conectado; com *Animações* desligado tudo para no lugar; uso de CPU e bateria no menu parecido com a 0.5.0 | pendente |
 | H47 | Tela de início do TriMux aparece logo depois do logotipo da TrimUI e enquanto os jogos são indexados | pendente |
 | H15 | Primeiro boot de um cartão de 32 GB e de 128 GB gravado com a imagem: expansão automática, um reinício, aviso com o espaço total; `chkdsk`/`fsck` limpo depois. Repetir pela opção do menu num cartão regravado | pendente |
 | H16 | Cartão cheio: aviso em Armazenamento; salvar estado falha sem corromper | pendente |

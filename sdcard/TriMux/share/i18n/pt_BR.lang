@@ -804,3 +804,6 @@ emu.ppsspp.note = PlayStation Portable. Não precisa de BIOS: as fontes e arquiv
 covers.systems = PLATAFORMAS PARA BAIXAR
 covers.system.desc = %s: %zu jogos.\n\nA: ligar ou desligar. As plataformas desligadas ficam de fora do download de capas (manual e automático), para baixar primeiro só o que você quer. As capas já baixadas continuam aparecendo.
 covers.waiting = %d de %d: esperando o Wi-Fi voltar…
+home.last_played = Último jogado
+settings.animations = Animações
+settings.animations.desc = A seleção desliza suavemente entre os itens e a cor do fundo acompanha a plataforma escolhida. Desligue para um menu mais seco (gasta um pouco menos de bateria no menu).

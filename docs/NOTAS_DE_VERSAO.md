@@ -1,3 +1,26 @@
+# TriMux 0.5.1 (pré-lançamento)
+
+**Estado: não testado em um Brick Pro físico.** Novidade: **visual
+renovado**, com o mesmo jeito de usar:
+
+* **Fundo com a cor da plataforma:** ao escolher uma plataforma ou um jogo,
+  o fundo ganha um tom suave da cor dela.
+* **Seleção animada:** o destaque desliza entre os itens, com sombra e
+  brilho. Pode ser desligado em *Configurações › Aparência › Animações*.
+* **Painéis com faixa colorida e sombra.**
+  * Na tela inicial, a plataforma mostra o **último jogo jogado com a
+    capa**.
+  * *Continuar* mostra a capa do jogo.
+  * *Recentes* e *Todos os jogos* mostram as capas dos últimos jogos
+    abertos.
+* **Cabeçalho:** o nome TriMux em dois tons e um **ícone do Wi-Fi** (aceso
+  quando está conectado).
+* Diálogos, avisos e listas vazias com acabamento novo (sombras, cantos
+  arredondados, mensagem centralizada).
+* Nenhuma imagem nova vai para o cartão: tudo é desenhado pelo menu. As
+  capturas da documentação foram refeitas no computador; não são fotos do
+  aparelho.
+
 # TriMux 0.5.0 (pré-lançamento)
 
 **Estado: não testado em um Brick Pro físico.** Novidades:
