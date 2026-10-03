@@ -77,6 +77,18 @@ oficial da TrimUI**, então as capas aparecem nos dois sistemas.
 * Arquivos maiores que 8 MB ou que não sejam PNG/JPEG são descartados.
 * O download roda com prioridade baixa e para sozinho depois de 3 erros de
   rede seguidos.
+* Há uma pausa de 0,25 s entre uma capa e outra, para não manter o Wi-Fi e o
+  cartão no limite por horas seguidas.
+* **Sem ciclo de reinício**: enquanto baixa, existe o arquivo
+  `TriMuxData/state/scrape_active`. Se o aparelho reiniciar (ou desligar) no
+  meio do download, o download automático encontra esse arquivo no boot
+  seguinte e **não recomeça sozinho** até o próximo ligar. O estado aparece
+  como *Não terminou: o aparelho reiniciou*. *Baixar capas agora* continua de
+  onde parou.
+* A cada 50 capas o registro (`TriMuxData/logs/trimux.log`) ganha uma linha
+  `scrape: progress` com o andamento, a memória livre e a temperatura,
+  gravada no cartão na hora. Se o aparelho reiniciar, a última dessas linhas
+  mostra até onde foi e em que condições.
 
 ## Configurações (`TriMuxData/config/trimux.ini`)
 

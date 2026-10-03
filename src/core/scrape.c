@@ -4,8 +4,10 @@
 #include "image.h"
 #include "log.h"
 #include "net.h"
+#include "power.h"
 #include "util.h"
 
+#include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -335,6 +337,60 @@ static void wait_while_in_game(const TmPaths *p)
         sleep(5);
 }
 
+/* Free RAM in kB from /proc/meminfo, -1 if unknown. */
+static long mem_available_kb(void)
+{
+    char line[128];
+    long kb = -1;
+    FILE *f = fopen("/proc/meminfo", "r");
+    if (!f)
+        return -1;
+    while (fgets(line, sizeof line, f))
+        if (sscanf(line, "MemAvailable: %ld kB", &kb) == 1)
+            break;
+    fclose(f);
+    return kb;
+}
+
+/* A line every few covers, forced onto the card: after a sudden restart the
+ * log shows how far it got, the free memory and the temperature. */
+static void log_progress(const TmScrapeStatus *st, const TmPowerCaps *caps)
+{
+    long t = caps->has_temp ? tm_power_temp_mc(caps) : -1;
+    char temp[24] = "?";
+    if (t > 0)
+        snprintf(temp, sizeof temp, "%ld.%ld C", t / 1000, (t % 1000) / 100);
+    LOGI("scrape: progress %d/%d (%d found), free memory %ld MB, temperature %s", st->done, st->total, st->found,
+         mem_available_kb() / 1024, temp);
+    tm_log_sync();
+}
+
+/* Written before the first download and removed at the end, with fsync, so
+ * it is still there after a restart in the middle. */
+static void marker_set(const char *path, int on)
+{
+    if (!on) {
+        unlink(path);
+    } else {
+        int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
+        if (fd >= 0) {
+            fsync(fd);
+            close(fd);
+        }
+    }
+    char dir[TM_PATH_MAX];
+    tm_strlcpy(dir, path, sizeof dir);
+    char *slash = strrchr(dir, '/');
+    if (slash) {
+        *slash = '\0';
+        int dfd = open(dir, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+        if (dfd >= 0) {
+            fsync(dfd);
+            close(dfd);
+        }
+    }
+}
+
 int tm_scrape_run(const TmPaths *p, const TmCatalog *cat, const TmLibrary *lib, const TmScrapeOptions *o)
 {
     TmScrapeStatus st;
@@ -345,6 +401,23 @@ int tm_scrape_run(const TmPaths *p, const TmCatalog *cat, const TmLibrary *lib, 
         return 1;
     }
     tm_mkdir_p(p->tmp);
+    char active[TM_PATH_MAX], skip[TM_PATH_MAX];
+    tm_mkdir_p(p->state);
+    if (tm_path_join(active, sizeof active, p->state, "scrape_active") != 0 ||
+        status_path(p, "scrape.noauto", skip, sizeof skip) != 0)
+        return 1;
+    if (o->autorun && tm_file_exists(skip))
+        return 4; /* interrupted before: no automatic download until the next boot */
+    if (o->autorun && tm_file_exists(active)) {
+        LOGW("scrape: the previous cover download did not finish (the device restarted or lost power); "
+             "not starting it automatically this time");
+        tm_log_sync();
+        marker_set(active, 0);
+        tm_atomic_write(skip, "1\n", 2);
+        tm_strlcpy(st.state, "interrupted", sizeof st.state);
+        status_write(p, &st);
+        return 4;
+    }
     status_path(p, "scrape.pid", pidfile, sizeof pidfile);
     status_path(p, "scrape.stop", stopfile, sizeof stopfile);
     status_path(p, "scrape.download", tmp, sizeof tmp);
@@ -393,13 +466,21 @@ int tm_scrape_run(const TmPaths *p, const TmCatalog *cat, const TmLibrary *lib, 
     LOGI("scrape: %d games without %s images", st.total, tm_thumb_kind_id(o->kind));
 
     FILE *missf = fopen(missfile, "a");
-    int net_errors = 0;
+    int net_errors = 0, tried = 0;
+    TmPowerCaps caps;
+    tm_power_detect(&caps);
+    if (st.total > 0) {
+        marker_set(active, 1);
+        log_progress(&st, &caps);
+    }
     for (size_t i = 0; i < lib->count && strcmp(st.state, "running") == 0; i++) {
         const TmGame *g = &lib->games[i];
         const TmSystem *sys = &cat->systems[g->system];
         if (!sys->thumbs[0] || tm_scrape_cover_path(p->sd, g->relpath, sys->id, cover, sizeof cover) != 0 ||
             tm_file_exists(cover) || set_has(&miss, g->relpath))
             continue;
+        if (tried++ > 0)
+            usleep(250000); /* a lighter, steadier pace for the Wi-Fi and the card */
         wait_while_in_game(p);
         if (stop_requested(p)) {
             tm_strlcpy(st.state, "stopped", sizeof st.state);
@@ -458,6 +539,8 @@ int tm_scrape_run(const TmPaths *p, const TmCatalog *cat, const TmLibrary *lib, 
                 fprintf(missf, "%s\n", g->relpath);
         }
         status_write(p, &st);
+        if (tried % 50 == 0)
+            log_progress(&st, &caps);
     }
     if (strcmp(st.state, "running") == 0)
         tm_strlcpy(st.state, "done", sizeof st.state);
@@ -468,6 +551,7 @@ int tm_scrape_run(const TmPaths *p, const TmCatalog *cat, const TmLibrary *lib, 
         tm_arcade_free(&arcade);
     set_free(&miss);
     sync(); /* everything downloaded is on the card before anything else happens */
+    marker_set(active, 0);
     unlink(pidfile);
     unlink(stopfile);
     LOGI("scrape: %s, %d found, %d not found of %d", st.state, st.found, st.missing, st.total);

@@ -11,6 +11,9 @@ enum { TM_LOG_DEBUG, TM_LOG_INFO, TM_LOG_WARN, TM_LOG_ERROR };
 void tm_log_init(const char *path, size_t max_bytes, const char *tag);
 void tm_log(int level, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 void tm_log_close(void);
+/* Forces what was logged so far onto the card (for lines that must survive
+ * a sudden restart). */
+void tm_log_sync(void);
 /* TM_LOG_DEBUG enables detailed logging (setting [diag] verbose). */
 void tm_log_set_level(int min_level);
 

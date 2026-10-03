@@ -18,6 +18,20 @@
 * Os dois emuladores são compilados pelo TriMux a partir dos fontes
   oficiais (GPL), nos commits de `sources/sources.lock`. Nada do sistema
   oficial é copiado.
+* **Capas: sem ciclo de reinício.** Se o aparelho reiniciar no meio do
+  download de capas, o download automático não recomeça sozinho no boot
+  seguinte (antes, com capas automáticas ligadas, ele recomeçava a cada boot
+  e podia reiniciar de novo). O estado mostra *Não terminou: o aparelho
+  reiniciou*; *Baixar capas agora* continua de onde parou
+  ([CAPAS.md](CAPAS.md)).
+  * A cada 50 capas o registro grava o andamento, a memória livre e a
+    temperatura, direto no cartão, para mostrar onde e em que condições o
+    reinício aconteceu.
+  * Pausa curta entre downloads, para um ritmo mais leve no Wi-Fi e no
+    cartão.
+  * A causa dos reinícios ainda não foi confirmada no aparelho. Nenhum
+    vazamento de memória foi encontrado no TriMux; a suspeita é o driver de
+    Wi-Fi ou o kernel sob tráfego contínuo, ou temperatura.
 
 # TriMux 0.4.8 (pré-lançamento)
 

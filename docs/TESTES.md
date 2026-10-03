@@ -93,6 +93,7 @@ Marque com data, firmware, versão do TriMux e observações ao executar.
 | H66 | *Loja › Grout*: instala em `Apps/Grout`, aparece em Aplicativos e abre | pendente |
 | H67 | N64: Super Mario 64 e Mario Kart 64 abrem, imagem e som corretos; anotar FPS com Padrão e com Original | pendente |
 | H68 | Dreamcast: um jogo `.chd` e um `.gdi` abrem com e sem BIOS em `Bios/dc`; anotar FPS em 640×480 | pendente |
+| H69 | Capas com milhares de jogos (ex.: 14 mil) por 1 h com Wi-Fi: o aparelho não reinicia; se reiniciar, anotar no registro a última linha `scrape: progress` (memória livre e temperatura) e conferir que o download não recomeça sozinho no boot seguinte | pendente |
 | H47 | Tela de início do TriMux aparece logo depois do logotipo da TrimUI e enquanto os jogos são indexados | pendente |
 | H15 | Primeiro boot de um cartão de 32 GB e de 128 GB gravado com a imagem: expansão automática, um reinício, aviso com o espaço total; `chkdsk`/`fsck` limpo depois. Repetir pela opção do menu num cartão regravado | pendente |
 | H16 | Cartão cheio: aviso em Armazenamento; salvar estado falha sem corromper | pendente |
