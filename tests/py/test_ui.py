@@ -263,3 +263,15 @@ def test_covers_options_saved(env):
     assert ui(env, COVERS + ",DOWN,DOWN,DOWN,RIGHT,DOWN,A,DOWN,A,B,B,B").returncode == 0
     cfg = read(os.path.join(env["TRIMUX_SDCARD"], "TriMuxData/config/trimux.ini"))
     assert "[covers]" in cfg and "kind = snap" in cfg and "auto = 1" in cfg and "show = 0" in cfg
+
+
+def test_card_grow_result_shown_after_reboot(env):
+    state = os.path.join(env["TRIMUX_SDCARD"], "TriMuxData/state")
+    write(os.path.join(state, "card-grown"), "1048576\n")         # 1 MiB before: the card grew
+    assert ui(env, "wait=50").returncode == 0
+    assert not os.path.exists(os.path.join(state, "card-grown"))
+    log = read(os.path.join(env["TRIMUX_SDCARD"], "TriMuxData/logs/trimux.log"))
+    assert "card grown" in log
+    write(os.path.join(state, "card-grown"), "%d\n" % (1 << 50))   # bigger than now: it did not work
+    assert ui(env, "wait=50").returncode == 0
+    assert "did not take effect" in read(os.path.join(env["TRIMUX_SDCARD"], "TriMuxData/logs/trimux.log"))

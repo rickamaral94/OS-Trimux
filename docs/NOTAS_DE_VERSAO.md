@@ -1,3 +1,24 @@
+# TriMux 0.4.1 (pré-lançamento)
+
+**Estado: não testado em um Brick Pro físico.** Correções da 0.4.0:
+
+* **Cartão inteiro no primeiro boot:** quem grava a imagem não precisa mais
+  expandir a partição à mão. No primeiro boot o TriMux passa a usar o cartão
+  inteiro (até 1 TiB) e reinicia uma vez; depois, o menu mostra o espaço
+  total. Cartões preparados pelo computador nunca são alterados.
+* **"Expandir partição" indisponível:** a opção recusava todo cartão em uso,
+  porque o Linux marca o cartão montado como "em uso" no setor de boot
+  principal e o TriMux comparava esse setor com a cópia de reserva. Corrigido.
+  O pedido pelo menu também falhava ao deixar o cartão somente leitura e,
+  agora, volta ao menu com o motivo no log quando não dá para expandir.
+* O `update.zip` traz as pastas `Roms/<plataforma>` vazias e os arquivos do
+  TriMux em `Bios/` (inclusive o `prboom.wad` do DOOM), para quem prepara o
+  cartão pelo computador.
+
+Arquivos desta versão: `TriMux-0.4.1-brickpro.img.xz` (Rufus/balenaEtcher),
+`TriMux-0.4.1-update.zip`, `TriMux-0.4.1-update.tar.gz` (atualização online)
+e `TriMux-0.4.1-brickpro.sha256`.
+
 # TriMux 0.4.0 (pré-lançamento)
 
 **Estado: não testado em um Brick Pro físico.** Tudo das versões anteriores

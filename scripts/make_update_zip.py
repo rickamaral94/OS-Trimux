@@ -6,7 +6,11 @@ card (trimui/ and TriMux/ plus LEIA-ME.txt):
   TriMux-<version>-update.tar.gz  online update (trimuxctl update install);
                                   the firmware's busybox has tar but no unzip
 
-Neither touches Roms, Bios, Saves, States or TriMuxData. Entries are sorted and
+Neither touches the user's games, BIOS, saves, states or TriMuxData. The zip
+also carries the empty platform folders under Roms/ and TriMux's own files in
+Roms/ and Bios/ (the read-me files, PrBoom's prboom.wad), so a card prepared
+on a computer gets the same layout as the image; extracting it over an
+existing card only adds what is missing. Entries are sorted and
 timestamped from SOURCE_DATE_EPOCH for reproducibility."""
 import argparse
 import gzip
@@ -17,6 +21,7 @@ import time
 import zipfile
 
 KEEP = ("trimui", "TriMux", "LEIA-ME.txt")
+ZIP_EXTRA = ("Roms", "Bios")   # manual install only; the online updater never touches them
 
 
 def main():
@@ -38,8 +43,21 @@ def main():
             dirs.sort()
             for f in sorted(fs):
                 files.append(os.path.relpath(os.path.join(d, f), a.tree))
+    extra_files, extra_dirs = [], []
+    for top in ZIP_EXTRA:
+        for d, dirs, fs in os.walk(os.path.join(a.tree, top)):
+            dirs.sort()
+            rel_d = os.path.relpath(d, a.tree)
+            if not fs and not dirs:
+                extra_dirs.append(rel_d)
+            for f in sorted(fs):
+                extra_files.append(os.path.join(rel_d, f))
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
-        for rel in files:
+        for rel in sorted(extra_dirs):
+            info = zipfile.ZipInfo(rel.replace(os.sep, "/") + "/", date_time=stamp)
+            info.external_attr = (0o040755 << 16) | 0x10   # directory (unix mode + MS-DOS flag)
+            z.writestr(info, b"")
+        for rel in files + extra_files:
             info = zipfile.ZipInfo(rel.replace(os.sep, "/"), date_time=stamp)
             src = os.path.join(a.tree, rel)
             mode = 0o755 if (rel.endswith(".sh") or os.access(src, os.X_OK)) else 0o644

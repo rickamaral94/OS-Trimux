@@ -617,6 +617,26 @@ static void boot_ok(void)
     tm_update_confirm(&A.paths); /* a freshly installed update works */
 }
 
+/* After "trimuxctl card-grow" and its reboot: tell whether the card grew
+ * (state/card-grown holds the size before). */
+static void card_grow_report(void)
+{
+    char p[TM_PATH_MAX], v[32], msg[192];
+    long before = 0;
+    if (tm_path_join(p, sizeof p, A.paths.state, "card-grown") != 0 || tm_read_long(p, &before) != 0)
+        return;
+    unlink(p);
+    if (A.si.sd_total > (unsigned long long)before + (64ULL << 20)) {
+        tm_format_bytes(A.si.sd_total, v, sizeof v);
+        snprintf(msg, sizeof msg, tr("storage.grown"), v);
+        LOGI("ui: card grown, filesystem now %s", v);
+    } else {
+        tm_strlcpy(msg, tr("storage.grow.failed"), sizeof msg);
+        LOGW("ui: card grow did not take effect (filesystem still %llu bytes)", (unsigned long long)A.si.sd_total);
+    }
+    app_toast(msg);
+}
+
 int app_main(int argc, char **argv)
 {
     int win_w = 0, win_h = 0;
@@ -667,6 +687,7 @@ int app_main(int argc, char **argv)
     if (!tm_ini_get_long(&A.settings, "general", "wizard_done", 0))
         wizard_open();
     app_refresh_sysinfo(1);
+    card_grow_report();
     A.running = 1;
     A.dirty = 1;
     A.last_input = tm_now_ms();

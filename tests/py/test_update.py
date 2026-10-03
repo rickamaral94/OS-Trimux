@@ -38,8 +38,12 @@ def build_package(tmp, version, inner_version=None):
         "trimui/app/MainUI": "#!/bin/sh\n# new %s\n" % v,
         "trimui/app/preload.sh": "#!/bin/sh\n",
         "LEIA-ME.txt": "leia-me %s\n" % v,
+        "Roms/LEIA-ME.txt": "roms\n",
+        "Bios/prboom.wad": "wad\n",
     }.items():
         write(os.path.join(tree, rel), body, 0o755 if "/bin/" in rel or rel.endswith("MainUI") else None)
+    for d in ("Roms/GBA", "Roms/PS"):
+        os.makedirs(os.path.join(tree, d), exist_ok=True)
     out = os.path.join(tmp, "out-" + version)
     subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "make_update_zip.py"), "--tree", tree,
                     "--out", out, "--version", version], check=True, capture_output=True)
@@ -246,7 +250,16 @@ def test_update_tarball_is_reproducible(tmp_path):
     assert open(a, "rb").read() == open(b, "rb").read()
     out = subprocess.run(["tar", "-tzvf", a], capture_output=True, text=True, check=True).stdout
     assert "TriMux/bin/trimuxctl" in out and "trimui/app/MainUI" in out and "LEIA-ME.txt" in out
-    assert "Roms" not in out and "TriMuxData" not in out
+    assert "Roms" not in out and "Bios" not in out and "TriMuxData" not in out
+
+
+def test_update_zip_brings_platform_folders(tmp_path):
+    import zipfile
+    build_package(str(tmp_path), "0.9.0")
+    names = zipfile.ZipFile(str(tmp_path / "out-0.9.0" / "TriMux-0.9.0-update.zip")).namelist()
+    assert "Roms/GBA/" in names and "Roms/PS/" in names        # empty folders kept
+    assert "Roms/LEIA-ME.txt" in names and "Bios/prboom.wad" in names
+    assert "TriMux/VERSION" in names and not any(n.startswith("TriMuxData") for n in names)
 
 
 # ---- menu (SDL offscreen driver, scripted buttons) ----

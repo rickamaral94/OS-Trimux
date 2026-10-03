@@ -61,6 +61,9 @@ def test_layout(tmp_path):
     assert check_fs(img).returncode == 0
     listing = subprocess.run(["mdir", "-/", "-b", "-i", img + "@@1M", "::/"], capture_output=True, text=True).stdout
     assert "TRIMUI Player1.cfg" in listing and "Game Boy Advance (GBA)" in listing
+    # only the image asks for the first-boot growth (never the update packages)
+    state = subprocess.run(["mdir", "-b", "-i", img + "@@1M", "::/TriMuxData/state"], capture_output=True, text=True).stdout
+    assert "autogrow" in state
 
 
 def test_grow_on_bigger_card(tmp_path):
@@ -83,6 +86,30 @@ def test_grow_on_bigger_card(tmp_path):
     assert check_fs(card).returncode == 0
     again = subprocess.run([CTL, "fat-grow", "plan", card], capture_output=True, text=True, check=True).stdout
     assert "nothing to do" in again
+
+
+def test_grow_while_mounted_by_linux(tmp_path):
+    """Linux marks a mounted FAT32 volume dirty in the primary boot sector only
+    (byte 65); the backup copy keeps 0. That is the state of the card while
+    TriMux runs, and also after a power cut. Growth must still be allowed."""
+    img = build(tmp_path)
+    card = str(tmp_path / "card.img")
+    shutil.copy(img, card)
+    with open(card, "r+b") as f:
+        f.truncate(8 * 1024 ** 3)
+        f.seek(2048 * 512 + 65)
+        f.write(b"\x01")
+    plan = subprocess.run([CTL, "fat-grow", "plan", card], capture_output=True, text=True)
+    assert plan.returncode == 0 and "new_sectors=" in plan.stdout, plan.stderr
+    subprocess.run([CTL, "fat-grow", "apply", card], check=True, capture_output=True)
+    with open(card, "rb") as f:
+        f.seek(2048 * 512)
+        primary = f.read(512)
+        f.seek((2048 + 6) * 512)
+        backup = f.read(512)
+    assert struct.unpack_from("<I", primary, 32) == struct.unpack_from("<I", backup, 32)
+    assert primary[65] == 1 and backup[65] == 0      # each copy keeps its own state byte
+    assert check_fs(card).returncode in (0, 1)       # fsck may only report the dirty flag
 
 
 def test_grow_refuses_foreign_layouts(tmp_path):

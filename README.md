@@ -73,11 +73,11 @@ simulado; não são fotos do aparelho.</sub>
    `trimux-image`, ou Releases quando houver uma versão publicada).
 2. No **Rufus**: Dispositivo = seu microSD → SELECIONAR → o `.img.xz` →
    INICIAR. (Cartão de 2 GB ou mais; recomendado 16 GB+. **Apaga o cartão.**)
-3. Coloque o cartão no Brick Pro desligado e ligue. Siga o assistente.
+3. Coloque o cartão no Brick Pro desligado e ligue. No primeiro boot o TriMux
+   passa a usar o cartão inteiro (a imagem tem 1 GiB) e reinicia uma vez
+   sozinho. Depois, siga o assistente.
 4. Copie seus jogos para `Roms/<PLATAFORMA>` e BIOS para `Bios/` (pelo leitor
    de cartão ou, com Wi-Fi, por *Rede e conexões › Transferir arquivos*).
-5. Opcional: *Configurações › Armazenamento › Expandir partição* para usar o
-   cartão inteiro.
 
 Passo a passo completo, atualização sem perder saves e recuperação para o
 firmware oficial: **[docs/INSTALACAO.md](docs/INSTALACAO.md)**.

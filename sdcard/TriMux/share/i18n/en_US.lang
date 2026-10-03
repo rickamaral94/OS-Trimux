@@ -275,6 +275,8 @@ storage.grow.can = The partition uses %s and can take %s. Only metadata changes;
 storage.grow.done = The partition already uses all available space.
 storage.grow.nodev = Card not identified as a TriMux FAT32 partition.
 storage.grow.confirm = Expand the partition now? The card is read-only during the operation and the device reboots. Do not power off or remove the card.
+storage.grown = Card ready: it now has %s of space. You can copy your games.
+storage.grow.failed = Could not use the whole card. The reason is in Settings › Storage and in TriMuxData/logs/trimux.log.
 
 system.info = Device information
 system.info.desc = Model, firmware, battery, temperature, CPU, memory and card.

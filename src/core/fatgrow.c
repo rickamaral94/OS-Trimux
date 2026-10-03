@@ -8,7 +8,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <limits.h>
 #include <sys/stat.h>
+#include <sys/sysmacros.h>
 #include <unistd.h>
 
 #define SECTOR 512u
@@ -108,7 +110,13 @@ int tm_fatgrow_plan(int fd, uint64_t dev_bytes, TmFatGrowPlan *plan, char *err, 
     if (rd(fd, plan->part_start + plan->fsinfo_sector, fsi) != 0 || le32(fsi) != 0x41615252u ||
         le32(fsi + 484) != 0x61417272u || le32(fsi + 508) != 0xAA550000u)
         FAIL("FSInfo sector invalid");
-    if (rd(fd, plan->part_start + plan->backup_sector, bak) != 0 || memcmp(bak, vbr, 90) != 0)
+    /* Byte 65 is the volume state: Linux sets its "dirty" bit in the primary
+     * copy only, for as long as the card is mounted (and after a power cut),
+     * so it is left out of the comparison. */
+    if (rd(fd, plan->part_start + plan->backup_sector, bak) != 0)
+        FAIL("cannot read the backup boot sector");
+    bak[65] = vbr[65];
+    if (memcmp(bak, vbr, 90) != 0)
         FAIL("backup boot sector differs from the primary; run a disk check first");
 
     uint64_t data_start = (uint64_t)rsvd + (uint64_t)nfats * fatsz;
@@ -138,6 +146,11 @@ int tm_fatgrow_apply(int fd, const TmFatGrowPlan *plan, char *err, size_t errsz)
     uint8_t mbr[SECTOR], s[SECTOR];
     if (!plan->new_total || plan->new_total <= plan->fs_total)
         FAIL("nothing to apply");
+    /* read what is on the card now, not this device's cache from planning
+     * (the mounted partition may have rewritten its boot sector since) */
+    struct stat st;
+    if (fstat(fd, &st) == 0 && S_ISBLK(st.st_mode))
+        ioctl(fd, BLKFLSBUF, 0);
     /* 1) partition length first: a partition larger than its filesystem is valid */
     if (rd(fd, 0, mbr) != 0)
         FAIL("cannot re-read MBR");
@@ -175,6 +188,33 @@ int tm_fatgrow_apply(int fd, const TmFatGrowPlan *plan, char *err, size_t errsz)
     return 0;
 }
 
+/* Partition 1 of a disk from the block device behind sd_root, through
+ * /sys/dev/block/<major>:<minor>; used when /proc/mounts names the device in a
+ * form other than /dev/mmcblkNp1 (a symlink, /dev/block/..., a label). */
+static int card_from_sysfs(const char *sd_root, char *part, size_t ps, char *disk, size_t ds)
+{
+    struct stat st;
+    if (stat(sd_root, &st) != 0)
+        return -1;
+    const char *root = getenv("TRIMUX_SYSFS_ROOT");
+    char link[512], real[PATH_MAX], num[16];
+    snprintf(link, sizeof link, "%s/sys/dev/block/%u:%u", root ? root : "", major(st.st_dev), minor(st.st_dev));
+    if (!realpath(link, real))
+        return -1;
+    char pfile[PATH_MAX + 16];
+    snprintf(pfile, sizeof pfile, "%s/partition", real);
+    if (tm_read_line(pfile, num, sizeof num) != 0 || strcmp(num, "1") != 0)
+        return -1; /* only partition 1 of a partitioned card */
+    char *pname = strrchr(real, '/');
+    if (!pname)
+        return -1;
+    *pname++ = '\0';
+    char *dname = strrchr(real, '/');
+    if (!dname || !tm_starts_with(++dname, "mmcblk"))
+        return -1;
+    return tm_snprintf(part, ps, "/dev/%s", pname) == 0 && tm_snprintf(disk, ds, "/dev/%s", dname) == 0 ? 0 : -1;
+}
+
 int tm_card_device(const char *sd_root, char *part, size_t ps, char *disk, size_t ds)
 {
     char mounts[512];
@@ -196,7 +236,7 @@ int tm_card_device(const char *sd_root, char *part, size_t ps, char *disk, size_
     size_t n = found ? strlen(part) : 0;
     /* only /dev/mmcblkNp1 is accepted: a whole-disk filesystem cannot grow */
     if (!found || !tm_starts_with(part, "/dev/mmcblk") || n < 3 || strcmp(part + n - 2, "p1") != 0)
-        return -1;
+        return found ? card_from_sysfs(sd_root, part, ps, disk, ds) : -1;
     if (tm_strlcpy(disk, part, ds) != 0)
         return -1;
     disk[n - 2] = '\0';

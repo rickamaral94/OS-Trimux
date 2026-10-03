@@ -95,12 +95,24 @@ def copy_tree(part_path, tree, epoch):
         dirs.sort()
         for name in sorted(dirs):
             rel = os.path.relpath(os.path.join(d, name), tree)
-            run(["mmd", "-i", part_path, "::/" + rel.replace(os.sep, "/")], env=env)
+            run(["mmd", "-D", "s", "-i", part_path, "::/" + rel.replace(os.sep, "/")], env=env)
         for name in sorted(files):
             src = os.path.join(d, name)
             rel = os.path.relpath(src, tree)
             os.utime(src, (epoch, epoch))
             run(["mcopy", "-m", "-o", "-i", part_path, src, "::/" + rel.replace(os.sep, "/")], env=env)
+
+
+def add_autogrow_marker(part_path, tmp, epoch):
+    """TriMuxData/state/autogrow: only images carry it (never the update
+    packages). On the first boot TriMux grows the partition to the whole card
+    once and deletes the marker (trimuxctl card-grow --auto)."""
+    staging = os.path.join(tmp, "marker")
+    rel = os.path.join("TriMuxData", "state", "autogrow")
+    os.makedirs(os.path.dirname(os.path.join(staging, rel)), exist_ok=True)
+    with open(os.path.join(staging, rel), "w") as f:
+        f.write("grow the partition to the whole card on the first boot\n")
+    copy_tree(part_path, staging, epoch)
 
 
 def write_mbr(img, part_sectors, disk_id):
@@ -147,6 +159,7 @@ def main():
         if need > free * 0.95:
             raise SystemExit("content (%d MiB) does not fit in a %d MiB image" % (need >> 20, args.size_mib))
         copy_tree(part, args.tree, epoch)
+        add_autogrow_marker(part, tmp, epoch)
         # The image's own check: must be clean before it is published.
         run(["fsck.fat", "-n", "-v", part])
         with open(img_path, "wb") as img:

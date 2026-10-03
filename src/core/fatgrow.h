@@ -30,8 +30,9 @@ typedef struct {
 int tm_fatgrow_plan(int fd, uint64_t dev_bytes, TmFatGrowPlan *plan, char *err, size_t errsz);
 /* Applies a plan produced by tm_fatgrow_plan on the same fd. */
 int tm_fatgrow_apply(int fd, const TmFatGrowPlan *plan, char *err, size_t errsz);
-/* Finds the partition mounted at sd_root (must be /dev/mmcblkNp1) and its
- * disk (/dev/mmcblkN) from /proc/mounts. Returns 0 on success. */
+/* Finds the partition mounted at sd_root (must be partition 1 of an mmcblk
+ * disk) and its disk, from /proc/mounts, falling back to /sys/dev/block when
+ * the mount source has another name. Returns 0 on success. */
 int tm_card_device(const char *sd_root, char *part, size_t ps, char *disk, size_t ds);
 /* Size of a regular file or block device. */
 int tm_fatgrow_device_size(int fd, uint64_t *bytes);

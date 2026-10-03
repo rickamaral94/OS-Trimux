@@ -218,3 +218,31 @@ def test_scrape_auto_respects_setting_and_network_errors(env, device, card):
     assert len(curl_calls(device)) == 3              # gives up after 3 network failures
     missing = os.path.join(card, "TriMuxData/cache/covers-missing.txt")
     assert not os.path.exists(missing) or read(missing) == ""   # network errors are not "not found"
+
+
+def test_card_grow_auto_needs_the_image_marker(env):
+    # cards prepared on a computer (no marker) are never touched automatically
+    write(os.path.join(env["TRIMUX_SYSFS_ROOT"], "proc/mounts"), "/dev/mmcblk1p1 %s vfat rw 0 0\n" % env["TRIMUX_SDCARD"])
+    r = ctl(env, "card-grow", "--auto", check=False)
+    assert r.returncode == 1 and r.stderr == ""
+
+
+def test_card_device_found_by_mount_name_or_sysfs(env):
+    dev, sd = env["TRIMUX_SYSFS_ROOT"], env["TRIMUX_SDCARD"]
+    # usual firmware mount: /dev/mmcblk1p1 -> disk /dev/mmcblk1 (cannot be opened here)
+    write(os.path.join(dev, "proc/mounts"), "/dev/mmcblk1p1 %s vfat rw 0 0\n" % sd)
+    r = ctl(env, "card-grow", "--dry-run", check=False)
+    assert r.returncode == 1 and "/dev/mmcblk1" in r.stderr
+    # another name for the same device: resolved through /sys/dev/block/<major>:<minor>
+    st = os.stat(sd)
+    blk = os.path.join(dev, "sys/devices/platform/sdc0/mmc_host/mmc1/mmc1:0001/block/mmcblk1")
+    write(os.path.join(blk, "mmcblk1p1", "partition"), "1\n")
+    os.makedirs(os.path.join(dev, "sys/dev/block"), exist_ok=True)
+    os.symlink(os.path.join(blk, "mmcblk1p1"), os.path.join(dev, "sys/dev/block/%d:%d" % (os.major(st.st_dev), os.minor(st.st_dev))))
+    write(os.path.join(dev, "proc/mounts"), "/dev/block/sdcard %s vfat rw 0 0\n" % sd)
+    r = ctl(env, "card-grow", "--dry-run", check=False)
+    assert r.returncode == 1 and "/dev/mmcblk1" in r.stderr
+    # partition 2, or a whole-disk filesystem, is never touched
+    write(os.path.join(blk, "mmcblk1p1", "partition"), "2\n")
+    r = ctl(env, "card-grow", "--dry-run", check=False)
+    assert r.returncode == 1 and "not a partitioned card" in r.stderr
