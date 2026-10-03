@@ -1,6 +1,8 @@
 /* Unit tests for the portable core. Run natively: make test-unit */
 #define _GNU_SOURCE
+#include "../../src/core/apps.h"
 #include "../../src/core/buttons.h"
+#include "../../src/core/clock.h"
 #include "../../src/core/catalog.h"
 #include "../../src/core/i18n.h"
 #include "../../src/core/ini.h"
@@ -891,6 +893,39 @@ static void test_update(void)
     CHECK(tm_update_sha_lookup("g111111111111111111111111111111111111111111111111111111111111111  a\n", "a", hex) == -1);
 }
 
+static void test_clock_apps(void)
+{
+    CHECK(tm_days_in_month(2024, 2) == 29 && tm_days_in_month(2026, 2) == 28 && tm_days_in_month(2100, 2) == 28);
+    CHECK(tm_days_in_month(2026, 4) == 30 && tm_days_in_month(2026, 13) == 0);
+    CHECK(tm_zone_index("America/Sao_Paulo") == 0 && tm_zone_index("Mars/Base") == -1);
+    CHECK(tm_clock_set_local(2026, 2, 30, 10, 0) == -1); /* invalid date: nothing runs */
+    CHECK(tm_clock_set_local(2026, 1, 1, 24, 0) == -1);
+    /* app config: nested values skipped, launch must stay in the folder */
+    char dir[600], p[700];
+    snprintf(dir, sizeof dir, "%s/app1", T);
+    tm_mkdir_p(dir);
+    snprintf(p, sizeof p, "%s/config.json", dir);
+    FILE *f = fopen(p, "w");
+    fputs("{\"extra\":{\"label\":\"wrong\",\"x\":[1,2]},\"label\":\"Leitor\",\"label.pt_BR.lang\":\"Leitor PT\","
+          "\"launch\":\"launch.sh\",\"description\":\"Livros\"}", f);
+    fclose(f);
+    snprintf(p, sizeof p, "%s/launch.sh", dir);
+    f = fopen(p, "w");
+    fputs("#!/bin/sh\n", f);
+    fclose(f);
+    TmApp a;
+    CHECK(tm_app_load(dir, "pt_BR", &a) == 0);
+    CHECK_STR(a.label, "Leitor PT");
+    CHECK(tm_app_load(dir, "en_US", &a) == 0);
+    CHECK_STR(a.label, "Leitor");
+    CHECK_STR(a.desc, "Livros");
+    snprintf(p, sizeof p, "%s/config.json", dir);
+    f = fopen(p, "w");
+    fputs("{\"label\":\"x\",\"launch\":\"../launch.sh\"}", f);
+    fclose(f);
+    CHECK(tm_app_load(dir, NULL, &a) == -1);
+}
+
 int main(void)
 {
     snprintf(T, sizeof T, "/tmp/trimux-unit-%d", (int)getpid());
@@ -912,6 +947,7 @@ int main(void)
     test_perf();
     test_scrape();
     test_update();
+    test_clock_apps();
     char cmd[600];
     snprintf(cmd, sizeof cmd, "rm -rf '%s'", T);
     if (system(cmd) != 0)

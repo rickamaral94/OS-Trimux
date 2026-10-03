@@ -1,7 +1,9 @@
 /* Settings, quick menu, per-game options, emulator choice, info pages. */
 #define _GNU_SOURCE
 #include "app.h"
+#include "../core/apps.h"
 #include "../core/buttons.h"
+#include "../core/clock.h"
 #include "../core/fatgrow.h"
 #include "../core/log.h"
 #include "../core/perf.h"
@@ -26,6 +28,7 @@ enum {
     ACT_KEY_ACTION, ACT_SWITCH_ACTION, ACT_WIFI_TOGGLE, ACT_WIFI_RESCAN, ACT_WIFI_AP, ACT_WIFI_SAVED, ACT_BT_TOGGLE,
     ACT_SSH_TOGGLE, ACT_FTP, ACT_CHEEVOS_USER, ACT_CHEEVOS_PASS, ACT_CLEAR_LOGS, ACT_COVERS_RUN, ACT_COVERS_RETRY, ACT_COVERS_SHOW, ACT_COVERS_KIND,
     ACT_UPDATE_CHECK, ACT_UPDATE_INSTALL, ACT_UPDATE_ROLLBACK, ACT_UPDATE_REBOOT,
+    ACT_LED_POWER, ACT_TZ, ACT_TIME_SYNC, ACT_TIME_FIELD, ACT_TIME_APPLY, ACT_APP,
 };
 
 static const struct {
@@ -281,7 +284,10 @@ static void led_store(const char *zone, const TmLedSetting *s)
 static void page_leds(Menu *m)
 {
     tm_strlcpy(m->title, tr("settings.leds"), sizeof m->title);
-    add(m, ACT_LED_MANAGED, tr("leds.managed"), onoff((int)setting_long("leds", "managed", 0)), tr("leds.managed.desc"));
+    int lit = !(setting_long("leds", "managed", 0) && setting_long("leds", "user_off", 0));
+    add(m, ACT_LED_POWER, tr("leds.power"), tr(lit ? "leds.power.on" : "leds.power.off"), tr("leds.power.desc"));
+    add(m, ACT_LED_MANAGED, tr("leds.managed"), tr(setting_long("leds", "managed", 0) ? "leds.managed.trimux" : "leds.managed.stock"),
+        tr("leds.managed.desc"));
     for (size_t i = 0; i < A.leds.nzones; i++) {
         MenuItem *it = add_page(m, PAGE_LED_ZONE, tr(A.leds.zones[i].name_key), tr("leds.zone.desc"));
         tm_strlcpy(it->sarg, A.leds.zones[i].id, sizeof it->sarg);
@@ -523,6 +529,7 @@ static void page_system(Menu *m)
     add(m, ACT_INFO, tr("system.info"), "›", tr("system.info.desc"));
     add(m, ACT_WIZARD, tr("system.wizard"), "›", tr("system.wizard.desc"));
     add(m, ACT_STOCK, tr("system.stock"), "", tr("system.stock.desc"));
+    add_page(m, PAGE_DATETIME, tr("time.title"), tr("time.desc"));
     add_page(m, PAGE_UPDATE, tr("update.title"), tr("update.desc"));
     add_page(m, PAGE_DIAG, tr("diag.title"), tr("diag.desc"));
     add_page(m, PAGE_ABOUT, tr("system.about"), tr("system.about.desc"));
@@ -539,8 +546,10 @@ static void page_quick(Menu *m)
     MenuItem *it = add(m, ACT_PROFILE, tr("power.profile"), profile_name(prof), desc);
     it->enabled = A.power.has_cpufreq;
     lock_profile_item(it);
-    if (A.leds.available)
-        add(m, ACT_LED_MANAGED, tr("leds.managed"), onoff((int)setting_long("leds", "managed", 0)), tr("leds.managed.desc"));
+    if (A.leds.available) {
+        int lit = !(setting_long("leds", "managed", 0) && setting_long("leds", "user_off", 0));
+        add(m, ACT_LED_POWER, tr("leds.power"), tr(lit ? "leds.power.on" : "leds.power.off"), tr("leds.power.desc"));
+    }
     add(m, ACT_RESCAN, tr("library.rescan"), "", tr("library.rescan.desc"));
     add_page(m, PAGE_SETTINGS, tr("home.settings"), tr("home.settings.desc"));
     add(m, ACT_STOCK, tr("system.stock"), "", tr("system.stock.desc"));
@@ -809,8 +818,8 @@ void net_tick(void)
     } else if (page == PAGE_NETWORK || page == PAGE_CHEEVOS) {
         refresh_wifi_status(0);
         menu_rebuild();
-    } else if (page == PAGE_COVERS) {
-        menu_rebuild(); /* download progress */
+    } else if (page == PAGE_COVERS || page == PAGE_DATETIME) {
+        menu_rebuild(); /* download progress / clock */
     }
     update_tick(page);
 }
@@ -1167,6 +1176,97 @@ static void page_update(Menu *m)
     }
 }
 
+/* ------------------------------------------------------------ date and time */
+
+static int g_td[5]; /* draft: day, month, year, hour, minute */
+static int g_td_valid;
+
+static void datetime_draft_now(void)
+{
+    time_t now = time(NULL);
+    struct tm lt;
+    localtime_r(&now, &lt);
+    g_td[0] = lt.tm_mday;
+    g_td[1] = lt.tm_mon + 1;
+    g_td[2] = lt.tm_year + 1900 < 2024 ? 2026 : lt.tm_year + 1900;
+    g_td[3] = lt.tm_hour;
+    g_td[4] = lt.tm_min;
+    g_td_valid = 1;
+}
+
+static void page_datetime(Menu *m)
+{
+    tm_strlcpy(m->title, tr("time.title"), sizeof m->title);
+    if (!g_td_valid)
+        datetime_draft_now();
+    char v[64];
+    time_t now = time(NULL);
+    struct tm lt;
+    localtime_r(&now, &lt);
+    strftime(v, sizeof v, "%d/%m/%Y %H:%M", &lt);
+    add(m, ACT_NONE, tr("time.now"), v, tr("time.now.desc"))->enabled = 1;
+    const char *zone = tm_ini_get(&A.settings, "time", "zone", "");
+    int zi = tm_zone_index(zone);
+    add(m, ACT_TZ, tr("time.zone"), zi >= 0 ? tm_zones[zi].label : tr("time.zone.stock"), tr("time.zone.desc"));
+    MenuItem *it = add(m, ACT_TOGGLE, tr("time.ntp"), onoff((int)setting_long("time", "ntp", 1)), tr("time.ntp.desc"));
+    tm_strlcpy(it->sarg, "time/ntp", sizeof it->sarg);
+    add(m, ACT_TIME_SYNC, tr("time.sync"), "", tr("time.sync.desc"));
+    header_row(m, tr("time.manual"));
+    static const char *const keys[] = {"time.day", "time.month", "time.year", "time.hour", "time.minute"};
+    for (int i = 0; i < 5; i++) {
+        snprintf(v, sizeof v, i == 2 ? "%04d" : "%02d", g_td[i]);
+        it = add(m, ACT_TIME_FIELD, tr(keys[i]), v, tr("time.field.desc"));
+        it->arg = i;
+    }
+    add(m, ACT_TIME_APPLY, tr("time.apply"), "", tr("time.apply.desc"));
+}
+
+static void datetime_adjust(int field, int dir)
+{
+    static const int lo[] = {1, 1, 2024, 0, 0}, hi[] = {31, 12, 2099, 23, 59};
+    int span = hi[field] - lo[field] + 1;
+    g_td[field] = lo[field] + ((g_td[field] - lo[field] + dir) % span + span) % span;
+    int dim = tm_days_in_month(g_td[2], g_td[1]);
+    if (g_td[0] > dim)
+        g_td[0] = field == 0 && dir < 0 ? dim : (field == 0 ? 1 : dim);
+}
+
+static void time_sync_start(void)
+{
+    char ctl[TM_PATH_MAX];
+    if (tm_path_join(ctl, sizeof ctl, A.paths.sys, "bin/trimuxctl") != 0 || !tm_file_exists(ctl))
+        return;
+    char *argv[] = {ctl, "time", "sync", "--wait", "5", NULL};
+    tm_spawn(argv, "/", NULL);
+}
+
+/* ------------------------------------------------------------ apps */
+
+static TmApp g_apps[TM_APPS_MAX];
+static size_t g_napps;
+
+size_t apps_count(void)
+{
+    g_napps = tm_apps_scan(&A.paths, tm_ini_get(&A.settings, "general", "language", "pt_BR"), g_apps, TM_APPS_MAX);
+    return g_napps;
+}
+
+static void page_apps(Menu *m)
+{
+    tm_strlcpy(m->title, tr("apps.title"), sizeof m->title);
+    if (!apps_count()) {
+        add(m, ACT_NONE, tr("apps.none"), "", tr("apps.none.desc"))->enabled = 1;
+        return;
+    }
+    for (size_t i = 0; i < g_napps; i++) {
+        char desc[320];
+        snprintf(desc, sizeof desc, "%s%s%s", g_apps[i].desc, g_apps[i].desc[0] ? "\n\n" : "",
+                 tr(g_apps[i].builtin ? "apps.builtin" : "apps.installed"));
+        MenuItem *it = add(m, ACT_APP, g_apps[i].label, "", desc);
+        tm_strlcpy(it->sarg, g_apps[i].dir, sizeof it->sarg);
+    }
+}
+
 void menu_rebuild(void)
 {
     Menu *m = cur();
@@ -1207,6 +1307,8 @@ void menu_rebuild(void)
     case PAGE_PERF: page_perf(m); break;
     case PAGE_COVERS: page_covers(m); break;
     case PAGE_UPDATE: page_update(m); break;
+    case PAGE_DATETIME: page_datetime(m); break;
+    case PAGE_APPS: page_apps(m); break;
     }
     m->sel = sel < m->n ? sel : (m->n ? m->n - 1 : 0);
     m->top = top;
@@ -1225,6 +1327,8 @@ void menu_open(int page, long ctx, const char *sctx)
     memset(m, 0, sizeof *m);
     m->page = page;
     m->ctx = ctx;
+    if (page == PAGE_DATETIME)
+        g_td_valid = 0; /* the manual fields start at the current time */
     if (sctx)
         tm_strlcpy(m->sctx, sctx, sizeof m->sctx);
     A.screen = SCR_MENU;
@@ -1412,6 +1516,17 @@ static void activate(MenuItem *it, TmButton b)
     case ACT_POWER_DEFAULT:
         app_dialog(DLG_POWER_DEFAULT, tr("power.restore"), tr("power.restore.confirm"), 0, NULL, 0);
         return;
+    case ACT_LED_POWER: {
+        /* every light off (or back on) right away, kept by "trimuxctl leds keep" */
+        int off = !(setting_long("leds", "managed", 0) && setting_long("leds", "user_off", 0));
+        tm_ini_set_long(&A.settings, "leds", "user_off", off);
+        tm_ini_set_long(&A.settings, "leds", "managed", 1);
+        app_mark_settings();
+        app_save_all();
+        app_leds_set_all(off);
+        app_toast(tr(off ? "keys.leds_off" : "keys.leds_on"));
+        break;
+    }
     case ACT_LED_MANAGED: {
         int v = !setting_long("leds", "managed", 0);
         tm_ini_set_long(&A.settings, "leds", "managed", v);
@@ -1422,8 +1537,11 @@ static void activate(MenuItem *it, TmButton b)
             led_setting(A.leds.zones[i].id, &s);
             tm_leds_apply(&A.leds, A.leds.zones[i].id, &s);
         }
-        if (!v)
+        if (!v) {
+            tm_ini_set_long(&A.settings, "leds", "user_off", 0);
+            app_save_all();
             app_toast(tr("leds.firmware_default"));
+        }
         break;
     }
     case ACT_LED_ON:
@@ -1661,6 +1779,56 @@ static void activate(MenuItem *it, TmButton b)
     case ACT_UPDATE_REBOOT:
         if (b == BTN_A)
             app_exit(EXIT_REBOOT);
+        return;
+    case ACT_TZ: {
+        /* position 0 is the firmware's zone, then the list; zones whose
+         * zoneinfo file the firmware lacks are skipped */
+        int n = (int)tm_nzones + 1, k = tm_zone_index(tm_ini_get(&A.settings, "time", "zone", "")) + 1;
+        int step = b == BTN_LEFT ? -1 : 1;
+        char tz[600];
+        for (int tries = 0; tries < n; tries++) {
+            k = ((k + step) % n + n) % n;
+            if (k == 0 || tm_zone_tz(tm_zones[k - 1].id, tz, sizeof tz) == 0)
+                break;
+        }
+        const char *id = k > 0 ? tm_zones[k - 1].id : "";
+        tm_ini_set(&A.settings, "time", "zone", id);
+        app_mark_settings();
+        app_save_all();
+        tm_zone_apply_env(id);
+        g_td_valid = 0;
+        break;
+    }
+    case ACT_TIME_SYNC:
+        if (b != BTN_A)
+            return;
+        refresh_wifi_status(1);
+        if (!wifi_connected()) {
+            app_dialog(DLG_INFO, tr("time.title"), tr("time.needs_wifi"), 0, NULL, 1);
+            return;
+        }
+        time_sync_start();
+        app_toast(tr("time.sync.started"));
+        g_td_valid = 0;
+        break;
+    case ACT_TIME_FIELD:
+        if (b == BTN_A)
+            return;
+        datetime_adjust((int)it->arg, dir);
+        break;
+    case ACT_TIME_APPLY:
+        if (b != BTN_A)
+            return;
+        app_toast(tr(tm_clock_set_local(g_td[2], g_td[1], g_td[0], g_td[3], g_td[4]) == 0 ? "time.applied"
+                                                                                           : "time.apply_failed"));
+        break;
+    case ACT_APP:
+        if (b != BTN_A)
+            return;
+        if (tm_app_request_write(&A.paths, it->sarg) == 0) {
+            LOGI("ui: app %s", it->sarg);
+            app_exit(EXIT_APP);
+        }
         return;
     case ACT_CLEAR_LOGS:
         if (b == BTN_A)

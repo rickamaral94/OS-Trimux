@@ -41,6 +41,10 @@ cartão devolve o aparelho ao estado original.
   conta), manualmente ou automaticamente para jogos novos, e mostra no painel
   da lista. Salva em `Imgs/`, a mesma pasta do sistema oficial.
   [docs/CAPAS.md](docs/CAPAS.md).
+* **Aplicativos** em uma seção própria, separada dos jogos (formato TrimUI:
+  pasta `Apps/` do cartão, apps da memória interna e os do sistema).
+* **Data e hora** com fuso, ajuste pela internet e manual; indicador de
+  **volume e brilho** na tela; **luzes** com chave geral no menu.
 * **Atualização online**: procura e instala versões novas pelo Wi-Fi, sem
   gravar o cartão de novo; pacote conferido por SHA-256, versão anterior
   guardada e restaurada sozinha se a nova não abrir.
@@ -63,6 +67,7 @@ cartão devolve o aparelho ao estado original.
 | ![Registros e desempenho](docs/img/16-registros.png) | ![Sessões gravadas](docs/img/17-sessoes.png) |
 | ![Capa no painel](docs/img/18-capas.png) | ![Capas dos jogos](docs/img/19-capas-opcoes.png) |
 | ![Atualização](docs/img/20-atualizacao.png) | ![Tela de início](docs/img/21-inicio.png) |
+| ![Aplicativos](docs/img/22-aplicativos.png) | ![Data e hora](docs/img/23-data-hora.png) |
 
 <sub>Capturas renderizadas no computador (SDL offscreen) com um Brick Pro
 simulado; não são fotos do aparelho.</sub>
@@ -166,7 +171,7 @@ testada do zero antes de ser anexada.
 
 ## Testes
 
-* 304 verificações unitárias em C (com AddressSanitizer/UBSan).
+* 315 verificações unitárias em C (com AddressSanitizer/UBSan).
 * Testes Python: `trimuxctl` contra um Brick Pro simulado (inclusive
   ferramentas de rede falsas do firmware), scripts de boot com
   comandos do firmware simulados, imagem/partição/expansão em arquivos de

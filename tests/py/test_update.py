@@ -267,7 +267,7 @@ def test_update_zip_brings_platform_folders(tmp_path):
 from test_ui import _ui_runs, ui  # noqa: E402
 
 needs_ui = pytest.mark.skipif(not _ui_runs(), reason="build/native/trimux-ui not built for this system")
-UPDATE = "UP,A" + ",DOWN" * 10 + ",A" + ",DOWN" * 3 + ",A"   # Configurações -> Sistema -> Atualização
+UPDATE = "UP,A" + ",DOWN" * 10 + ",A" + ",DOWN" * 4 + ",A"   # Configurações -> Sistema -> Atualização
 
 
 def real_ctl(env):

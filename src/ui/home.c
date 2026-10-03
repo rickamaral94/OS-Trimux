@@ -8,7 +8,7 @@
 
 #define S(v) ((v) * gfx_h() / 768)
 
-enum { H_CONTINUE, H_RECENT, H_FAVORITES, H_ALL, H_SYSTEM, H_SETTINGS };
+enum { H_CONTINUE, H_RECENT, H_FAVORITES, H_ALL, H_SYSTEM, H_APPS, H_SETTINGS };
 
 typedef struct {
     int type;
@@ -50,6 +50,9 @@ void home_build(void)
             continue;
         g_entries[g_n++] = (HomeEntry){H_SYSTEM, (int)s, -1};
     }
+    /* apps (TrimUI format) get their own entry, apart from the games */
+    if (apps_count() > 0)
+        g_entries[g_n++] = (HomeEntry){H_APPS, -1, -1};
     g_entries[g_n++] = (HomeEntry){H_SETTINGS, -1, -1};
     if ((size_t)A.home_sel >= g_n)
         A.home_sel = 0;
@@ -78,6 +81,10 @@ static void entry_label(const HomeEntry *e, char *label, size_t ls, char *value,
     case H_SYSTEM:
         snprintf(label, ls, "%s", A.cat.systems[e->system].name);
         snprintf(value, vs, "%zu", tm_library_count_system(&A.lib, e->system));
+        break;
+    case H_APPS:
+        snprintf(label, ls, "%s", tr("apps.title"));
+        snprintf(value, vs, "%zu", apps_count());
         break;
     default:
         snprintf(label, ls, "%s", tr("home.settings"));
@@ -135,7 +142,7 @@ static void draw_panel(const HomeEntry *e, int x, int y, int w, int h)
     }
     default: {
         const char *k = e->type == H_RECENT ? "home.recent.desc" : e->type == H_FAVORITES ? "home.favorites.desc"
-                      : e->type == H_ALL ? "home.all.desc" : "home.settings.desc";
+                      : e->type == H_ALL ? "home.all.desc" : e->type == H_APPS ? "apps.desc" : "home.settings.desc";
         char label[96], value[64];
         entry_label(e, label, sizeof label, value, sizeof value);
         py += gfx_text_wrap(FONT_L, px, py, pw, 2, t->text, label) + S(16);
@@ -196,6 +203,7 @@ void home_input(TmButton b)
         case H_FAVORITES: games_open(VIEW_FAVORITES); break;
         case H_ALL: games_open(VIEW_ALL); break;
         case H_SYSTEM: games_open(e->system); break;
+        case H_APPS: A.menu_return = SCR_HOME; menu_open(PAGE_APPS, 0, NULL); break;
         default: A.menu_return = SCR_HOME; menu_open(PAGE_SETTINGS, 0, NULL);
         }
         break;

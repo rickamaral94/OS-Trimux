@@ -11,9 +11,13 @@
  *   trimuxctl fat-grow plan|apply <device-or-image>
  *   trimuxctl card-grow [--auto|--dry-run]  grow the mounted SD card (remounts read-only first)
  *   trimuxctl update check|install|rollback|status   online updates from the GitHub releases
+ *   trimuxctl app                    run the app chosen in the menu (/tmp/trimux/app.ini)
+ *   trimuxctl time tz|sync [--auto] [--wait N]   time zone for TZ, internet time
  */
 #define _GNU_SOURCE
+#include "../core/apps.h"
 #include "../core/buttons.h"
+#include "../core/clock.h"
 #include "../core/catalog.h"
 #include "../core/fatgrow.h"
 #include "../core/ini.h"
@@ -861,10 +865,95 @@ static int cmd_update(int argc, char **argv)
     return 1;
 }
 
+/* Runs the app the menu asked for (TrimUI app format), from its folder with
+ * the firmware's shell, at the menu's power profile. */
+static int cmd_app(void)
+{
+    char dir[TM_PATH_MAX];
+    TmApp app;
+    if (tm_app_request_read(&P, dir, sizeof dir) != 0)
+        return 1;
+    if (!tm_app_allowed(&P, dir, &app)) {
+        LOGW("app: %s refused (not an app folder TriMux may start)", dir);
+        return 1;
+    }
+    TmPowerCaps caps;
+    if (tm_power_detect(&caps) == 0)
+        tm_power_apply(&caps, tm_power_profile(TM_POWER_DEFAULT));
+    char script[TM_PATH_MAX];
+    tm_path_join(script, sizeof script, app.dir, app.launch);
+    LOGI("app: starting %s (%s)", app.label, script);
+    uint64_t t0 = tm_now_ms();
+    pid_t pid = fork();
+    if (pid < 0)
+        return 1;
+    if (pid == 0) {
+        setenv("TRIMUX", "1", 1);
+        setenv("TRIMUX_DEVICE", "brickpro", 1);
+        if (chdir(app.dir) != 0)
+            _exit(127);
+        char *args[] = {"/bin/sh", script, NULL};
+        execv("/bin/sh", args);
+        _exit(127);
+    }
+    g_child = pid;
+    signal(SIGTERM, forward_signal);
+    signal(SIGINT, forward_signal);
+    int status = 0;
+    while (waitpid(pid, &status, 0) < 0 && errno == EINTR)
+        ;
+    g_child = 0;
+    int code = WIFEXITED(status) ? WEXITSTATUS(status) : 128 + (WIFSIGNALED(status) ? WTERMSIG(status) : 0);
+    LOGI("app: %s exited with %d after %llu s", app.label, code, (unsigned long long)(tm_now_ms() - t0) / 1000);
+    sync();
+    return 0;
+}
+
+/* time tz: the TZ value for the zone chosen in TriMux (empty = firmware's).
+ * time sync [--auto] [--wait N]: internet time (--auto: only if [time] ntp). */
+static int cmd_time(int argc, char **argv)
+{
+    const char *sub = argc > 0 ? argv[0] : "tz";
+    TmIni ini;
+    tm_settings_load(&ini, &P);
+    char zone[64];
+    tm_strlcpy(zone, tm_ini_get(&ini, "time", "zone", ""), sizeof zone);
+    int ntp = (int)tm_ini_get_long(&ini, "time", "ntp", 1);
+    tm_ini_free(&ini);
+    if (strcmp(sub, "tz") == 0) {
+        char tz[600];
+        if (zone[0] && tm_zone_tz(zone, tz, sizeof tz) == 0)
+            printf("%s\n", tz);
+        return 0;
+    }
+    if (strcmp(sub, "sync") == 0) {
+        int autorun = 0, wait_s = 0;
+        for (int i = 1; i < argc; i++) {
+            if (strcmp(argv[i], "--auto") == 0)
+                autorun = 1;
+            else if (strcmp(argv[i], "--wait") == 0 && i + 1 < argc)
+                wait_s = atoi(argv[++i]);
+        }
+        if (autorun && !ntp)
+            return 0;
+        for (int w = 0;; w++) {
+            TmWifiStatus st;
+            if (tm_wifi_running() && tm_wifi_status(&st) == 0 && strcmp(st.state, "COMPLETED") == 0 && st.ip[0])
+                break;
+            if (w >= wait_s)
+                return 1;
+            sleep(1);
+        }
+        return tm_clock_sync(30) == 0 ? 0 : 1;
+    }
+    fprintf(stderr, "usage: trimuxctl time tz|sync [--auto] [--wait N]\n");
+    return 1;
+}
+
 int main(int argc, char **argv)
 {
     if (argc < 2) {
-        fprintf(stderr, "usage: trimuxctl power|leds|switch|net|scrape|update|sysinfo|device|scan|launch|boot|fat-grow|card-grow ...\n");
+        fprintf(stderr, "usage: trimuxctl power|leds|switch|net|scrape|update|app|time|sysinfo|device|scan|launch|boot|fat-grow|card-grow ...\n");
         return 1;
     }
     if (tm_paths_init(&P) != 0)
@@ -885,6 +974,10 @@ int main(int argc, char **argv)
         return cmd_scrape(argc - 2, argv + 2);
     if (strcmp(c, "update") == 0)
         return cmd_update(argc - 2, argv + 2);
+    if (strcmp(c, "app") == 0)
+        return cmd_app();
+    if (strcmp(c, "time") == 0)
+        return cmd_time(argc - 2, argv + 2);
     if (strcmp(c, "sysinfo") == 0)
         return cmd_sysinfo();
     if (strcmp(c, "device") == 0) /* 0 only on a TrimUI Brick Pro firmware */

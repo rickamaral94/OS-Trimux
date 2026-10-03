@@ -31,7 +31,7 @@ SHOTS = [
     ("15-senha-wifi", "UP,A" + ",DOWN" * 6 + ",A,DOWN,DOWN,A,DOWN,A,A,RIGHT,A,RIGHT,A,R1,DOWN,A,RIGHT,A", True),
 ]
 NET_SHOTS = {"13-rede", "14-wifi-redes", "15-senha-wifi"}
-DIAG = "UP,A" + ",DOWN" * 10 + ",A" + ",DOWN" * 4 + ",A"
+DIAG = "UP,A" + ",DOWN" * 10 + ",A" + ",DOWN" * 5 + ",A"
 SHOTS += [
     ("16-registros", DIAG, True),
     ("17-sessoes", DIAG + ",DOWN,DOWN,A,DOWN", True),
@@ -41,7 +41,9 @@ SHOTS += [
     ("19-capas-opcoes", "UP,A" + ",DOWN" * 7 + ",A" + ",DOWN" * 5 + ",A", True),
 ]
 SHOTS += [
-    ("20-atualizacao", "UP,A" + ",DOWN" * 10 + ",A" + ",DOWN" * 3 + ",A,DOWN,DOWN", True),
+    ("22-aplicativos", "UP,UP,A", True),
+    ("23-data-hora", "UP,A" + ",DOWN" * 10 + ",A" + ",DOWN" * 3 + ",A,DOWN", True),
+    ("20-atualizacao", "UP,A" + ",DOWN" * 10 + ",A" + ",DOWN" * 4 + ",A,DOWN,DOWN", True),
 ]
 
 
@@ -104,6 +106,15 @@ def main():
             if name == "19-capas-opcoes":
                 write(os.path.join(dev, "../tmp/scrape.status"),
                       "state=done\ndone=14\ntotal=14\nfound=11\nmissing=3\n")
+            if name == "22-aplicativos":   # illustrative apps in the TrimUI format
+                for d, label, desc in (("Apps/Notas", "Notas", "Bloco de notas simples."),
+                                       ("../dev/usr/trimui/apps/musicplayer", "Music", "TRIMUI Music Player"),
+                                       ("../dev/usr/trimui/apps/photoviewer", "Picture", "TRIMUI Picture Viewer")):
+                    write(os.path.join(sd, d, "config.json"),
+                          '{"label":"%s","launch":"launch.sh","description":"%s"}' % (label, desc))
+                    write(os.path.join(sd, d, "launch.sh"), "#!/bin/sh\n")
+            if name == "23-data-hora":
+                write(os.path.join(dev, "usr/share/zoneinfo/America/Sao_Paulo"), "TZif")
             if name == "20-atualizacao":   # illustrative: a release newer than the card
                 write(os.path.join(sd, "TriMux/VERSION"), "0.4.0\n")
                 os.makedirs(os.path.join(sd, "TriMux.old"))
@@ -118,7 +129,8 @@ def main():
             if name in ("16-registros", "17-sessoes"):
                 write(os.path.join(sd, "TriMuxData/logs/perf/sessions.csv"), EXAMPLE_SESSIONS)
             if wizard_done:
-                write(os.path.join(sd, "TriMuxData/config/trimux.ini"), "[general]\nwizard_done = 1\n")
+                write(os.path.join(sd, "TriMuxData/config/trimux.ini"), "[general]\nwizard_done = 1\n" +
+                      ("[time]\nzone = America/Sao_Paulo\n" if name == "23-data-hora" else ""))
                 write(os.path.join(sd, "TriMuxData/config/recent.txt"), "Roms/GBA/Celeste Classic (World).gba\n")
                 write(os.path.join(sd, "TriMuxData/config/favorites.txt"), "Roms/FC/Micro Mages (World).nes\n")
             bmp = os.path.join(t, name + ".bmp")

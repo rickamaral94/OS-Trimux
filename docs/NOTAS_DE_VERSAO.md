@@ -1,3 +1,27 @@
+# TriMux 0.4.3 (pré-lançamento)
+
+**Estado: não testado em um Brick Pro físico.** Novidades e correções da
+0.4.2:
+
+* **LEDs com controle total no menu:** *Configurações › LEDs* ganhou
+  **Luzes: Acesas/Apagadas**, que apaga ou acende tudo na hora e mantém assim
+  no menu e nos jogos, igual ao atalho do F1/F2. A antiga opção "Controlar
+  LEDs" virou **Cores e efeitos: TriMux / Padrão da TrimUI** e explica quando
+  o firmware reaplica o padrão dele. A mesma chave também está no menu rápido.
+* **Indicador de volume e brilho:** no menu, ao usar os botões de volume ou
+  MENU + volume, aparece na tela o nível atual (escala de 0 a 20 no volume) e
+  se está subindo ou descendo. Nos jogos ainda não há indicador.
+* **Data e hora** (*Configurações › Sistema › Data e hora*): fuso horário
+  (Brasil e outros), ajuste automático pela internet ao ligar, botão para
+  acertar na hora e ajuste manual de dia, mês, ano, hora e minuto. O relógio
+  do aparelho é gravado como o próprio firmware faz (`date` e `hwclock -w -u`).
+  O fuso vale para o TriMux e não é gravado na memória interna.
+* **Aplicativos:** nova entrada na tela inicial, separada dos jogos. Ela lista
+  apps no formato da TrimUI (pasta com `config.json` e `launch.sh`) da pasta
+  `Apps/` do cartão, os instalados na memória interna e os do próprio sistema
+  (Música, Fotos, Leitor, Player, Moonlight). Ficam de fora o formatador do
+  cartão, o modo USB e o editor de teclas FN.
+
 # TriMux 0.4.2 (pré-lançamento)
 
 **Estado: não testado em um Brick Pro físico.** Correções da 0.4.1:
