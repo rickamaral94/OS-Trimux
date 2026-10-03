@@ -493,6 +493,9 @@ static void page_storage(Menu *m)
     } else {
         it->enabled = 0;
         snprintf(it->desc, sizeof it->desc, "%s", rc == 1 ? tr("storage.grow.done") : err);
+        static int logged; /* the reason goes to trimux.log once per menu session */
+        if (rc < 0 && !logged++)
+            LOGW("ui: card cannot grow: %s", err);
     }
 }
 

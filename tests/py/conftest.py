@@ -134,7 +134,8 @@ def make_device(root, leds=True, cpufreq=True, brick_pro=True, net=True):
         for z in ("m", "lr", "f1", "f2", "rear"):
             for a in ("effect_%s", "effect_rgb_hex_%s", "effect_duration_%s", "effect_cycles_%s"):
                 write(os.path.join(root, "sys/class/led_anim", a % z), "0\n")
-        for a in ("max_scale", "max_scale_lr", "max_scale_f1f2", "max_scale_rear", "effect_enable"):
+        for a in ("max_scale", "max_scale_lr", "max_scale_f1f2", "max_scale_rear", "effect_enable", "enable",
+                  "anim_frames_enable"):
             write(os.path.join(root, "sys/class/led_anim", a), "0\n")
     write(os.path.join(root, "proc/meminfo"), "MemTotal: 1001012 kB\nMemAvailable: 702330 kB\nSwapTotal: 0 kB\nSwapFree: 0 kB\n")
     write(os.path.join(root, "etc/version"), "1.1.1\n")

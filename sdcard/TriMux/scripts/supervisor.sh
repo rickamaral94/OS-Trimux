@@ -41,6 +41,15 @@ if [ -f "$DATA/state/in_game" ]; then
 fi
 log "TriMux $(cat "$TM/VERSION" 2>/dev/null) starting, firmware $(cat /etc/version 2>/dev/null)"
 
+# First boot of a freshly flashed card: the image is 1 GiB, the card is bigger.
+# Grow the partition to the whole card (metadata only, nothing is moved), once;
+# the marker TriMuxData/state/autogrow exists only in the image. On success the
+# card is left read-only and the device reboots; the menu reports the new size.
+if [ -f "$DATA/state/autogrow" ]; then
+    "$CTL" card-grow --auto >/dev/null 2>&1
+    case $? in 0|2) sync; reboot; sleep 30 ;; esac
+fi
+
 # --- firmware services, started exactly like the stock launcher does ---------
 # keymon: volume/brightness keys, power button, suspend.
 # trimui_inputd: creates the "TRIMUI Player1" gamepad from the controller MCU.
@@ -67,6 +76,9 @@ fi
 # Conservative CPU policy for the menu, and the user's LED choice (if any).
 "$CTL" power default >/dev/null 2>&1
 "$CTL" leds apply >/dev/null 2>&1
+# hardwareservice applies the stock LED settings when it starts, which can be
+# after the line above: apply the user's choice again a few seconds later.
+(sleep 5; "$CTL" leds apply) >/dev/null 2>&1 &
 # Side switch: LEDs off / speaker mute, if the user assigned one of those.
 "$CTL" switch >/dev/null 2>&1
 # Network choices (Wi-Fi on/off, Bluetooth service, firmware SSH off unless
@@ -96,12 +108,12 @@ while true; do
         30) log "power off"; sync; touch /tmp/poweroff_flag; poweroff; sleep 30 ;;
         31) log "reboot"; sync; reboot; sleep 30 ;;
         40) log "card partition grow requested"
-            if "$CTL" card-grow >> "$LOG" 2>&1; then
-                log "card grown, rebooting"
-            else
-                log "card grow failed; nothing was changed or the card was left consistent"
-            fi
-            sync; reboot; sleep 30 ;;
+            # no redirection to the card here: an open log file would make the
+            # read-only remount fail (trimuxctl logs the details itself)
+            "$CTL" card-grow > "$TMP/card-grow.out" 2>&1
+            case $? in 0|2) sync; reboot; sleep 30 ;; esac
+            log "card grow not done: $(tail -1 "$TMP/card-grow.out" 2>/dev/null)"
+            ;;
         0) ;;
         *)
             now=$(cut -d. -f1 /proc/uptime)

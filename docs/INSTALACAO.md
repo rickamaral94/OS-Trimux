@@ -29,9 +29,12 @@
 5. Clique em **INICIAR** e confirme o aviso de que o cartão será apagado.
 6. Ao terminar, o Windows mostra uma unidade **TRIMUX**. Ejete com segurança.
 
-Alternativa sem Rufus (cartão já formatado em FAT32 ou exFAT): extraia o
-conteúdo de `TriMux-<versão>-update.zip` na raiz do cartão. Funciona igual,
-mas pule o passo de expansão abaixo.
+Alternativa sem gravar a imagem (cartão formatado em FAT32 ou exFAT, usando o
+cartão inteiro): extraia o conteúdo de `TriMux-<versão>-update.zip` na raiz do
+cartão. Ele traz as pastas `TriMux`, `trimui`, `Roms` (uma pasta vazia por
+plataforma) e `Bios`. Para formatar em FAT32 um cartão maior que 32 GB no
+Windows, use o Rufus com **Seleção de boot: Não inicializável** e **Sistema de
+arquivos: Large FAT32** (com a imagem selecionada, o Rufus trava esses campos).
 
 ## 2. Primeiro boot
 
@@ -44,14 +47,23 @@ mas pule o passo de expansão abaixo.
    abre** ou use *MENU › Abrir sistema oficial TrimUI*. O TriMux volta na
    próxima vez que o aparelho ligar.
 
-### Expandir a partição (só para quem gravou a imagem)
+### Uso do cartão inteiro (automático, só para quem gravou a imagem)
 
-A partição gravada tem 1 GiB. Para usar o cartão inteiro:
-*Configurações › Armazenamento › Expandir partição*. O TriMux confirma o
-tamanho final, deixa o cartão somente leitura, ajusta só a tabela de partição e
-o setor de boot (nenhum arquivo é movido) e reinicia. Não desligue durante a
-operação. Se a opção estiver cinza, a descrição explica o motivo (por exemplo,
-o cartão já ocupa todo o espaço ou não foi gravado com a imagem do TriMux).
+A imagem tem 1 GiB, para caber em qualquer cartão. **No primeiro boot** o
+TriMux aumenta a partição até o tamanho do cartão e reinicia uma vez sozinho:
+a tela pisca e o logotipo do firmware aparece de novo. Isso leva menos de um
+segundo e nenhum arquivo é movido: muda só o tamanho registrado na tabela de
+partição e no setor de boot. Antes, o cartão fica somente leitura. Não
+desligue nesse meio-tempo. Depois do reinício, o menu mostra o espaço total.
+
+Isso acontece uma vez só, em cartões gravados com a imagem. Cartões preparados
+pelo computador (com o `update.zip`) nunca são alterados. O limite é 1 TiB
+(cartões maiores usam até 1 TiB).
+
+Se não der certo, nada é alterado: o motivo fica em
+`TriMuxData/logs/trimux.log` e em *Configurações › Armazenamento › Expandir
+partição*. Mesmo cinza, a opção mostra o motivo no painel da direita. Ela
+também serve para tentar de novo à mão.
 
 Também é possível expandir pelo computador com qualquer ferramenta que
 redimensione FAT32 sem formatar.

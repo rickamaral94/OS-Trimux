@@ -85,6 +85,30 @@ def test_safe_mode_after_failed_boots(rig):
     assert "safe mode" in read(os.path.join(rig["tmp"], "to_stock"))
 
 
+def test_first_boot_autogrow_runs_once_and_never_blocks_the_menu(rig):
+    # a flashed image carries the marker; here the card cannot be identified
+    # (no real mmcblk device), so nothing changes and the menu starts normally
+    state = os.path.join(rig["card"], "TriMuxData", "state")
+    write(os.path.join(state, "autogrow"), "x\n")
+    write(os.path.join(rig["env"]["TRIMUX_SYSFS_ROOT"], "proc/mounts"),
+          "/dev/mmcblk0p5 / ext4 rw 0 0\n/dev/mmcblk1p1 %s vfat rw 0 0\n" % rig["card"])
+    scripted_ui(rig, [20])
+    r = run_supervisor(rig)
+    assert r.returncode == 0 and "requested" in read(os.path.join(rig["tmp"], "to_stock"))
+    assert not os.path.exists(os.path.join(state, "autogrow"))       # one attempt only
+    assert not os.path.exists(os.path.join(state, "card-grown"))
+    assert "reboot" not in (open(rig["env"]["RIG_LOG"]).read() if os.path.exists(rig["env"]["RIG_LOG"]) else "")
+    log = read(os.path.join(rig["card"], "TriMuxData/logs/trimux.log"))
+    assert "first boot of a flashed card" in log and "nothing changed" in log
+
+
+def test_manual_grow_failure_returns_to_menu(rig):
+    scripted_ui(rig, [40, 20])
+    r = run_supervisor(rig)
+    assert r.returncode == 0 and "requested" in read(os.path.join(rig["tmp"], "to_stock"))
+    assert "card grow not done" in read(os.path.join(rig["card"], "TriMuxData/logs/trimux.log"))
+
+
 def test_launch_flow_applies_limits_before_emulator(rig, env):
     os.makedirs(rig["tmp"], exist_ok=True)
     write(os.path.join(rig["tmp"], "launch.ini"),

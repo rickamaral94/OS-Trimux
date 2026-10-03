@@ -9,7 +9,7 @@
  *   trimuxctl launch                 run the game described in /tmp/trimux/launch.ini
  *   trimuxctl boot begin|ok|status   crash-loop protection counter
  *   trimuxctl fat-grow plan|apply <device-or-image>
- *   trimuxctl card-grow              grow the mounted SD card (remounts read-only first)
+ *   trimuxctl card-grow [--auto|--dry-run]  grow the mounted SD card (remounts read-only first)
  *   trimuxctl update check|install|rollback|status   online updates from the GitHub releases
  */
 #define _GNU_SOURCE
@@ -542,16 +542,38 @@ static int cmd_fatgrow(int argc, char **argv)
     return 0;
 }
 
+/* Grows the mounted card to the whole card (metadata only, see fatgrow.h).
+ *   card-grow            requested from the menu (Armazenamento › Expandir)
+ *   card-grow --dry-run  only report
+ *   card-grow --auto     first boot of a flashed image: only while the marker
+ *                        TriMuxData/state/autogrow exists; tried once
+ * Exit 0 = grown, 2 = failed after the read-only remount (both: reboot now),
+ * 1 = nothing done, card untouched. */
 static int cmd_card_grow(int argc, char **argv)
 {
-    int dry = argc > 0 && strcmp(argv[0], "--dry-run") == 0;
-    char part[256], disk[256], marker[TM_PATH_MAX];
+    int dry = 0, autorun = 0;
+    for (int i = 0; i < argc; i++) {
+        dry |= strcmp(argv[i], "--dry-run") == 0;
+        autorun |= strcmp(argv[i], "--auto") == 0;
+    }
+    char auto_marker[TM_PATH_MAX], report[TM_PATH_MAX], marker[TM_PATH_MAX];
+    tm_path_join(auto_marker, sizeof auto_marker, P.state, "autogrow");
+    tm_path_join(report, sizeof report, P.state, "card-grown");
+    if (autorun) {
+        if (!tm_file_exists(auto_marker))
+            return 1;
+        unlink(auto_marker); /* one attempt only, whatever happens next */
+        sync();
+        LOGI("card-grow: first boot of a flashed card, growing the partition to the whole card");
+    }
     tm_path_join(marker, sizeof marker, P.sys, "VERSION");
     if (!tm_file_exists(marker)) {
         fprintf(stderr, "not a TriMux card\n");
         return 1;
     }
+    char part[256], disk[256];
     if (tm_card_device(P.sd, part, sizeof part, disk, sizeof disk) != 0) {
+        LOGW("card-grow: the card is not partition 1 of an mmcblk disk mounted at %s; nothing changed", P.sd);
         fprintf(stderr, "card device not found or not a partitioned card\n");
         return 1;
     }
@@ -562,30 +584,58 @@ static int cmd_card_grow(int argc, char **argv)
     int rc = (fd >= 0 && tm_fatgrow_device_size(fd, &size) == 0) ? tm_fatgrow_plan(fd, size, &plan, err, sizeof err)
                                                                   : -1;
     if (rc != 0 || dry) {
-        if (rc < 0)
-            fprintf(stderr, "card-grow: %s\n", err[0] ? err : "cannot open card");
-        else
+        if (rc < 0) {
+            if (!err[0])
+                snprintf(err, sizeof err, "cannot open %s: %s", disk, strerror(errno));
+            LOGW("card-grow: %s; nothing changed", err);
+            fprintf(stderr, "card-grow: %s\n", err);
+        } else {
+            if (rc == 1)
+                LOGI("card-grow: %s already uses the whole card", part);
             printf("%s %u -> %u sectors\n", rc == 1 ? "nothing to do:" : "can grow:", plan.fs_total, plan.new_total);
+        }
         if (fd >= 0)
             close(fd);
-        return rc < 0 ? 1 : 0;
+        return rc < 0 ? 1 : dry ? 0 : 1; /* here: a report, or nothing to grow */
     }
+    if (tm_update_running(&P)) {
+        LOGW("card-grow: an update is running; nothing changed");
+        close(fd);
+        return 1;
+    }
+    /* nothing may hold a file open for writing during the remount */
+    for (int t = 0; t < 100 && tm_scrape_running(&P); t++) {
+        if (t == 0)
+            tm_scrape_request_stop(&P);
+        usleep(100000);
+    }
+    LOGI("card-grow: %s %u -> %u sectors (%llu -> %llu MiB)", disk, plan.fs_total, plan.new_total,
+         (unsigned long long)plan.fs_total / 2048, (unsigned long long)plan.new_total / 2048);
+    /* for the menu after the reboot: the size before, to tell whether it worked */
+    char buf[32];
+    snprintf(buf, sizeof buf, "%llu\n", (unsigned long long)plan.fs_total * 512);
+    tm_atomic_write(report, buf, strlen(buf));
     sync();
     /* read-only while the metadata changes: the kernel will not write the
      * boot sector/FSInfo behind our back. Fails safely if files are open. */
     if (mount(part, P.sd, NULL, MS_REMOUNT | MS_RDONLY, NULL) != 0) {
+        LOGW("card-grow: cannot remount read-only (%s); nothing changed", strerror(errno));
         fprintf(stderr, "card-grow: cannot remount read-only (%s); nothing changed\n", strerror(errno));
+        unlink(report);
         close(fd);
         return 1;
     }
     rc = tm_fatgrow_apply(fd, &plan, err, sizeof err);
     close(fd);
     sync();
-    if (rc != 0)
+    /* the card stays read-only: remounting it read-write now would let the
+     * kernel write back its cached (old) boot sector. The caller reboots. */
+    if (rc != 0) {
         fprintf(stderr, "card-grow: %s\n", err);
-    else
-        printf("grown %u -> %u sectors; reboot required\n", plan.fs_total, plan.new_total);
-    return rc ? 1 : 0;
+        return 2; /* read-only now: reboot anyway */
+    }
+    printf("grown %u -> %u sectors; reboot required\n", plan.fs_total, plan.new_total);
+    return 0;
 }
 
 static int cmd_net(int argc, char **argv)

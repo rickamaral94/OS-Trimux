@@ -68,11 +68,21 @@ void app_apply_language(void)
     tm_i18n_load(dir, tm_ini_get(&A.settings, "general", "language", TM_DEFAULT_LANG));
 }
 
+/* Start screen (share/splash.png, drawn by tools/make_splash.py) with a
+ * status line and the version; plain text if the artwork is missing. */
 static void draw_progress_message(const char *msg)
 {
     gfx_clear();
     const TmTheme *t = gfx_theme();
-    gfx_text(FONT_L, gfx_w() / 2, gfx_h() / 2 - gfx_font_height(FONT_L), t->text, ALIGN_CENTER, 0, msg);
+    char splash[TM_PATH_MAX];
+    int h = gfx_h();
+    if (tm_path_join(splash, sizeof splash, A.paths.share, "splash.png") == 0 &&
+        gfx_image(splash, 0, 0, gfx_w(), h) > 0) {
+        gfx_text(FONT_M, gfx_w() / 2, h - h * 150 / 768, t->text, ALIGN_CENTER, 0, msg);
+        gfx_text(FONT_S, gfx_w() / 2, h - h * 60 / 768, t->dim, ALIGN_CENTER, 0, "v" TRIMUX_VERSION);
+    } else {
+        gfx_text(FONT_L, gfx_w() / 2, h / 2 - gfx_font_height(FONT_L), t->text, ALIGN_CENTER, 0, msg);
+    }
     gfx_present();
 }
 
@@ -617,16 +627,38 @@ static void boot_ok(void)
     tm_update_confirm(&A.paths); /* a freshly installed update works */
 }
 
+/* After "trimuxctl card-grow" and its reboot: tell whether the card grew
+ * (state/card-grown holds the size before). */
+static void card_grow_report(void)
+{
+    char p[TM_PATH_MAX], v[32], msg[192];
+    long before = 0;
+    if (tm_path_join(p, sizeof p, A.paths.state, "card-grown") != 0 || tm_read_long(p, &before) != 0)
+        return;
+    unlink(p);
+    if (A.si.sd_total > (unsigned long long)before + (64ULL << 20)) {
+        tm_format_bytes(A.si.sd_total, v, sizeof v);
+        snprintf(msg, sizeof msg, tr("storage.grown"), v);
+        LOGI("ui: card grown, filesystem now %s", v);
+    } else {
+        tm_strlcpy(msg, tr("storage.grow.failed"), sizeof msg);
+        LOGW("ui: card grow did not take effect (filesystem still %llu bytes)", (unsigned long long)A.si.sd_total);
+    }
+    app_toast(msg);
+}
+
 int app_main(int argc, char **argv)
 {
     int win_w = 0, win_h = 0;
-    const char *shot = NULL, *script = NULL;
+    const char *shot = NULL, *script = NULL, *splash_shot = NULL;
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--window") == 0 && i + 2 < argc) {
             win_w = atoi(argv[++i]);
             win_h = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--screenshot") == 0 && i + 1 < argc) {
             shot = argv[++i]; /* render one frame and exit (docs/tests) */
+        } else if (strcmp(argv[i], "--splash-shot") == 0 && i + 1 < argc) {
+            splash_shot = argv[++i]; /* start screen only (docs/tests) */
         } else if (strcmp(argv[i], "--script") == 0 && i + 1 < argc) {
             /* "DOWN,A,shot=x.bmp,B": scripted input for automated UI tests */
             script = argv[++i];
@@ -641,6 +673,12 @@ int app_main(int argc, char **argv)
     if (gfx_init(font, "/usr/trimui/res/regular.ttf", win_w, win_h) != 0)
         return 2;
     input_init(&A.settings);
+    draw_progress_message(tr("app.loading")); /* the start screen, as early as possible */
+    if (splash_shot) {
+        int rc = gfx_screenshot(splash_shot);
+        gfx_quit();
+        return rc == 0 ? 0 : 2;
+    }
 
     /* Holding SELECT while the menu starts opens the stock TrimUI interface. */
     uint64_t t0 = tm_now_ms();
@@ -656,7 +694,6 @@ int app_main(int argc, char **argv)
         return EXIT_STOCK;
     }
 
-    draw_progress_message(tr("app.loading"));
     if (tm_library_load(&A.lib, &A.cat, A.paths.library) != 0 || tm_library_is_stale(&A.lib, &A.cat, A.paths.sd))
         app_rescan();
     A.toast[0] = '\0';
@@ -667,6 +704,7 @@ int app_main(int argc, char **argv)
     if (!tm_ini_get_long(&A.settings, "general", "wizard_done", 0))
         wizard_open();
     app_refresh_sysinfo(1);
+    card_grow_report();
     A.running = 1;
     A.dirty = 1;
     A.last_input = tm_now_ms();
