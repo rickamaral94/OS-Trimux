@@ -339,3 +339,11 @@ def test_app_request_runs_and_returns_to_menu(rig):
     assert r.returncode == 0
     assert os.path.realpath(read(os.path.join(rig["dir"], "app_cwd"))) == os.path.realpath(app)
     assert "requested" in read(os.path.join(rig["tmp"], "to_stock"))      # back in the menu, then stock
+
+
+def test_reboot_stops_cover_download_first(rig):
+    os.makedirs(rig["tmp"], exist_ok=True)
+    scripted_ui(rig, [31])
+    run_supervisor(rig)
+    assert "reboot" in read(rig["env"]["RIG_LOG"])
+    assert os.path.exists(os.path.join(rig["tmp"], "scrape.stop"))     # asked to stop before rebooting

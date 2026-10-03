@@ -467,6 +467,7 @@ int tm_scrape_run(const TmPaths *p, const TmCatalog *cat, const TmLibrary *lib, 
     if (have_arcade)
         tm_arcade_free(&arcade);
     set_free(&miss);
+    sync(); /* everything downloaded is on the card before anything else happens */
     unlink(pidfile);
     unlink(stopfile);
     LOGI("scrape: %s, %d found, %d not found of %d", st.state, st.found, st.missing, st.total);

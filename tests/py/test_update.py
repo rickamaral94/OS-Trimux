@@ -332,3 +332,23 @@ def test_failed_download_reports_network(upd, tmp_path):
     assert ctl(upd, "update", "install", check=False).returncode == 1
     assert status(upd)["error"] == "network"
     assert read(sd(upd, "TriMux/VERSION")) == "0.3.0"
+
+
+def test_covers_saves_and_games_survive_update_and_rollback(upd, tmp_path):
+    keep = {
+        "Imgs/GBA/Celeste Classic (World).png": b"\x89PNG cover",
+        "Saves/GBA/Celeste Classic (World).srm": b"save",
+        "States/GBA/Celeste Classic (World).state1": b"state",
+        "TriMuxData/cache/covers-missing.txt": b"Roms/GBA/x.gba\n",
+        "Bios/gba_bios.bin": b"bios",
+    }
+    for rel, data in keep.items():
+        write(sd(upd, rel), data)
+    publish(upd, str(tmp_path), "0.9.0")
+    ctl(upd, "update", "check", check=False)
+    ctl(upd, "update", "install")
+    for rel, data in keep.items():
+        assert open(sd(upd, rel), "rb").read() == data, rel
+    ctl(upd, "update", "rollback")
+    for rel, data in keep.items():
+        assert open(sd(upd, rel), "rb").read() == data, rel

@@ -637,3 +637,5 @@ apps.builtin = Aplicativo do sistema oficial da TrimUI.
 apps.installed = Aplicativo instalado.
 osd.volume = Volume
 osd.brightness = Brilho
+leds.all = Todas as luzes
+leds.all.desc = Cor, brilho e efeito de todas as luzes de uma vez. Depois dá para ajustar cada uma separadamente abaixo.

@@ -92,10 +92,16 @@ int tm_image_fit_png(const char *src, const char *dst, int max_w, int max_h)
     }
     char tmp[TM_PATH_MAX];
     int rc = -1;
-    if (tm_snprintf(tmp, sizeof tmp, "%s.tmp", dst) == 0 && stbi_write_png(tmp, nw, nh, 4, out, nw * 4)) {
+    /* written next to the final name, forced onto the card, then renamed:
+     * a power cut or the firmware's boot-time disk check (fsck.fat -p on
+     * the card) never finds a half-written cover or a dangling entry */
+    if (tm_snprintf(tmp, sizeof tmp, "%s.tmp", dst) == 0 && stbi_write_png(tmp, nw, nh, 4, out, nw * 4) &&
+        tm_fsync_path(tmp) == 0) {
         rc = rename(tmp, dst) == 0 ? 0 : -1;
         if (rc)
             unlink(tmp);
+        else
+            tm_fsync_parent(dst);
     }
     if (out != px)
         free(out);
