@@ -4,9 +4,13 @@
 #include "../core/log.h"
 #include "../core/util.h"
 
+#include <fcntl.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #define STBTT_STATIC
@@ -27,6 +31,7 @@ typedef struct Glyph {
 typedef struct {
     int px;
     float scale;
+    float fb_scale; /* scale of the fallback font at this size, 0 until first used */
     int ascent, line_h;
     SDL_Texture *atlas;
     int pen_x, pen_y, row_h;
@@ -38,6 +43,15 @@ static SDL_Renderer *g_ren;
 static int g_w, g_h;
 static unsigned char *g_ttf;
 static stbtt_fontinfo g_info;
+/* Fallback for characters the menu font lacks (Japanese, Chinese, Korean
+ * names): the firmware's own fonts, mapped from its read-only system on the
+ * first such character, so it costs nothing until a name needs it. */
+#define FALLBACK_MAX 2
+static char g_fb_paths[FALLBACK_MAX][1024];
+static int g_fb_count, g_fb_state; /* 0 not tried, 1 loaded, -1 none usable */
+static stbtt_fontinfo g_fb_info;
+static void *g_fb_map;
+static size_t g_fb_len;
 static Font g_fonts[FONT_COUNT];
 static TmTheme g_theme;
 
@@ -97,6 +111,41 @@ static void font_reset(Font *f)
     f->pen_x = f->pen_y = f->row_h = 0;
 }
 
+void gfx_add_fallback_font(const char *path)
+{
+    if (path && *path && g_fb_count < FALLBACK_MAX)
+        tm_strlcpy(g_fb_paths[g_fb_count++], path, sizeof g_fb_paths[0]);
+}
+
+static int fallback_load(void)
+{
+    for (int i = 0; g_fb_state == 0 && i < g_fb_count; i++) {
+        int fd = open(g_fb_paths[i], O_RDONLY | O_CLOEXEC);
+        if (fd < 0)
+            continue;
+        struct stat st;
+        void *m = MAP_FAILED;
+        if (fstat(fd, &st) == 0 && st.st_size > 0)
+            m = mmap(NULL, (size_t)st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+        close(fd);
+        if (m == MAP_FAILED)
+            continue;
+        const unsigned char *ttf = m;
+        int off = stbtt_GetFontOffsetForIndex(ttf, 0);
+        if (off >= 0 && stbtt_InitFont(&g_fb_info, ttf, off)) {
+            g_fb_map = m;
+            g_fb_len = (size_t)st.st_size;
+            g_fb_state = 1;
+            LOGI("font: fallback %s", g_fb_paths[i]);
+        } else {
+            munmap(m, (size_t)st.st_size);
+        }
+    }
+    if (g_fb_state == 0)
+        g_fb_state = -1;
+    return g_fb_state == 1;
+}
+
 static Glyph *glyph_get(Font *f, uint32_t cp)
 {
     unsigned b = cp % GLYPH_BUCKETS;
@@ -104,11 +153,19 @@ static Glyph *glyph_get(Font *f, uint32_t cp)
         if (g->cp == cp)
             return g;
     int adv, lsb, x0, y0, x1, y1;
+    const stbtt_fontinfo *info = &g_info;
+    float scale = f->scale;
     int idx = stbtt_FindGlyphIndex(&g_info, (int)cp);
+    if (idx == 0 && cp > 0x7f && fallback_load() && (idx = stbtt_FindGlyphIndex(&g_fb_info, (int)cp)) != 0) {
+        if (f->fb_scale == 0) /* same em size as the menu font, so CJK and Latin match */
+            f->fb_scale = stbtt_ScaleForMappingEmToPixels(&g_fb_info, f->scale / stbtt_ScaleForMappingEmToPixels(&g_info, 1));
+        info = &g_fb_info;
+        scale = f->fb_scale;
+    }
     if (idx == 0 && cp != '?')
         return glyph_get(f, '?');
-    stbtt_GetGlyphHMetrics(&g_info, idx, &adv, &lsb);
-    stbtt_GetGlyphBitmapBox(&g_info, idx, f->scale, f->scale, &x0, &y0, &x1, &y1);
+    stbtt_GetGlyphHMetrics(info, idx, &adv, &lsb);
+    stbtt_GetGlyphBitmapBox(info, idx, scale, scale, &x0, &y0, &x1, &y1);
     int w = x1 - x0, h = y1 - y0;
     if (w > ATLAS / 4 || h > ATLAS / 4)
         w = h = 0;
@@ -129,14 +186,14 @@ static Glyph *glyph_get(Font *f, uint32_t cp)
     g->h = h;
     g->xoff = x0;
     g->yoff = y0;
-    g->adv = (int)lroundf(adv * f->scale);
+    g->adv = (int)lroundf(adv * scale);
     g->x = f->pen_x;
     g->y = f->pen_y;
     if (w > 0 && h > 0) {
         unsigned char *mono = malloc((size_t)w * h);
         uint32_t *rgba = malloc((size_t)w * h * 4);
         if (mono && rgba) {
-            stbtt_MakeGlyphBitmap(&g_info, mono, w, h, w, f->scale, f->scale, idx);
+            stbtt_MakeGlyphBitmap(info, mono, w, h, w, scale, scale, idx);
             for (int i = 0; i < w * h; i++)
                 rgba[i] = ((uint32_t)mono[i] << 24) | 0x00ffffffu;
             SDL_Rect r = {g->x, g->y, w, h};
@@ -308,6 +365,10 @@ void gfx_quit(void)
     }
     free(g_ttf);
     g_ttf = NULL;
+    if (g_fb_map)
+        munmap(g_fb_map, g_fb_len);
+    g_fb_map = NULL;
+    g_fb_state = g_fb_count = 0;
     if (g_ren)
         SDL_DestroyRenderer(g_ren);
     if (g_win)

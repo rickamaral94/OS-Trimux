@@ -15,6 +15,9 @@ enum { ALIGN_LEFT = 0, ALIGN_CENTER, ALIGN_RIGHT };
 
 int gfx_init(const char *font_path, const char *fallback_font, int want_w, int want_h);
 void gfx_quit(void);
+/* Font for characters the menu font lacks (CJK names); up to two, the first
+ * one that loads is used. Opened only when such a character is drawn. */
+void gfx_add_fallback_font(const char *path);
 int gfx_w(void);
 int gfx_h(void);
 void gfx_set_theme(const char *name);

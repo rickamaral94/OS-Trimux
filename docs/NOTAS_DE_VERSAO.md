@@ -1,3 +1,15 @@
+# TriMux 0.4.5 (pré-lançamento)
+
+**Estado: não testado em um Brick Pro físico.** Correção da 0.4.4:
+
+* **Nomes em japonês, chinês e coreano apareciam como `????`:** a fonte do
+  menu (DejaVu Sans) não tem esses caracteres. Agora, quando falta um
+  caractere, o TriMux usa a fonte do próprio firmware (`full.ttf`, Source Han
+  Sans, com japonês, chinês e coreano), no mesmo tamanho do resto do texto.
+  Ela só é aberta quando aparece o primeiro nome desses e é lida direto da
+  memória interna, sem cópia e sem gravar nada lá. Os arquivos dos jogos não
+  mudam.
+
 # TriMux 0.4.4 (pré-lançamento)
 
 **Estado: não testado em um Brick Pro físico.** Correção da 0.4.3 e um ajuste novo nas luzes:

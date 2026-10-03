@@ -753,6 +753,14 @@ int app_main(int argc, char **argv)
     tm_path_join(font, sizeof font, A.paths.share, "fonts/DejaVuSans.ttf");
     if (gfx_init(font, "/usr/trimui/res/regular.ttf", win_w, win_h) != 0)
         return 2;
+    /* Japanese, Chinese and Korean game names: the firmware's fonts have
+     * them (full.ttf is Source Han Sans, with Korean too) */
+    const char *fw = getenv("TRIMUX_SYSFS_ROOT");
+    char fb[TM_PATH_MAX];
+    if (tm_snprintf(fb, sizeof fb, "%s/usr/trimui/res/full.ttf", fw ? fw : "") == 0)
+        gfx_add_fallback_font(fb);
+    if (tm_snprintf(fb, sizeof fb, "%s/usr/trimui/res/regular.ttf", fw ? fw : "") == 0)
+        gfx_add_fallback_font(fb);
     input_init(&A.settings);
     tm_zone_apply_env(tm_ini_get(&A.settings, "time", "zone", "")); /* the zone chosen in TriMux */
     draw_progress_message(tr("app.loading")); /* the start screen, as early as possible */
