@@ -40,5 +40,10 @@ const TmLedZone *tm_leds_zone(const TmLeds *leds, const char *id);
 /* Validates and applies one zone. Returns -1 for unknown zone or write error. */
 int tm_leds_apply(const TmLeds *leds, const char *zone, const TmLedSetting *s);
 int tm_leds_effect_valid(int effect);
+/* Compares what the driver reports with a setting: 1 same, 0 different,
+ * -1 unknown (the driver does not report the zone's effect). */
+int tm_leds_matches(const TmLeds *leds, const char *zone, const TmLedSetting *s);
+/* The firmware's master LED switch ("enable"), written only when it differs. */
+int tm_leds_master(const TmLeds *leds, int on);
 
 #endif

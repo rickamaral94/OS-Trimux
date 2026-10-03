@@ -284,3 +284,18 @@ def test_start_screen(env, tmp_path):
     from conftest import UI
     assert sp.run([UI, "--window", "1024", "768", "--splash-shot", shot], env=e, timeout=60).returncode == 0
     assert bmp_pixel(shot, 600, 470) == (0x2e, 0x86, 0xde)   # "Mux" in the accent colour
+
+
+POWER = "UP,A,DOWN,DOWN,DOWN,A"   # Configurações -> Energia
+
+
+def test_profile_locked_while_boost_switch_is_on(env):
+    cfg = os.path.join(env["TRIMUX_SDCARD"], "TriMuxData/config/trimux.ini")
+    gpio = os.path.join(env["TRIMUX_SYSFS_ROOT"], "sys/class/gpio/gpio243/value")
+    write(cfg, "[general]\nwizard_done = 1\n[power]\nprofile = balanced\nboost_ack = 1\n[buttons]\nswitch = boost\n")
+    write(gpio, "1\n")                                       # switch on
+    assert ui(env, POWER + ",RIGHT,A,B,B,B").returncode == 0
+    assert "profile = balanced" in read(cfg)                  # unchanged: locked
+    write(gpio, "0\n")                                       # switch off: free again
+    assert ui(env, POWER + ",RIGHT,B,B,B").returncode == 0
+    assert "profile = balanced" not in read(cfg)

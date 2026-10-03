@@ -409,8 +409,9 @@ hk.switch = Economy, 2.0 GHz, LEDs off or mute (configurable)
 
 switchaction.boost = 2.0 GHz (firmware maximum)
 switch.toast.boost = Side switch: up to 2.0 GHz
-power.boost = Firmware maximum (2.0 GHz)
+power.boost = Maximum performance (2.0 GHz)
 power.boost.desc = Up to 2.0 GHz, the top frequency of the firmware's own table (the same as the stock performance mode). Above the manufacturer's rated 1.8 GHz.
+power.boost.locked = Set by the side switch (2.0 GHz). Turn the switch off to choose another profile.
 boost.confirm.title = Allow 2.0 GHz with the switch?
 boost.confirm.text = With the switch on, the CPU may run up to 2.0 GHz (above the manufacturer's 1.8 GHz; it is the same value the stock firmware's performance mode uses). It runs hotter and uses more battery. The device's thermal limits stay active and TriMux still drops to Economy above 75 °C. Switching off returns to the 1.8 GHz ceiling. Continue?
 

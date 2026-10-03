@@ -101,6 +101,22 @@ static const char *profile_name(const char *id)
     return p ? tr(p->name_key) : id;
 }
 
+/* Side switch on and mapped to 2.0 GHz: that is the profile while it stays
+ * on; the profile choice is locked until the switch is turned off. */
+static int boost_locked(void)
+{
+    return A.power.has_cpufreq && tm_switch_active(&A.settings) == TM_SWITCH_BOOST;
+}
+
+static void lock_profile_item(MenuItem *it)
+{
+    if (!boost_locked())
+        return;
+    tm_strlcpy(it->value, profile_name("boost"), sizeof it->value);
+    tm_strlcpy(it->desc, tr("power.boost.locked"), sizeof it->desc);
+    it->enabled = 0;
+}
+
 /* ------------------------------------------------------------ pages */
 
 static void page_settings(Menu *m)
@@ -198,6 +214,7 @@ static void page_power(Menu *m)
     char desc[320];
     profile_desc(prof, desc, sizeof desc);
     MenuItem *it = add(m, ACT_PROFILE, tr("power.profile"), profile_name(prof), desc);
+    lock_profile_item(it);
     if (!A.power.has_cpufreq) {
         it->enabled = 0;
         snprintf(it->desc, sizeof it->desc, "%s %s", tr("power.unavailable"), tr(A.power.reason[0] ? A.power.reason : "power.reason.no_cpufreq"));
@@ -256,6 +273,7 @@ static void led_store(const char *zone, const TmLedSetting *s)
     tm_ini_set_long(&A.settings, sec, "effect", s->effect);
     tm_ini_set_long(&A.settings, "leds", "managed", 1);
     app_mark_settings();
+    app_save_all(); /* "trimuxctl leds keep" restores what is saved */
     if (tm_leds_apply(&A.leds, zone, s) != 0)
         app_toast(tr("leds.apply_failed"));
 }
@@ -520,6 +538,7 @@ static void page_quick(Menu *m)
     profile_desc(prof, desc, sizeof desc);
     MenuItem *it = add(m, ACT_PROFILE, tr("power.profile"), profile_name(prof), desc);
     it->enabled = A.power.has_cpufreq;
+    lock_profile_item(it);
     if (A.leds.available)
         add(m, ACT_LED_MANAGED, tr("leds.managed"), onoff((int)setting_long("leds", "managed", 0)), tr("leds.managed.desc"));
     add(m, ACT_RESCAN, tr("library.rescan"), "", tr("library.rescan.desc"));
@@ -1397,6 +1416,7 @@ static void activate(MenuItem *it, TmButton b)
         int v = !setting_long("leds", "managed", 0);
         tm_ini_set_long(&A.settings, "leds", "managed", v);
         app_mark_settings();
+        app_save_all();
         for (size_t i = 0; v && i < A.leds.nzones; i++) {
             TmLedSetting s;
             led_setting(A.leds.zones[i].id, &s);

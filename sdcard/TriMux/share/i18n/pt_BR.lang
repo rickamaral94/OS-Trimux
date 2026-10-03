@@ -411,8 +411,9 @@ hk.switch = Economia, 2,0 GHz, LEDs apagados ou mudo (configurável)
 
 switchaction.boost = 2,0 GHz (máximo do firmware)
 switch.toast.boost = Chave lateral: até 2,0 GHz
-power.boost = Máximo do firmware (2,0 GHz)
+power.boost = Desempenho máximo (2,0 GHz)
 power.boost.desc = Até 2,0 GHz, a maior frequência da tabela do próprio firmware (a mesma do modo desempenho oficial). Acima dos 1,8 GHz anunciados pelo fabricante.
+power.boost.locked = Definido pela chave lateral (2,0 GHz). Desligue a chave para escolher outro perfil.
 boost.confirm.title = Permitir 2,0 GHz pela chave?
 boost.confirm.text = Com a chave ligada, a CPU poderá ir até 2,0 GHz (acima dos 1,8 GHz do fabricante; é o mesmo valor que o modo desempenho do firmware oficial usa). Esquenta mais e gasta mais bateria. Os limites térmicos do aparelho continuam ativos e o TriMux ainda cai para Economia acima de 75 °C. Desligar a chave volta ao teto de 1,8 GHz. Continuar?
 

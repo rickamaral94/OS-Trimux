@@ -6,6 +6,7 @@
 
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -122,7 +123,7 @@ int tm_leds_apply(const TmLeds *leds, const char *zone_id, const TmLedSetting *s
         rc |= write_attr(leds, z->brightness_attr, val);
     }
     snprintf(attr, sizeof attr, "effect_rgb_hex_%s", z->id);
-    snprintf(val, sizeof val, "%06X", s->color & 0xFFFFFFu);
+    snprintf(val, sizeof val, "%06X", effect == TM_LED_EFFECT_OFF ? 0u : s->color & 0xFFFFFFu);
     rc |= write_attr(leds, attr, val);
     snprintf(attr, sizeof attr, "effect_duration_%s", z->id);
     rc |= write_attr(leds, attr, "1000");
@@ -139,4 +140,53 @@ int tm_leds_apply(const TmLeds *leds, const char *zone_id, const TmLedSetting *s
     if (rc)
         LOGW("leds: zone %s partially applied", z->id);
     return rc ? -1 : 0;
+}
+
+static int read_attr(const TmLeds *leds, const char *attr, char *out, size_t size)
+{
+    char p[600];
+    if (attr_path(leds, p, sizeof p, attr) != 0 || tm_read_line(p, out, size) != 0)
+        return -1;
+    tm_trim(out);
+    return 0;
+}
+
+int tm_leds_matches(const TmLeds *leds, const char *zone_id, const TmLedSetting *s)
+{
+    const TmLedZone *z = tm_leds_zone(leds, zone_id);
+    if (!z || !s)
+        return -1;
+    int effect = s->on ? s->effect : TM_LED_EFFECT_OFF;
+    if (!tm_leds_effect_valid(effect))
+        effect = TM_LED_EFFECT_STATIC;
+    char attr[48], v[64];
+    snprintf(attr, sizeof attr, "effect_%s", z->id);
+    if (read_attr(leds, attr, v, sizeof v) != 0 || !v[0])
+        return -1; /* the driver does not report it: unknown */
+    if (atoi(v) != effect)
+        return 0;
+    if (effect == TM_LED_EFFECT_OFF)
+        return 1;
+    snprintf(attr, sizeof attr, "effect_rgb_hex_%s", z->id);
+    if (read_attr(leds, attr, v, sizeof v) == 0 && v[0] &&
+        (strtoul(v, NULL, 16) & 0xFFFFFFu) != (s->color & 0xFFFFFFu))
+        return 0;
+    if (z->has_brightness && read_attr(leds, z->brightness_attr, v, sizeof v) == 0 && v[0]) {
+        int bright = s->brightness < 0 ? 0 : s->brightness > 100 ? 100 : s->brightness;
+        if (atoi(v) != bright)
+            return 0;
+    }
+    if (attr_writable(leds, "enable") && read_attr(leds, "enable", v, sizeof v) == 0 && v[0] && atoi(v) != 1)
+        return 0;
+    return 1;
+}
+
+int tm_leds_master(const TmLeds *leds, int on)
+{
+    if (!attr_writable(leds, "enable"))
+        return 0;
+    char v[8];
+    if (read_attr(leds, "enable", v, sizeof v) == 0 && v[0] && atoi(v) == (on ? 1 : 0))
+        return 0;
+    return write_attr(leds, "enable", on ? "1" : "0");
 }

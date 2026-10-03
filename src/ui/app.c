@@ -302,6 +302,10 @@ void app_key_action(TmButton b)
             app_toast(tr("power.unavailable"));
             break;
         }
+        if (tm_switch_active(&A.settings) == TM_SWITCH_BOOST) { /* locked while the switch is on */
+            app_toast(tr("power.boost.locked"));
+            break;
+        }
         app_cycle_profile(1);
         const char *p = tm_ini_get(&A.settings, "power", "profile", "auto");
         char k[48], msg[128];
@@ -322,6 +326,7 @@ void app_key_action(TmButton b)
             tm_ini_set_long(&A.settings, "leds", "user_off", off);
             tm_ini_set_long(&A.settings, "leds", "managed", 1);
             app_mark_settings();
+            app_save_all(); /* "trimuxctl leds keep" restores what is saved */
             leds_set_all(off);
             app_toast(tr(off ? "keys.leds_off" : "keys.leds_on"));
         }

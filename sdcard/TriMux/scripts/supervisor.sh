@@ -79,6 +79,10 @@ fi
 # hardwareservice applies the stock LED settings when it starts, which can be
 # after the line above: apply the user's choice again a few seconds later.
 (sleep 5; "$CTL" leds apply) >/dev/null 2>&1 &
+# keymon rewrites the stock settings file on every volume change and then
+# re-applies the stock LED settings; this keeps the user's choice (only when
+# "Controlar LEDs" is on) for as long as this supervisor runs.
+"$CTL" leds keep $$ >/dev/null 2>&1 &
 # Side switch: LEDs off / speaker mute, if the user assigned one of those.
 "$CTL" switch >/dev/null 2>&1
 # Network choices (Wi-Fi on/off, Bluetooth service, firmware SSH off unless
