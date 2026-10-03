@@ -23,7 +23,18 @@ log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null) boot[I] $*" >> "$LOG"
 }
 
+# Before the card can go away (reboot, power off, stock launcher): stop the
+# cover downloader after the current image and flush everything to the card,
+# so the firmware's disk check at the next boot finds nothing half written.
+settle_card() {
+    "$CTL" scrape --stop >/dev/null 2>&1
+    n=0
+    while [ -f "$TMP/scrape.pid" ] && [ $n -lt 10 ]; do sleep 0.3; n=$((n + 1)); done
+    sync
+}
+
 to_stock() {
+    settle_card
     log "handing over to the stock launcher: $1"
     echo "$1" > "$TMP/to_stock"
     "$CTL" power default >/dev/null 2>&1
@@ -118,8 +129,8 @@ while true; do
             "$CTL" app || log "app request refused or failed"
             ;;
         20) to_stock "requested from the menu" ;;
-        30) log "power off"; sync; touch /tmp/poweroff_flag; poweroff; sleep 30 ;;
-        31) log "reboot"; sync; reboot; sleep 30 ;;
+        30) log "power off"; settle_card; touch /tmp/poweroff_flag; poweroff; sleep 30 ;;
+        31) log "reboot"; settle_card; reboot; sleep 30 ;;
         40) log "card partition grow requested"
             # no redirection to the card here: an open log file would make the
             # read-only remount fail (trimuxctl logs the details itself)

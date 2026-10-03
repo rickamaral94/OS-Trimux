@@ -16,7 +16,7 @@ Como rodar: `make test` (A + partes S que não exigem Docker),
 `make docker-smoke` ou `scripts/smoke_qemu.sh` dentro do contêiner (S, QEMU),
 `python3 tools/screenshots.py` (S, capturas).
 
-## Resultado da execução desta versão (0.4.3)
+## Resultado da execução desta versão (0.4.4)
 
 | Conjunto | Categoria | Resultado |
 |---|---|---|
@@ -33,6 +33,7 @@ Como rodar: `make test` (A + partes S que não exigem Docker),
 | Atualização online (`tests/py/test_update.py`, GitHub simulado pelo `curl` falso) — encontra a versão nova e grava as notas; respeita "pré-lançamentos" e "verificar ao ligar"; sem Wi-Fi e sem rede informam o erro; instalação troca `TriMux`/`trimui`, guarda `.old`, mantém saves e jogos, remove a pasta temporária e marca a atualização a confirmar; hash errado, pacote de outra versão e bateria a 20% não alteram nada (bateria baixa nem baixa o pacote); `boot ok` só confirma depois que o `MainUI` novo rodou; voltar à versão anterior; `MainUI` restaura a versão anterior na 4ª tentativa sem menu e registra no log, recupera uma troca de pastas interrompida e não faz nada em boots normais; pacote `.tar.gz` reproduzível e sem dados do usuário; o pacote real da 0.4.0, extraído pelo `busybox tar` do firmware v1.1.1 em QEMU, é idêntico à árvore do cartão e o `busybox sha256sum` do firmware confere o hash. Menu: procurar, confirmação com padrão "Não", instalar com andamento e reiniciar no fim, jogos bloqueados até reiniciar, opções salvas, voltar à versão anterior | S | **passou** |
 | Uso do cartão inteiro (em `test_ctl.py`, `test_supervisor.py`, `test_ui.py`) — automático só com o marcador da imagem; tentativa única, sem travar o menu quando o cartão não pode ser identificado; cartão encontrado pelo nome da montagem ou por `/sys/dev/block` (só a partição 1 de um `mmcblk`); pedido pelo menu que falha volta ao menu com o motivo no log; aviso depois do reinício com o espaço novo, ou de falha | S | **passou** |
 | Aplicativos, data e hora, indicador de volume e chave das luzes (`tests/py/test_extras.py`, `test_supervisor.py`) — app do cartão roda da própria pasta pelo supervisor e volta ao menu; pedidos fora das pastas de apps, de apps bloqueados (formatador) ou com `launch` que sai da pasta são recusados; seção Aplicativos lista e inicia; fuso escolhido vira `TZ`, fuso desconhecido é ignorado; hora pela internet só com Wi-Fi, com `ntpd -q` e RTC salvo com `hwclock -w -u`; ajuste manual chama `date -s @<epoch>`; indicador mostra 11 de 20 quando o `system.json` muda; "Luzes: Apagadas" apaga zonas e chave geral na hora e "Acesas" volta | S | **passou** |
+| Dados do usuário na atualização (em `test_update.py`, `test_supervisor.py`) — capas, saves, estados, BIOS e lista de capas não encontradas continuam idênticos depois de instalar uma atualização e de voltar à versão anterior; reiniciar pelo menu pede para o download de capas parar antes | S | **passou** |
 | Conta do RetroAchievements (em `test_supervisor.py`) — só chega ao RetroArch quando ativada, nunca vai para o log | S | **passou** |
 | Capas contra o servidor real (manual, no computador) — os 22 repositórios do catálogo existem em `thumbnails.libretro.com`, e endereços gerados pelo TriMux para 5 jogos (SNES, PS com disco, GBA e arcade com `:` no título) responderam HTTP 200 | A | **passou** |
 | `scripts/check_abi.py` — RetroArch, núcleos e binários exigem no máximo GLIBC 2.33 / GLIBCXX 3.4.28 e só bibliotecas presentes no firmware | A | **passou** |
@@ -77,6 +78,7 @@ Marque com data, firmware, versão do TriMux e observações ao executar.
 | H51 | Data e hora: fuso Brasília, ajuste pela internet com Wi-Fi, ajuste manual sobrevive a desligar e ligar; relógio do sistema oficial continua certo depois | pendente |
 | H52 | Aplicativos: Música, Fotos, Leitor e um app da pasta `Apps/` abrem e voltam ao TriMux | pendente |
 | H53 | "Luzes: Apagadas" em *Configurações › LEDs* apaga tudo na hora e continua apagado depois de mudar o volume | pendente |
+| H54 | Capas baixadas continuam em `Imgs/` depois de reiniciar, desligar pelo menu e atualizar pelo menu; nenhum `FSCK*.REC` aparece na raiz do cartão | pendente |
 | H47 | Tela de início do TriMux aparece logo depois do logotipo da TrimUI e enquanto os jogos são indexados | pendente |
 | H15 | Primeiro boot de um cartão de 32 GB e de 128 GB gravado com a imagem: expansão automática, um reinício, aviso com o espaço total; `chkdsk`/`fsck` limpo depois. Repetir pela opção do menu num cartão regravado | pendente |
 | H16 | Cartão cheio: aviso em Armazenamento; salvar estado falha sem corromper | pendente |

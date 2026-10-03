@@ -40,6 +40,9 @@ int tm_write_str(const char *path, const char *value);
 
 /* Crash-safe replace: write tmp in the same dir, fsync, rename, fsync dir. */
 int tm_atomic_write(const char *path, const void *data, size_t len);
+/* Forces a file's data, or the directory entry of a file, onto the card. */
+int tm_fsync_path(const char *path);
+void tm_fsync_parent(const char *path);
 /* Copies src to dst atomically. */
 int tm_copy_file(const char *src, const char *dst);
 

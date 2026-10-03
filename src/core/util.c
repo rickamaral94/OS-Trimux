@@ -256,22 +256,36 @@ int tm_atomic_write(const char *path, const void *data, size_t len)
         unlink(tmp);
         return -1;
     }
-    /* fsync the directory so the rename itself is durable */
+    tm_fsync_parent(path); /* so the rename itself is durable */
+    return 0;
+}
+
+int tm_fsync_path(const char *path)
+{
+    int fd = open(path, O_RDONLY | O_CLOEXEC);
+    if (fd < 0)
+        return -1;
+    int rc = fsync(fd);
+    close(fd);
+    return rc;
+}
+
+void tm_fsync_parent(const char *path)
+{
     char dir[TM_PATH_MAX];
     tm_strlcpy(dir, path, sizeof dir);
     char *slash = strrchr(dir, '/');
-    if (slash) {
-        if (slash == dir)
-            slash[1] = '\0';
-        else
-            *slash = '\0';
-        int dfd = open(dir, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
-        if (dfd >= 0) {
-            fsync(dfd); /* best effort: vfat may not support it */
-            close(dfd);
-        }
+    if (!slash)
+        return;
+    if (slash == dir)
+        slash[1] = '\0';
+    else
+        *slash = '\0';
+    int dfd = open(dir, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+    if (dfd >= 0) {
+        fsync(dfd); /* best effort: vfat may not support it */
+        close(dfd);
     }
-    return 0;
 }
 
 int tm_copy_file(const char *src, const char *dst)
