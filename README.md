@@ -20,9 +20,9 @@ cartão devolve o aparelho ao estado original.
   Brasil** (inglês incluído; novos idiomas são um arquivo de texto).
 * Poucos passos até jogar: **Continuar**, Recentes, Favoritos, Todos os jogos,
   plataformas com contagem, busca com teclado na tela, filtros.
-* **24 plataformas, 22 núcleos** (RetroArch 1.22.2 + núcleos libretro
-  compilados para Cortex-A53), com **Nintendo 64** (Mupen64Plus-Next) e
-  **Dreamcast** (Flycast), incluindo **ports**: DOOM (PrBoom), Quake
+* **25 plataformas, 23 núcleos** (RetroArch 1.22.2 + núcleos libretro
+  compilados para Cortex-A53), com **Nintendo 64** (Mupen64Plus-Next),
+  **Dreamcast** (Flycast) e **PSP** (PPSSPP, sem BIOS), incluindo **ports**: DOOM (PrBoom), Quake
   (TyrQuake), Cave Story (NXEngine) e scripts `.sh` no estilo PortMaster. Troca de emulador **por jogo** ou **por
   plataforma** com o botão SELECT.
 * Encontra jogos em pastas conhecidas (cartão oficial TrimUI, MinUI/NextUI,
@@ -54,6 +54,10 @@ cartão devolve o aparelho ao estado original.
   [docs/PORTS.md](docs/PORTS.md), [docs/LOJA.md](docs/LOJA.md).
 * **Aplicativos** em uma seção própria, separada dos jogos (formato TrimUI:
   pasta `Apps/` do cartão, apps da memória interna e os do sistema).
+* **Ferramentas próprias:** estatísticas de jogo, jogo surpresa,
+  gerenciador de arquivos, **arquivos pelo navegador** (enviar e baixar
+  jogos pelo Wi-Fi, sem tirar o cartão) e limpeza do cartão.
+  [docs/FERRAMENTAS.md](docs/FERRAMENTAS.md).
 * **Data e hora** com fuso, ajuste pela internet e manual; indicador de
   **volume e brilho** na tela; **luzes** com chave geral no menu.
 * **Atualização online**: procura e instala versões novas pelo Wi-Fi, sem

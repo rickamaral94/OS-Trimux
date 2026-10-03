@@ -215,7 +215,8 @@ enum {
     PAGE_LIBRARY, PAGE_FOLDERS, PAGE_BIOS, PAGE_EMULATORS, PAGE_EMU_PLATFORM, PAGE_STORAGE, PAGE_SYSTEM,
     PAGE_QUICK, PAGE_GAME_OPTIONS, PAGE_EMU_CHOOSE, PAGE_HOTKEYS, PAGE_DISPLAY, PAGE_ABOUT, PAGE_LOG,
     PAGE_ADD_GAMES, PAGE_BUTTONS, PAGE_NETWORK, PAGE_WIFI_SCAN, PAGE_WIFI_SAVED, PAGE_CHEEVOS,
-    PAGE_DIAG, PAGE_PERF, PAGE_COVERS, PAGE_UPDATE, PAGE_DATETIME, PAGE_APPS,
+    PAGE_DIAG, PAGE_PERF, PAGE_COVERS, PAGE_UPDATE, PAGE_DATETIME, PAGE_APPS, PAGE_STATS, PAGE_CLEAN,
+    PAGE_FILES,
 };
 
 /* dialog ids */
@@ -223,7 +224,26 @@ enum {
     DLG_NONE = 0, DLG_STOCK, DLG_POWEROFF, DLG_REBOOT, DLG_MKDIRS, DLG_RESTORE_EMU, DLG_GROW, DLG_EXPERIMENTAL,
     DLG_WIZ_SKIP, DLG_POWER_DEFAULT, DLG_INFO, DLG_IDLE, DLG_BOOST,
     DLG_FTP, DLG_SSH, DLG_WIFI_FORGET, DLG_CLEAR_LOGS, DLG_UPDATE_INSTALL, DLG_UPDATE_ROLLBACK, DLG_UPDATE_READY,
-    DLG_STORE_INSTALL, DLG_STORE_REMOVE,
+    DLG_STORE_INSTALL, DLG_STORE_REMOVE, DLG_WEB, DLG_CLEAN, DLG_FILE_DELETE,
 };
+
+/* menu actions of tools.c (menus.c hands every id from ACT_T_FIRST on to it) */
+enum {
+    ACT_T_FIRST = 500, ACT_T_PAGE = ACT_T_FIRST, ACT_T_RANDOM, ACT_T_GAME, ACT_T_WEB, ACT_T_CLEAN_TOGGLE,
+    ACT_T_CLEAN_RUN, ACT_T_CLEAN_RESCAN, ACT_T_FILE_DIR, ACT_T_FILE, ACT_T_FILE_PAGE,
+};
+
+/* menus.c: rows for pages built elsewhere */
+MenuItem *menu_add(Menu *m, int id, const char *label, const char *value, const char *desc);
+void menu_header(Menu *m, const char *label);
+
+/* tools.c */
+void tools_items(Menu *m);
+int tools_page(Menu *m);
+void tools_activate(Menu *m, MenuItem *it, TmButton b);
+int tools_dialog_result(int id, long arg, const char *sarg, int yes);
+/* B in the file manager goes up a folder (1) before leaving the page (0) */
+int tools_back(Menu *m);
+void tools_web_stop(void);
 
 #endif

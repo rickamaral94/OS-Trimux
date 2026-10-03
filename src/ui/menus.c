@@ -32,6 +32,7 @@ enum {
     ACT_UPDATE_CHECK, ACT_UPDATE_INSTALL, ACT_UPDATE_ROLLBACK, ACT_UPDATE_REBOOT,
     ACT_LED_POWER, ACT_TZ, ACT_TIME_SYNC, ACT_TIME_FIELD, ACT_TIME_APPLY, ACT_APP,
     ACT_VID_ASPECT, ACT_VID_FILTER, ACT_VID_RES, ACT_VID_COLORS, ACT_VID_GHOST, ACT_VID_HD, ACT_SORT, ACT_STORE,
+    ACT_COVERS_SYS,
 };
 
 static const struct {
@@ -772,6 +773,13 @@ static void header_row(Menu *m, const char *label)
     h->enabled = 0;
 }
 
+MenuItem *menu_add(Menu *m, int id, const char *label, const char *value, const char *desc)
+{
+    return add(m, id, label, value, desc);
+}
+
+void menu_header(Menu *m, const char *label) { header_row(m, label); }
+
 static void refresh_wifi_status(int force)
 {
     if (!force && A.wst_time && tm_now_ms() - A.wst_time < 2000)
@@ -1155,7 +1163,9 @@ static void covers_status_text(char *out, size_t size)
         tm_strlcpy(out, tr(running ? "covers.state.running" : "covers.state.none"), size);
         return;
     }
-    if (running || strcmp(st.state, "running") == 0)
+    if (running && strcmp(st.state, "waiting") == 0)
+        snprintf(out, size, tr("covers.waiting"), st.done, st.total);
+    else if (running || strcmp(st.state, "running") == 0)
         snprintf(out, size, tr("covers.progress"), st.done, st.total, st.found);
     else if (strcmp(st.state, "done") == 0)
         snprintf(out, size, tr("covers.done"), st.found, st.missing);
@@ -1191,6 +1201,20 @@ void covers_start(int autorun, int retry)
     LOGI("ui: cover download started (%s)", autorun ? "auto" : retry ? "retry" : "manual");
 }
 
+static int covers_skipped(const char *skip, const char *id)
+{
+    size_t n = strlen(id);
+    for (const char *s = skip; s && *s;) {
+        while (*s == ' ' || *s == ',')
+            s++;
+        size_t len = strcspn(s, ", ");
+        if (len == n && strncasecmp(s, id, n) == 0)
+            return 1;
+        s += len;
+    }
+    return 0;
+}
+
 static void page_covers(Menu *m)
 {
     tm_strlcpy(m->title, tr("covers.title"), sizeof m->title);
@@ -1208,6 +1232,46 @@ static void page_covers(Menu *m)
     add(m, ACT_COVERS_KIND, tr("covers.kind"), tr(k), tr("covers.kind.desc"));
     it = add(m, ACT_TOGGLE, tr("covers.auto"), onoff((int)setting_long("covers", "auto", 0)), tr("covers.auto.desc"));
     tm_strlcpy(it->sarg, "covers/auto", sizeof it->sarg);
+    /* platforms to download: only those with games and a cover repository */
+    header_row(m, tr("covers.systems"));
+    const char *skip = tm_ini_get(&A.settings, "covers", "skip", "");
+    for (size_t i = 0; i < A.cat.nsystems && m->n < MENU_MAX_ITEMS; i++) {
+        const TmSystem *sys = &A.cat.systems[i];
+        size_t n = tm_library_count_system(&A.lib, (int)i);
+        if (!sys->thumbs[0] || !n)
+            continue;
+        char d[512];
+        snprintf(d, sizeof d, tr("covers.system.desc"), sys->name, n);
+        it = add(m, ACT_COVERS_SYS, sys->name, onoff(!covers_skipped(skip, sys->id)), d);
+        tm_strlcpy(it->sarg, sys->id, sizeof it->sarg);
+        it->badge_color = sys->color;
+        tm_strlcpy(it->badge, sys->short_name, sizeof it->badge);
+    }
+}
+
+/* [covers] skip: comma-separated platform ids left out of the download */
+static void covers_toggle_system(const char *id)
+{
+    const char *cur = tm_ini_get(&A.settings, "covers", "skip", "");
+    char out[512] = "", tmp[512];
+    int was = covers_skipped(cur, id);
+    tm_strlcpy(tmp, cur, sizeof tmp);
+    for (char *save = NULL, *t = strtok_r(tmp, ", ", &save); t; t = strtok_r(NULL, ", ", &save)) {
+        if (strcasecmp(t, id) == 0)
+            continue;
+        if (strlen(out) + strlen(t) + 3 < sizeof out) {
+            if (out[0])
+                strcat(out, ", ");
+            strcat(out, t);
+        }
+    }
+    if (!was && strlen(out) + strlen(id) + 3 < sizeof out) {
+        if (out[0])
+            strcat(out, ", ");
+        strcat(out, id);
+    }
+    tm_ini_set(&A.settings, "covers", "skip", out);
+    app_mark_settings();
 }
 
 /* ------------------------------------------------------------ online update */
@@ -1509,6 +1573,8 @@ static void store_items(Menu *m)
 static void page_apps(Menu *m)
 {
     tm_strlcpy(m->title, tr("apps.title"), sizeof m->title);
+    tools_items(m);
+    menu_header(m, tr("apps.header"));
     if (!apps_count())
         add(m, ACT_NONE, tr("apps.none"), "", tr("apps.none.desc"))->enabled = 1;
     for (size_t i = 0; i < g_napps; i++) {
@@ -1563,6 +1629,7 @@ void menu_rebuild(void)
     case PAGE_UPDATE: page_update(m); break;
     case PAGE_DATETIME: page_datetime(m); break;
     case PAGE_APPS: page_apps(m); break;
+    default: tools_page(m); break;
     }
     m->sel = sel < m->n ? sel : (m->n ? m->n - 1 : 0);
     m->top = top;
@@ -1711,6 +1778,10 @@ static void restore_emulator(const char *emu_id)
 
 static void activate(MenuItem *it, TmButton b)
 {
+    if (it->id >= ACT_T_FIRST) {
+        tools_activate(cur(), it, b);
+        return;
+    }
     int dir = b == BTN_LEFT ? -1 : 1;
     char msg[512];
     switch (it->id) {
@@ -2015,6 +2086,7 @@ static void activate(MenuItem *it, TmButton b)
         tm_ini_set_long(&A.settings, "covers", "show", !setting_long("covers", "show", 1));
         app_mark_settings();
         break;
+    case ACT_COVERS_SYS: covers_toggle_system(it->sarg); break;
     case ACT_COVERS_KIND: {
         static const char *const kinds[] = {"boxart", "snap", "title"};
         int i = (int)tm_thumb_kind_parse(tm_ini_get(&A.settings, "covers", "kind", "boxart"));
@@ -2208,7 +2280,10 @@ void menu_input(TmButton b)
         if (n && m->items[m->sel].enabled)
             activate(&m->items[m->sel], b);
         break;
-    case BTN_B: menu_close(); break;
+    case BTN_B:
+        if (!tools_back(m))
+            menu_close();
+        break;
     case BTN_MENU:
     case BTN_HOME:
         A.nmenus = 1;
@@ -2220,6 +2295,8 @@ void menu_input(TmButton b)
 
 void menu_dialog_result(int id, long arg, const char *sarg, int yes)
 {
+    if (tools_dialog_result(id, arg, sarg, yes))
+        return;
     if (!yes)
         return;
     switch (id) {

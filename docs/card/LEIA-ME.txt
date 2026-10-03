@@ -20,6 +20,10 @@ Atalhos
   POWER               suspender
   Segurar SELECT ao ligar: abre o sistema oficial da TrimUI
 
+Copiar jogos sem tirar o cartão
+  Aplicativos › Arquivos pelo navegador: com o Wi-Fi ligado, abra no
+  computador ou celular o endereço mostrado (http://...:8080).
+
 Voltar ao sistema oficial: retire o cartão (ou apague a pasta "trimui").
 Documentação completa: https://github.com/rickamaral94/OS-Trimux
 Não incluímos jogos, BIOS ou firmware de consoles.

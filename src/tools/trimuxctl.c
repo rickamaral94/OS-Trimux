@@ -32,6 +32,8 @@
 #include "../core/paths.h"
 #include "../core/power.h"
 #include "../core/store.h"
+#include "../core/tools.h"
+#include "../core/webfiles.h"
 #include "../core/sysinfo.h"
 #include "../core/update.h"
 #include "../core/util.h"
@@ -829,7 +831,9 @@ static int cmd_scrape(int argc, char **argv)
     }
     TmIni ini;
     tm_settings_load(&ini, &P);
-    TmScrapeOptions o = {tm_thumb_kind_parse(tm_ini_get(&ini, "covers", "kind", "boxart")), retry, wait_s, autorun};
+    char skip[512];
+    tm_strlcpy(skip, tm_ini_get(&ini, "covers", "skip", ""), sizeof skip);
+    TmScrapeOptions o = {tm_thumb_kind_parse(tm_ini_get(&ini, "covers", "kind", "boxart")), retry, wait_s, autorun, skip};
     int enabled = (int)tm_ini_get_long(&ini, "covers", "auto", 0);
     int clean = (int)tm_ini_get_long(&ini, "general", "clean_names", 1);
     tm_ini_free(&ini);
@@ -1033,10 +1037,81 @@ static int cmd_time(int argc, char **argv)
     return 1;
 }
 
+/* trimuxctl clean scan | clean run <computer|logs|temp>... */
+static int cmd_clean(int argc, char **argv)
+{
+    TmCleanReport r;
+    if (argc > 0 && strcmp(argv[0], "run") == 0) {
+        unsigned mask = 0;
+        for (int i = 1; i < argc; i++) {
+            int c = tm_clean_parse(argv[i]);
+            if (c < 0) {
+                fprintf(stderr, "unknown category %s\n", argv[i]);
+                return 1;
+            }
+            mask |= 1u << c;
+        }
+        if (!mask)
+            return 1;
+        tm_clean_run(&P, mask, &r);
+    } else {
+        tm_clean_scan(&P, &r);
+    }
+    for (int i = 0; i < TM_CLEAN_N; i++) {
+        printf("%s\t%d\t%llu\n", tm_clean_id(i), r.cat[i].files, (unsigned long long)r.cat[i].bytes);
+        for (int k = 0; k < r.cat[i].nsample; k++)
+            printf("  %s\n", r.cat[i].sample[k]);
+    }
+    return 0;
+}
+
+/* trimuxctl stats: play time summary (the same numbers as Ferramentas › Estatísticas) */
+static int cmd_stats(void)
+{
+    TmCatalog cat;
+    if (load_catalog(&cat) != 0)
+        return 1;
+    TmLibrary lib;
+    tm_library_init(&lib);
+    if (tm_library_load(&lib, &cat, P.library) != 0)
+        tm_library_scan(&lib, &cat, P.sd, 1);
+    TmIni plays;
+    tm_ini_init(&plays);
+    char path[TM_PATH_MAX];
+    if (tm_path_join(path, sizeof path, P.state, "plays.ini") == 0)
+        tm_ini_load(&plays, path);
+    TmStats st;
+    tm_stats_compute(&plays, &lib, &st);
+    printf("seconds=%ld times=%ld games=%d\n", st.seconds, st.times, st.games);
+    for (size_t i = 0; i < st.ntop; i++)
+        printf("top\t%ld\t%ld\t%s\n", st.top[i].seconds, st.top[i].times, lib.games[st.top[i].game].relpath);
+    for (size_t i = 0; i < st.nsystems; i++)
+        printf("system\t%s\t%ld\t%d\n", cat.systems[st.systems[i].system].id, st.systems[i].seconds,
+               st.systems[i].games);
+    tm_ini_free(&plays);
+    tm_library_free(&lib);
+    tm_catalog_free(&cat);
+    return 0;
+}
+
+/* trimuxctl web start <ip> | stop | status ; webcgi (run by httpd) */
+static int cmd_web(int argc, char **argv)
+{
+    const char *sub = argc > 0 ? argv[0] : "status";
+    if (strcmp(sub, "start") == 0 && argc > 1)
+        return tm_web_start(&P, argv[1], TM_WEB_PORT) == 0 ? 0 : 1;
+    if (strcmp(sub, "stop") == 0) {
+        tm_web_stop(&P);
+        return 0;
+    }
+    printf("available=%d running=%d\n", tm_web_available(&P), tm_web_running(&P));
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     if (argc < 2) {
-        fprintf(stderr, "usage: trimuxctl power|leds|switch|net|scrape|update|app|time|sysinfo|device|scan|launch|boot|fat-grow|card-grow ...\n");
+        fprintf(stderr, "usage: trimuxctl power|leds|switch|net|scrape|update|store|clean|stats|web|app|time|sysinfo|device|scan|launch|boot|fat-grow|card-grow ...\n");
         return 1;
     }
     if (tm_paths_init(&P) != 0)
@@ -1059,6 +1134,17 @@ int main(int argc, char **argv)
         return cmd_update(argc - 2, argv + 2);
     if (strcmp(c, "store") == 0)
         return cmd_store(argc - 2, argv + 2);
+    if (strcmp(c, "clean") == 0)
+        return cmd_clean(argc - 2, argv + 2);
+    if (strcmp(c, "stats") == 0)
+        return cmd_stats();
+    if (strcmp(c, "web") == 0)
+        return cmd_web(argc - 2, argv + 2);
+    if (strcmp(c, "webcgi") == 0) {
+        static char obuf[1 << 16];
+        setvbuf(stdout, obuf, _IOFBF, sizeof obuf);
+        return tm_web_cgi(P.sd, stdin, stdout) == 0 ? 0 : 1;
+    }
     if (strcmp(c, "app") == 0)
         return cmd_app();
     if (strcmp(c, "time") == 0)

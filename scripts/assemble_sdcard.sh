@@ -32,11 +32,13 @@ cp LICENSE "$TM/licenses/TriMux-MIT.txt"
 cp sources/sources.lock "$TM/licenses/sources.lock"
 grep -v '^#' sources/sources.lock | grep -v '^$' | while IFS='|' read -r name url commit license; do
     d=build/src/$name
-    for lf in COPYING LICENSE LICENSE.txt license.txt COPYING.txt docs/COPYING src/license.txt copyright; do
+    for lf in COPYING LICENSE LICENSE.txt LICENSE.TXT license.txt COPYING.txt docs/COPYING src/license.txt copyright; do
         if [ -f "$d/$lf" ]; then cp "$d/$lf" "$TM/licenses/$name.txt"; break; fi
     done
     [ -f "$TM/licenses/$name.txt" ] || echo "$name: $license ($url @ $commit)" > "$TM/licenses/$name.txt"
 done
+# PPSSPP links FFmpeg statically (the prebuilt libraries of its ffmpeg submodule)
+{ cat build/src/ppsspp/ffmpeg/LICENSE.md; echo; cat build/src/ppsspp/ffmpeg/COPYING.LGPLv2.1; } > "$TM/licenses/ppsspp-ffmpeg.txt"
 cp src/ui/third_party/STB_COMMIT "$TM/licenses/stb_truetype-commit.txt"
 { cat src/core/third_party/JSMN_LICENSE; echo; echo "commit $(cat src/core/third_party/JSMN_COMMIT)"; } > "$TM/licenses/jsmn.txt"
 # Libraries bundled inside RetroArch for RetroAchievements and HTTPS.
@@ -90,6 +92,15 @@ mkdir -p "$OUT/Bios"
 # prboom.wad is PrBoom's own GPL resource file (not game data); the core
 # looks for it in the system (Bios) folder.
 cp build/src/prboom/prboom.wad "$OUT/Bios/prboom.wad"
+# PPSSPP's own system files (PSP replacement fonts in flash0, compat.ini,
+# VFPU tables, shaders), from the pinned PPSSPP source. They live inside
+# TriMux/ (emulators.ini system_dir) so online updates refresh them.
+PSPSYS="$TM/retroarch/system/PPSSPP"
+mkdir -p "$PSPSYS"
+for a in flash0 vfpu shaders lang compat.ini compatvr.ini knownfuncs.ini langregion.ini infra-dns.json \
+         ppge_atlas.zim ppge_atlas.meta font_atlas.zim font_atlas.meta asciifont_atlas.zim asciifont_atlas.meta; do
+    cp -R "build/src/ppsspp/assets/$a" "$PSPSYS/"
+done
 cp docs/card/LEIA-ME.txt "$OUT/LEIA-ME.txt"
 cp docs/card/Bios-LEIA-ME.txt "$OUT/Bios/LEIA-ME.txt"
 cp docs/card/Roms-LEIA-ME.txt "$OUT/Roms/LEIA-ME.txt"

@@ -1,3 +1,56 @@
+# TriMux 0.5.0 (pré-lançamento)
+
+**Estado: não testado em um Brick Pro físico.** Novidades:
+
+* **PlayStation Portable** (pasta `Roms/PSP`): emulador PPSSPP 1.19.3
+  (núcleo libretro, GLES), compilado dos fontes oficiais.
+  * **Não precisa de BIOS.** As fontes e os arquivos de sistema do PSP vêm do
+    próprio PPSSPP e ficam em `TriMux/retroarch/system/PPSSPP`, atualizados
+    junto com o TriMux.
+  * Formatos `.iso`, `.cso` (ocupa menos espaço), `.chd` e `.pbp`.
+  * Em *Configurações › Emuladores › PlayStation Portable* há a **Resolução
+    interna**: Original (480×272) ou 2x (960×544, mais nítida e mais pesada).
+  * Ordem por popularidade com os 24 PSP mais vendidos (Wikipedia).
+  * Os saves do PSP ficam em `Saves/PSP`.
+* **Capas:**
+  * **Escolha de plataformas:** em *Capas dos jogos › Plataformas para
+    baixar*, desligue as plataformas que não quer agora. O download passa por
+    cima delas.
+  * **Depois de suspender:** ao acordar o aparelho, o download espera o
+    Wi-Fi voltar (até 15 min), liga o Wi-Fi de novo se o firmware tiver
+    desligado e continua da mesma capa, em vez de parar com erro de rede.
+    Enquanto o aparelho está suspenso nada roda, então o download só anda com
+    ele acordado.
+* Lista de popularidade do Mega Drive corrigida: 4 jogos que se perdiam na
+  leitura da tabela voltaram (23 no total).
+
+**Ferramentas próprias** na aba Aplicativos ([FERRAMENTAS.md](FERRAMENTAS.md)):
+
+* **Estatísticas de jogo:** tempo total, sessões, último jogo, os 10 mais
+  jogados e o tempo por plataforma, a partir do tempo de jogo que o TriMux já
+  conta desde a 0.4.7.
+* **Jogo surpresa:** sorteia um jogo, de preferência um que você nunca abriu,
+  e mostra ele na lista, pronto para jogar.
+* **Gerenciador de arquivos:** navega pelas pastas do cartão com tamanho e
+  data e apaga arquivos com confirmação. As pastas do TriMux e do sistema
+  oficial são somente leitura.
+* **Arquivos pelo navegador:** com o Wi-Fi conectado, os arquivos do cartão
+  aparecem no navegador do computador ou do celular, em
+  `http://<endereço do aparelho>:8080`. Dá para baixar, enviar jogos e BIOS
+  (arrastando para a página, com barra de progresso), criar pastas e apagar
+  com confirmação, sem tirar o cartão.
+  * Usa a BusyBox httpd do próprio firmware: nada é instalado.
+  * Só funciona com a janela aberta no aparelho, e não tem senha, como o FTP.
+  * Envios incompletos nunca ficam no cartão.
+* **Limpeza do cartão:** acha e apaga, depois de confirmar, os arquivos que
+  o macOS e o Windows criam ao copiar (`._arquivo`, `.DS_Store`,
+  `Thumbs.db`...), registros antigos e restos de instalações interrompidas.
+  Jogos, saves, BIOS, capas e configurações nunca são tocados.
+* Enquanto a janela do FTP ou dos arquivos pelo navegador estiver aberta, o
+  aparelho não desliga mais sozinho por inatividade no meio de uma cópia.
+* Por SSH: `trimuxctl stats`, `trimuxctl clean scan|run` e
+  `trimuxctl web start|stop|status`.
+
 # TriMux 0.4.9 (pré-lançamento)
 
 **Estado: não testado em um Brick Pro físico.** Novidades:

@@ -66,8 +66,9 @@ def test_app_requests_outside_the_app_folders_are_refused(env, apps, tmp_path):
 @needs_ui
 def test_apps_section_lists_and_starts(env, apps):
     shot = os.path.join(os.path.dirname(apps["marker"]), "apps.bmp")
-    # home: ... platforms, Aplicativos, Configurações (last): UP,UP reaches Aplicativos
-    r = ui(env, "UP,UP,A,shot=%s,A" % shot)
+    # home: ... platforms, Aplicativos, Configurações (last): UP,UP reaches Aplicativos;
+    # the 5 TriMux tools come first, then the installed apps
+    r = ui(env, "UP,UP,A,shot=%s,DOWN,DOWN,DOWN,DOWN,DOWN,A" % shot)
     assert r.returncode == 11
     ini = read(os.path.join(env["TRIMUX_TMP"], "app.ini"))
     assert "musicplayer" in ini or "Apps/Hello" in ini or "Notes" in ini

@@ -104,11 +104,13 @@ def make_net_tools(root):
         done
         echo "curl $url" >> %(log)s
         [ -f $S/offline ] && exit 6
+        # netstate/drop: the Wi-Fi goes away during this download (suspend)
+        if [ -f $S/drop ]; then rm -f $S/drop $S/status %(run)s/wpa_supplicant; exit 6; fi
         if grep -qxF "$url" $S/covers; then cp $S/cover.png "$out"; exit 0; fi
         f=$(awk -F '\t' -v u="$url" '$1 == u { print $2 }' $S/serve)
         if [ -n "$f" ]; then cp "$f" "$out"; exit 0; fi
         exit 22
-        """) % {"root": root, "log": log}, 0o755)
+        """) % {"root": root, "log": log, "run": run}, 0o755)
     write(os.path.join(root, "etc/init.d/sshd"),
           '#!/bin/sh\necho "sshd $1" >> %s\n[ "$1" = start ] && touch %s/sshd\n[ "$1" = stop ] && rm -f %s/sshd\nexit 0\n'
           % (log, run, run), 0o755)

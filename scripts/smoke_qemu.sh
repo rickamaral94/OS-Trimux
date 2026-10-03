@@ -62,5 +62,38 @@ else
 fi
 cat "$OUT/cores.txt"
 if python3 scripts/check_catalog.py "$OUT/cores.txt"; then ok "catalog matches core names/extensions"; else ko "catalog vs cores"; fi
+
+# 5. "Arquivos pelo navegador": the firmware's own BusyBox httpd (aarch64,
+#    under qemu) serves the page and runs the CGI. Without binfmt the CGI
+#    script runs on the build machine's shell with trimuxctl built for it: this
+#    checks how the firmware httpd passes requests, POST bodies and responses.
+W=$OUT/web
+rm -rf "$W"
+mkdir -p "$W/sd/TriMux/bin" "$W/sd/Roms/GBA" "$W/www/cgi-bin" "$W/tmp"
+cc -std=c11 -O2 -D_FILE_OFFSET_BITS=64 -o "$W/sd/TriMux/bin/trimuxctl" src/tools/trimuxctl.c src/core/*.c -lm
+cp sdcard/TriMux/share/web/index.html "$W/www/index.html"
+printf "#!/bin/sh\nexec '%s' webcgi\n" "$W/sd/TriMux/bin/trimuxctl" > "$W/www/cgi-bin/files"
+chmod 755 "$W/www/cgi-bin/files"
+echo hello > "$W/sd/Roms/GBA/Homebrew (World).gba"
+TRIMUX_SDCARD=$W/sd TRIMUX_TMP=$W/tmp TRIMUX_SYSFS_ROOT=$W/dev \
+    qemu-aarch64-static -L "$FW" "$FW/bin/busybox" httpd -f -p 127.0.0.1:18080 -h "$W/www" &
+HP=$!
+sleep 2
+U=http://127.0.0.1:18080
+F="$U/cgi-bin/files"
+head -c 20971520 /dev/urandom > "$W/big.bin"
+if curl -fs "$U/" | grep -q cgi-bin/files &&
+    curl -fs "$F?op=list&path=Roms%2FGBA" | grep -q '"Homebrew (World).gba"' &&
+    [ "$(curl -fs "$F?op=get&path=Roms/GBA/Homebrew%20(World).gba")" = hello ] &&
+    curl -fs -H "Referer: $U/" -X POST --data-binary @"$W/big.bin" "$F?op=put&path=Roms/GBA&name=big.gba" >/dev/null &&
+    cmp -s "$W/big.bin" "$W/sd/Roms/GBA/big.gba" &&
+    [ "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$F?op=del&path=Roms/GBA/big.gba")" = 403 ] &&
+    [ "$(curl -s -o /dev/null -w '%{http_code}' -H "Referer: $U/" -X POST "$F?op=put&path=TriMux&name=x")" = 403 ] &&
+    curl -fs -H "Referer: $U/" -X POST "$F?op=del&path=Roms/GBA/big.gba" >/dev/null && [ ! -e "$W/sd/Roms/GBA/big.gba" ]; then
+    ok "firmware httpd: page, list, download, 20 MB upload intact, protections, delete"
+else
+    ko "firmware httpd file server"
+fi
+kill "$HP" 2>/dev/null || true
 echo "smoke: $pass passed, $fail failed"
 [ $fail -eq 0 ]

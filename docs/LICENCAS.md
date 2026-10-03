@@ -35,6 +35,8 @@ verificados pelo `scripts/fetch_sources.sh`.
 | ProSystem | Atari 7800 | GPL-2.0-only | libretro/prosystem-libretro |
 | Mupen64Plus-Next | Nintendo 64 | GPL-2.0-or-later (inclui GLideN64, GPL-2.0-or-later) | libretro/mupen64plus-libretro-nx |
 | Flycast | Dreamcast | GPL-2.0-only | flyinghead/flycast |
+| PPSSPP 1.19.3 (núcleo libretro) | PlayStation Portable | GPL-2.0-or-later; inclui FFmpeg (bibliotecas pré-compiladas do submódulo `ffmpeg` do PPSSPP, LGPL-2.1-or-later, ligadas estaticamente; texto em `TriMux/licenses/ppsspp-ffmpeg.txt`) | hrydgard/ppsspp |
+| Arquivos de sistema do PPSSPP (`TriMux/retroarch/system/PPSSPP`: fontes do PSP em `flash0`, `compat.ini`, tabelas VFPU, shaders) | PlayStation Portable, sem BIOS do console | distribuídos pelo projeto PPSSPP no seu repositório e nas versões oficiais (pasta `assets`), sob a licença do repositório; nada vem de um PSP | hrydgard/ppsspp |
 | FinalBurn Neo | Arcade/Neo Geo | **Licença FBNeo (não comercial)** | libretro/FBNeo |
 | PrBoom (+ `prboom.wad`) | DOOM | GPL-2.0-or-later | libretro/libretro-prboom |
 | TyrQuake | Quake | GPL-2.0-or-later | libretro/tyrquake |
