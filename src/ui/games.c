@@ -341,14 +341,7 @@ void games_draw(void)
         app_draw_list_row(S(12), top + i * row, listw - S(20), row, A.games_top + i == A.games_sel ? 2 : 0, g->name, NULL,
                           1, sys->color, show_badge ? sys->short_name : NULL, fav);
     }
-    int track = bottom - top;
-    if ((int)A.nview > visible) {
-        int bar = track * visible / (int)A.nview;
-        if (bar < S(20))
-            bar = S(20);
-        int pos = (track - bar) * A.games_sel / (int)(A.nview - 1);
-        gfx_rect(listw - S(5), top + pos, S(4), bar, t->dim);
-    }
+    app_scrollbar(listw - S(6), top, bottom - top, A.games_sel, (int)A.nview, visible);
     char pos[32];
     snprintf(pos, sizeof pos, "%d / %zu", A.games_sel + 1, A.nview);
     gfx_text(FONT_S, gfx_w() - S(28), bottom - gfx_font_height(FONT_S) - S(6), t->dim, ALIGN_RIGHT, 0, pos);

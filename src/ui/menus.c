@@ -1697,14 +1697,18 @@ void menu_draw(void)
     for (int i = 0; i < visible && m->top + i < m->n; i++) {
         MenuItem *it = &m->items[m->top + i];
         int header = it->id == ACT_NONE && !it->enabled && m->page != PAGE_LOG && m->page != PAGE_ADD_GAMES;
-        if (header) {
-            gfx_text(FONT_S, S(30), top + i * row + row - gfx_font_height(FONT_S) - S(6), t->accent, ALIGN_LEFT,
-                     listw - S(40), it->label);
+        if (header) { /* section title: small accent text with a fading rule after it */
+            int ty = top + i * row + row - gfx_font_height(FONT_S) - S(6);
+            int tw = gfx_text(FONT_S, S(30), ty, t->accent, ALIGN_LEFT, listw - S(80), it->label);
+            int ly = ty + gfx_font_height(FONT_S) / 2;
+            if (S(30) + tw + S(14) < listw - S(30))
+                gfx_gradient(S(30) + tw + S(14), ly, listw - S(44) - tw - S(14), 1, t->accent, t->accent, 90, 90);
             continue;
         }
         app_draw_list_row(S(14), top + i * row, listw - S(22), row, m->top + i == m->sel ? 2 : 0, it->label, it->value,
                           it->enabled, it->badge_color, it->badge[0] ? it->badge : NULL, 0);
     }
+    app_scrollbar(listw - S(4), top, bottom - top, m->sel, m->n, visible);
     int px = listw + S(4), pw = gfx_w() - listw - S(20);
     app_panel(px, top, pw, bottom - top, 0);
     if (m->n) {

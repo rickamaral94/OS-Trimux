@@ -582,6 +582,32 @@ void app_footer(const char *hints)
     }
 }
 
+void app_scrollbar(int x, int top, int h, int sel, int total, int visible)
+{
+    if (total <= visible || total < 2)
+        return;
+    const TmTheme *t = gfx_theme();
+    int bw = S(5), bar = h * visible / total;
+    if (bar < S(28))
+        bar = S(28);
+    int pos = (h - bar) * sel / (total - 1);
+    gfx_round_rect_a(x, top, bw, h, bw / 2, t->dim, 40); /* track */
+    gfx_round_rect(x, top + pos, bw, bar, bw / 2, gfx_mix(t->dim, t->text, 30));
+}
+
+/* on/off values are drawn as a switch */
+static int draw_switch(int x_right, int y, int h, int on, int selected)
+{
+    const TmTheme *t = gfx_theme();
+    int sh = S(28), sw = S(52), sx = x_right - sw, sy = y + (h - sh) / 2;
+    uint32_t track = on ? (selected ? gfx_mix(t->accent, 0xffffff, 35) : t->accent)
+                        : (selected ? gfx_mix(t->sel, 0x000000, 25) : t->panel2);
+    gfx_round_rect(sx, sy, sw, sh, sh / 2, track);
+    int k = sh - S(6);
+    gfx_round_rect(on ? sx + sw - k - S(3) : sx + S(3), sy + S(3), k, k, k / 2, on ? 0xffffff : gfx_mix(t->dim, t->text, 40));
+    return sw;
+}
+
 void app_list_highlight(int x, int y, int w, int h)
 {
     const TmTheme *t = gfx_theme();
@@ -606,7 +632,10 @@ void app_draw_list_row(int x, int y, int w, int h, int selected, const char *lab
         tx += gfx_badge(tx, y + (h - bh) / 2, bh, badge_color, badge) + S(14);
     }
     int vw = 0;
-    if (value && *value)
+    int is_on = value && strcmp(value, tr("common.on")) == 0, is_off = value && strcmp(value, tr("common.off")) == 0;
+    if (is_on || is_off)
+        vw = draw_switch(x + w - S(18), y, h, is_on, selected) + S(16);
+    else if (value && *value)
         vw = gfx_text(FONT_S, x + w - S(18), y + (h - gfx_font_height(FONT_S)) / 2,
                       selected ? t->accent_text : t->dim, ALIGN_RIGHT, w / 2, value) + S(16);
     int sw = star ? S(30) : 0;

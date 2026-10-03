@@ -524,14 +524,16 @@ void gfx_star(int cx, int cy, int r, uint32_t rgb)
 
 void gfx_battery(int x, int y, int h, int pct, int charging)
 {
-    int w = h * 2;
+    int w = h * 2, r = h / 4;
     const TmTheme *t = &g_theme;
-    gfx_frame(x, y, w, h, 2, t->text);
-    gfx_rect(x + w, y + h / 4, 3, h / 2, t->text);
+    gfx_round_rect(x, y, w, h, r, t->text);                 /* outline */
+    gfx_round_rect(x + 2, y + 2, w - 4, h - 4, r - 1, t->panel);
+    gfx_round_rect(x + w + 1, y + h / 4, 3, h / 2, 1, t->text);
     if (pct >= 0) {
-        int fill = (w - 6) * (pct > 100 ? 100 : pct) / 100;
+        int fill = (w - 8) * (pct > 100 ? 100 : pct) / 100;
         uint32_t col = pct <= 15 ? t->danger : charging > 0 ? t->ok : t->text;
-        gfx_rect(x + 3, y + 3, fill, h - 6, col);
+        if (fill > 0)
+            gfx_round_rect(x + 4, y + 4, fill, h - 8, r / 2, col);
     }
 }
 

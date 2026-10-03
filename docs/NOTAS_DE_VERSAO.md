@@ -13,6 +13,10 @@
   * As capas carregam aos poucos (duas por quadro), para a navegação não
     travar enquanto as imagens abrem.
   * A lista continua sendo o padrão.
+* **Acabamento:** opções Ligado/Desligado viram chaves deslizantes, as barras
+  de rolagem ficaram arredondadas (e aparecem também nos menus), os títulos
+  de seção ganharam uma linha de destaque e a bateria do cabeçalho tem cantos
+  arredondados.
 
 # TriMux 0.5.1 (pré-lançamento)
 
