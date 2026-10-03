@@ -54,6 +54,10 @@ cartão devolve o aparelho ao estado original.
   [docs/PORTS.md](docs/PORTS.md), [docs/LOJA.md](docs/LOJA.md).
 * **Aplicativos** em uma seção própria, separada dos jogos (formato TrimUI:
   pasta `Apps/` do cartão, apps da memória interna e os do sistema).
+* **Ferramentas próprias:** estatísticas de jogo, jogo surpresa,
+  gerenciador de arquivos, **arquivos pelo navegador** (enviar e baixar
+  jogos pelo Wi-Fi, sem tirar o cartão) e limpeza do cartão.
+  [docs/FERRAMENTAS.md](docs/FERRAMENTAS.md).
 * **Data e hora** com fuso, ajuste pela internet e manual; indicador de
   **volume e brilho** na tela; **luzes** com chave geral no menu.
 * **Atualização online**: procura e instala versões novas pelo Wi-Fi, sem

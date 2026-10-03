@@ -229,8 +229,8 @@ def test_store_in_apps_page_installs_after_confirmation(st):
     os.makedirs(os.path.join(card, "TriMux/bin"), exist_ok=True)
     shutil.copy(CTL, os.path.join(card, "TriMux/bin/trimuxctl"))
     os.chmod(os.path.join(card, "TriMux/bin/trimuxctl"), 0o755)
-    # home: ... Aplicativos, Configurações -> UP,UP; rows: "Nenhum aplicativo", PortMaster, Grout
-    r = ui(env, "UP,UP,A,DOWN,DOWN,A,LEFT,A,wait=1500,wait=1500,B,B")
+    # home: ... Aplicativos, Configurações -> UP,UP; rows: 5 tools, "Nenhum aplicativo", PortMaster, Grout
+    r = ui(env, "UP,UP,A,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,A,LEFT,A,wait=1500,wait=1500,B,B")
     assert r.returncode == 0
     for _ in range(20):
         if os.path.exists(os.path.join(card, "Apps/Grout/config.json")):

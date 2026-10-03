@@ -21,6 +21,7 @@
 #include "../../src/core/update.h"
 #include "../../src/core/power.h"
 #include "../../src/core/sysinfo.h"
+#include "../../src/core/tools.h"
 #include "../../src/core/util.h"
 #include "../../src/core/video.h"
 
@@ -1022,6 +1023,53 @@ static void test_popular_video(void)
     CHECK(tm_portmaster_launcher("/elsewhere/cores", pm, sizeof pm) == -1);
 }
 
+static void test_tools(void)
+{
+    char b[64];
+    tm_format_duration(45, b, sizeof b);
+    CHECK_STR(b, "45 s");
+    tm_format_duration(12 * 60 + 5, b, sizeof b);
+    CHECK_STR(b, "12 min");
+    tm_format_duration(3 * 3600 + 20 * 60, b, sizeof b);
+    CHECK_STR(b, "3 h 20 min");
+    tm_format_duration(7200, b, sizeof b);
+    CHECK_STR(b, "2 h");
+    CHECK(tm_path_protected("TriMux"));
+    CHECK(tm_path_protected("TriMux/bin/trimuxctl"));
+    CHECK(tm_path_protected("/trimui/app"));
+    CHECK(tm_path_protected("TRIMUX.OLD/x")); /* FAT: case does not matter */
+    CHECK(!tm_path_protected("TriMuxData/saves"));
+    CHECK(!tm_path_protected("Roms/TriMux"));
+    CHECK(!tm_path_protected("Roms"));
+    CHECK(tm_clean_parse("logs") == TM_CLEAN_LOGS && tm_clean_parse("x") == -1);
+
+    /* statistics and random game over a small hand-made library */
+    TmGame games[4] = {{0, "Roms/GBA/a.gba", "A", "a"}, {0, "Roms/GBA/b.gba", "B", "b"},
+                       {1, "Roms/SFC/c.sfc", "C", "c"}, {1, "Roms/SFC/d.sfc", "D", "d"}};
+    TmLibrary lib;
+    memset(&lib, 0, sizeof lib);
+    lib.games = games;
+    lib.count = 4;
+    TmIni plays;
+    tm_ini_init(&plays);
+    const char *txt = "[plays]\nRoms/GBA/a.gba = 3 600 1000\nRoms/SFC/c.sfc = 1 4000 900\n"
+                      "Roms/SFC/d.sfc = 2 60 2000\nRoms/N64/gone.z64 = 9 99999 5\n";
+    CHECK(tm_ini_parse(&plays, txt, strlen(txt)) == 0);
+    TmStats st;
+    tm_stats_compute(&plays, &lib, &st);
+    CHECK(st.games == 3 && st.seconds == 4660 && st.times == 6); /* the game no longer on the card is left out */
+    CHECK(st.ntop == 3 && st.top[0].game == 2 && st.top[1].game == 0 && st.top[2].game == 3);
+    CHECK(st.last.game == 3);
+    CHECK(st.nsystems == 2 && st.systems[0].system == 1 && st.systems[0].seconds == 4060 && st.systems[0].games == 2);
+    unsigned seed = 7;
+    for (int i = 0; i < 20; i++)
+        CHECK(tm_random_game(&lib, &plays, -1, 1, &seed) == 1); /* the only game never played */
+    long g = tm_random_game(&lib, &plays, 1, 1, &seed); /* all SFC games played: any SFC game */
+    CHECK(g == 2 || g == 3);
+    CHECK(tm_random_game(&lib, &plays, 5, 0, &seed) == -1);
+    tm_ini_free(&plays);
+}
+
 int main(void)
 {
     snprintf(T, sizeof T, "/tmp/trimux-unit-%d", (int)getpid());
@@ -1045,6 +1093,7 @@ int main(void)
     test_update();
     test_clock_apps();
     test_popular_video();
+    test_tools();
     char cmd[600];
     snprintf(cmd, sizeof cmd, "rm -rf '%s'", T);
     if (system(cmd) != 0)

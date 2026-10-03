@@ -94,6 +94,11 @@ Marque com data, firmware, versão do TriMux e observações ao executar.
 | H67 | N64: Super Mario 64 e Mario Kart 64 abrem, imagem e som corretos; anotar FPS com Padrão e com Original | pendente |
 | H68 | Dreamcast: um jogo `.chd` e um `.gdi` abrem com e sem BIOS em `Bios/dc`; anotar FPS em 640×480 | pendente |
 | H69 | Capas com milhares de jogos (ex.: 14 mil) por 1 h com Wi-Fi: o aparelho não reinicia; se reiniciar, anotar no registro a última linha `scrape: progress` (memória livre e temperatura) e conferir que o download não recomeça sozinho no boot seguinte | pendente |
+| H70 | Estatísticas: depois de jogar 2 ou 3 jogos por mais de 10 s, os tempos, o último jogo e as plataformas conferem; A num jogo abre as opções | pendente |
+| H71 | Jogo surpresa: mostra um jogo ainda não jogado e ele abre com A | pendente |
+| H72 | Gerenciador de arquivos: navegar em `Roms` com centenas de jogos (páginas), apagar um arquivo de teste com confirmação; a lista de jogos atualiza; `TriMux` e `trimui` recusam apagar | pendente |
+| H73 | Arquivos pelo navegador com Wi-Fi real: abrir o endereço no PC e no celular, enviar um jogo grande (ex.: CHD de 500 MB) e um BIOS, baixar um save, criar pasta, apagar; anotar a velocidade; ao fechar a janela o jogo aparece na lista | pendente |
+| H74 | Limpeza: cartão preparado no macOS mostra os `._` em *Arquivos do computador*; depois de limpar, jogos e saves intactos | pendente |
 | H47 | Tela de início do TriMux aparece logo depois do logotipo da TrimUI e enquanto os jogos são indexados | pendente |
 | H15 | Primeiro boot de um cartão de 32 GB e de 128 GB gravado com a imagem: expansão automática, um reinício, aviso com o espaço total; `chkdsk`/`fsck` limpo depois. Repetir pela opção do menu num cartão regravado | pendente |
 | H16 | Cartão cheio: aviso em Armazenamento; salvar estado falha sem corromper | pendente |

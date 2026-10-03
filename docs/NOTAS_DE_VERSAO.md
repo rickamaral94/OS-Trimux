@@ -1,3 +1,33 @@
+# TriMux 0.5.0 (pré-lançamento)
+
+**Estado: não testado em um Brick Pro físico.** Novidade: **ferramentas
+próprias** na aba Aplicativos ([FERRAMENTAS.md](FERRAMENTAS.md)):
+
+* **Estatísticas de jogo:** tempo total, sessões, último jogo, os 10 mais
+  jogados e o tempo por plataforma, a partir do tempo de jogo que o TriMux já
+  conta desde a 0.4.7.
+* **Jogo surpresa:** sorteia um jogo, de preferência um que você nunca abriu,
+  e mostra ele na lista, pronto para jogar.
+* **Gerenciador de arquivos:** navega pelas pastas do cartão com tamanho e
+  data e apaga arquivos com confirmação. As pastas do TriMux e do sistema
+  oficial são somente leitura.
+* **Arquivos pelo navegador:** com o Wi-Fi conectado, os arquivos do cartão
+  aparecem no navegador do computador ou do celular, em
+  `http://<endereço do aparelho>:8080`. Dá para baixar, enviar jogos e BIOS
+  (arrastando para a página, com barra de progresso), criar pastas e apagar
+  com confirmação, sem tirar o cartão.
+  * Usa a BusyBox httpd do próprio firmware: nada é instalado.
+  * Só funciona com a janela aberta no aparelho, e não tem senha, como o FTP.
+  * Envios incompletos nunca ficam no cartão.
+* **Limpeza do cartão:** acha e apaga, depois de confirmar, os arquivos que
+  o macOS e o Windows criam ao copiar (`._arquivo`, `.DS_Store`,
+  `Thumbs.db`...), registros antigos e restos de instalações interrompidas.
+  Jogos, saves, BIOS, capas e configurações nunca são tocados.
+* Enquanto a janela do FTP ou dos arquivos pelo navegador estiver aberta, o
+  aparelho não desliga mais sozinho por inatividade no meio de uma cópia.
+* Por SSH: `trimuxctl stats`, `trimuxctl clean scan|run` e
+  `trimuxctl web start|stop|status`.
+
 # TriMux 0.4.9 (pré-lançamento)
 
 **Estado: não testado em um Brick Pro físico.** Novidades:

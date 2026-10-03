@@ -772,6 +772,13 @@ static void header_row(Menu *m, const char *label)
     h->enabled = 0;
 }
 
+MenuItem *menu_add(Menu *m, int id, const char *label, const char *value, const char *desc)
+{
+    return add(m, id, label, value, desc);
+}
+
+void menu_header(Menu *m, const char *label) { header_row(m, label); }
+
 static void refresh_wifi_status(int force)
 {
     if (!force && A.wst_time && tm_now_ms() - A.wst_time < 2000)
@@ -1509,6 +1516,8 @@ static void store_items(Menu *m)
 static void page_apps(Menu *m)
 {
     tm_strlcpy(m->title, tr("apps.title"), sizeof m->title);
+    tools_items(m);
+    menu_header(m, tr("apps.header"));
     if (!apps_count())
         add(m, ACT_NONE, tr("apps.none"), "", tr("apps.none.desc"))->enabled = 1;
     for (size_t i = 0; i < g_napps; i++) {
@@ -1563,6 +1572,7 @@ void menu_rebuild(void)
     case PAGE_UPDATE: page_update(m); break;
     case PAGE_DATETIME: page_datetime(m); break;
     case PAGE_APPS: page_apps(m); break;
+    default: tools_page(m); break;
     }
     m->sel = sel < m->n ? sel : (m->n ? m->n - 1 : 0);
     m->top = top;
@@ -1711,6 +1721,10 @@ static void restore_emulator(const char *emu_id)
 
 static void activate(MenuItem *it, TmButton b)
 {
+    if (it->id >= ACT_T_FIRST) {
+        tools_activate(cur(), it, b);
+        return;
+    }
     int dir = b == BTN_LEFT ? -1 : 1;
     char msg[512];
     switch (it->id) {
@@ -2208,7 +2222,10 @@ void menu_input(TmButton b)
         if (n && m->items[m->sel].enabled)
             activate(&m->items[m->sel], b);
         break;
-    case BTN_B: menu_close(); break;
+    case BTN_B:
+        if (!tools_back(m))
+            menu_close();
+        break;
     case BTN_MENU:
     case BTN_HOME:
         A.nmenus = 1;
@@ -2220,6 +2237,8 @@ void menu_input(TmButton b)
 
 void menu_dialog_result(int id, long arg, const char *sarg, int yes)
 {
+    if (tools_dialog_result(id, arg, sarg, yes))
+        return;
     if (!yes)
         return;
     switch (id) {

@@ -510,8 +510,8 @@ static void dialog_input(TmButton b)
             d->active = 0;
             if (d->id == DLG_IDLE)
                 A.idle_warned = 0;
-            if (d->id == DLG_FTP)
-                menu_dialog_result(DLG_FTP, 0, NULL, 1);
+            if (d->id == DLG_FTP || d->id == DLG_WEB)
+                menu_dialog_result(d->id, 0, NULL, 1);
         }
         return;
     }
@@ -668,6 +668,10 @@ static void check_idle(void)
     long mins = tm_ini_get_long(&A.settings, "general", "idle_poweroff_min", 0);
     if (mins <= 0 || A.si.charging == 1)
         return;
+    if (A.dlg.active && (A.dlg.id == DLG_FTP || A.dlg.id == DLG_WEB)) {
+        A.last_input = tm_now_ms(); /* files are being copied: never power off in the middle */
+        return;
+    }
     uint64_t idle = tm_now_ms() - A.last_input;
     if (!A.idle_warned && idle > (uint64_t)mins * 60000u) {
         A.idle_warned = 1;
@@ -884,6 +888,7 @@ int app_main(int argc, char **argv)
         }
     }
     net_ftp_stop();
+    tools_web_stop();
     app_save_all();
     input_quit();
     gfx_quit();

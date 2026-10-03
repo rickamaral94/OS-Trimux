@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TriMux · Arquivos</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--fg:#1d2127;--mute:#69707a;--line:#e3e6ea;--acc:#2f6fde;--accfg:#fff;--bad:#c63b3b;--sel:#eef3fd}
+@media (prefers-color-scheme:dark){:root{--bg:#15171a;--card:#1f2226;--fg:#e8eaed;--mute:#9aa1aa;--line:#30353b;--acc:#5b8ff0;--accfg:#0d1117;--bad:#ef6b6b;--sel:#24304a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{position:sticky;top:0;z-index:2;background:var(--card);border-bottom:1px solid var(--line);padding:12px 16px}
+.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;max-width:960px;margin:0 auto}
+h1{font-size:18px;margin:0;font-weight:650}
+h1 span{color:var(--acc)}
+.space{margin-left:auto;color:var(--mute);font-size:13px}
+main{max-width:960px;margin:0 auto;padding:12px 16px 80px}
+.crumbs{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin:4px 0 12px;font-size:14px}
+.crumbs a{color:var(--acc);text-decoration:none;padding:2px 4px;border-radius:4px}
+.crumbs a:hover{background:var(--sel)}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+button,.btn{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--fg);padding:7px 12px;border-radius:8px;cursor:pointer}
+button.primary{background:var(--acc);border-color:var(--acc);color:var(--accfg);font-weight:600}
+button:disabled{opacity:.5;cursor:default}
+.list{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.row{display:flex;align-items:center;gap:10px;padding:9px 12px;border-top:1px solid var(--line);min-height:44px}
+.row:first-child{border-top:0}
+.row:hover{background:var(--sel)}
+.ico{width:22px;text-align:center;flex:none}
+.name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.name a{color:inherit;text-decoration:none}
+.meta{color:var(--mute);font-size:13px;white-space:nowrap}
+.act{flex:none;display:flex;gap:4px}
+.act button{padding:4px 8px;font-size:13px}
+.act .del{color:var(--bad)}
+.empty{padding:24px;text-align:center;color:var(--mute)}
+.drop{border:2px dashed var(--line);border-radius:10px;padding:14px;text-align:center;color:var(--mute);margin-bottom:12px}
+.drop.on{border-color:var(--acc);color:var(--acc)}
+.note{font-size:13px;color:var(--mute);margin-top:16px}
+#queue{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:10px 16px;display:none}
+#queue .in{max-width:960px;margin:0 auto}
+progress{width:100%;height:10px}
+.ro{font-size:12px;color:var(--mute);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+@media (max-width:560px){.meta.t{display:none}}
+</style>
+</head>
+<body>
+<header><div class="top"><h1><span>TriMux</span> · <span id="t-title"></span></h1><div class="space" id="space"></div></div></header>
+<main>
+<nav class="crumbs" id="crumbs"></nav>
+<div class="bar">
+  <button class="primary" id="b-up"></button>
+  <button id="b-dir"></button>
+  <button id="b-ref"></button>
+  <input type="file" id="pick" multiple hidden>
+</div>
+<div class="drop" id="drop"></div>
+<div class="list" id="list"></div>
+<p class="note" id="t-note"></p>
+</main>
+<div id="queue"><div class="in"><div id="q-text"></div><progress id="q-bar" max="1" value="0"></progress></div></div>
+<script>
+"use strict";
+const pt = {
+  title:"Arquivos do cartão", up:"Enviar arquivos", dir:"Nova pasta", ref:"Atualizar",
+  drop:"Arraste arquivos para cá para enviar a esta pasta", root:"Cartão", empty:"Pasta vazia",
+  free:"%1 livres de %2", ro:"somente leitura", dl:"Baixar", del:"Apagar",
+  askdir:"Nome da nova pasta:", askdel:"Apagar \"%1\"? Isso não pode ser desfeito.",
+  askover:"\"%1\" já existe aqui. Substituir?", sending:"Enviando %1 (%2 de %3)…", done:"Envio concluído.",
+  note:"Sem senha: qualquer aparelho nesta rede Wi-Fi pode ver e mudar os arquivos enquanto a janela estiver aberta no TriMux. As pastas do TriMux e do sistema oficial são somente leitura. Depois de enviar jogos, feche a janela no aparelho para a lista de jogos ser atualizada.",
+  err:{protected:"Pasta protegida (somente leitura).",exists:"Já existe um item com esse nome.",notempty:"A pasta não está vazia.",nospace:"Espaço insuficiente no cartão.",name:"Nome inválido.",path:"Caminho inválido.",notfound:"Não encontrado.",incomplete:"O envio foi interrompido.",origin:"Abra esta página pelo endereço mostrado no aparelho.",isdir:"Já existe uma pasta com esse nome.",net:"Sem resposta do aparelho. A janela ainda está aberta?"}
+};
+const en = {
+  title:"Card files", up:"Upload files", dir:"New folder", ref:"Refresh",
+  drop:"Drop files here to upload them to this folder", root:"Card", empty:"Empty folder",
+  free:"%1 free of %2", ro:"read-only", dl:"Download", del:"Delete",
+  askdir:"New folder name:", askdel:"Delete \"%1\"? This cannot be undone.",
+  askover:"\"%1\" already exists here. Replace it?", sending:"Uploading %1 (%2 of %3)…", done:"Upload finished.",
+  note:"No password: any device on this Wi-Fi network can see and change the files while the window is open on TriMux. TriMux's and the official system's folders are read-only. After uploading games, close the window on the device so the game list is refreshed.",
+  err:{protected:"Protected folder (read-only).",exists:"An item with this name already exists.",notempty:"The folder is not empty.",nospace:"Not enough space on the card.",name:"Invalid name.",path:"Invalid path.",notfound:"Not found.",incomplete:"The upload was interrupted.",origin:"Open this page from the address shown on the device.",isdir:"A folder with this name already exists.",net:"No answer from the device. Is the window still open?"}
+};
+const T = (navigator.language || "pt").toLowerCase().startsWith("pt") ? pt : en;
+const fmt = (s, ...a) => a.reduce((r, v, i) => r.replace("%" + (i + 1), v), s);
+const $ = id => document.getElementById(id);
+const API = "cgi-bin/files";
+let cur = "", ro = false;
+
+function size(b) {
+  const u = ["B", "KB", "MB", "GB", "TB"]; let i = 0;
+  while (b >= 1024 && i < u.length - 1) { b /= 1024; i++; }
+  return (i ? b.toFixed(b < 10 ? 1 : 0) : b) + " " + u[i];
+}
+function q(op, path, extra) {
+  let s = API + "?op=" + op + "&path=" + encodeURIComponent(path);
+  for (const k in (extra || {})) s += "&" + k + "=" + encodeURIComponent(extra[k]);
+  return s;
+}
+function errText(code) { return T.err[code] || code; }
+async function post(url) {
+  try {
+    const r = await fetch(url, {method: "POST"});
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) alert(errText(j.error || r.status));
+    return r.ok;
+  } catch (e) { alert(T.err.net); return false; }
+}
+function join(a, b) { return a ? a + "/" + b : b; }
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+function crumbs() {
+  const c = $("crumbs"); c.textContent = "";
+  const parts = cur ? cur.split("/") : [];
+  const add = (label, path) => { const a = el("a", "", label); a.href = "#" + encodeURIComponent(path); c.append(a); };
+  add(T.root, "");
+  parts.forEach((p, i) => { c.append(el("span", "", "›")); add(p, parts.slice(0, i + 1).join("/")); });
+  if (ro) c.append(el("span", "ro", T.ro));
+}
+
+async function load() {
+  let j;
+  try {
+    const r = await fetch(q("list", cur), {cache: "no-store"});
+    j = await r.json();
+    if (!r.ok) { alert(errText(j.error)); if (cur) { location.hash = ""; } return; }
+  } catch (e) { $("list").textContent = ""; $("list").append(el("div", "empty", T.err.net)); return; }
+  ro = j.readonly; crumbs();
+  $("space").textContent = j.total ? fmt(T.free, size(j.free), size(j.total)) : "";
+  $("b-up").disabled = $("b-dir").disabled = ro;
+  $("drop").style.display = ro ? "none" : "";
+  const list = $("list"); list.textContent = "";
+  if (cur) {
+    const r = el("div", "row"); r.append(el("span", "ico", "↩"));
+    const n = el("div", "name"); const a = el("a", "", ".."); a.href = "#" + encodeURIComponent(cur.split("/").slice(0, -1).join("/"));
+    n.append(a); r.append(n); list.append(r);
+  }
+  if (!j.entries.length) list.append(el("div", "empty", T.empty));
+  for (const e of j.entries) {
+    const path = join(cur, e.n), r = el("div", "row");
+    r.append(el("span", "ico", e.d ? "📁" : "📄"));
+    const n = el("div", "name"), a = el("a", "", e.n);
+    if (e.d) a.href = "#" + encodeURIComponent(path); else { a.href = q("get", path); a.download = e.n; }
+    n.append(a); r.append(n);
+    if (!e.d) r.append(el("span", "meta", size(e.s)));
+    r.append(el("span", "meta t", new Date(e.t * 1000).toLocaleDateString()));
+    const act = el("div", "act");
+    if (!e.d) { const b = el("button", "", T.dl); b.onclick = () => { const l = document.createElement("a"); l.href = q("get", path); l.download = e.n; l.click(); }; act.append(b); }
+    if (!ro && !e.ro) {
+      const b = el("button", "del", T.del);
+      b.onclick = async () => { if (confirm(fmt(T.askdel, e.n)) && await post(q("del", path))) load(); };
+      act.append(b);
+    }
+    r.append(act); list.append(r);
+  }
+}
+
+function send(file, i, n, over) {
+  return new Promise(res => {
+    const x = new XMLHttpRequest();
+    x.open("POST", q("put", cur, {name: file.name, overwrite: over ? "1" : "0"}));
+    x.upload.onprogress = ev => { if (ev.lengthComputable) $("q-bar").value = ev.loaded / ev.total; };
+    x.onload = () => { let j = {}; try { j = JSON.parse(x.responseText); } catch (e) {} res({ok: x.status === 200, code: j.error}); };
+    x.onerror = () => res({ok: false, code: "net"});
+    $("q-text").textContent = fmt(T.sending, file.name, i + 1, n); $("q-bar").value = 0;
+    x.send(file);
+  });
+}
+async function upload(files) {
+  if (ro || !files.length) return;
+  $("queue").style.display = "block";
+  for (let i = 0; i < files.length; i++) {
+    let r = await send(files[i], i, files.length, false);
+    if (!r.ok && r.code === "exists" && confirm(fmt(T.askover, files[i].name))) r = await send(files[i], i, files.length, true);
+    else if (!r.ok && r.code !== "exists") alert(files[i].name + ": " + errText(r.code));
+  }
+  $("q-text").textContent = T.done;
+  setTimeout(() => { $("queue").style.display = "none"; }, 1500);
+  load();
+}
+
+$("t-title").textContent = T.title; document.title = "TriMux · " + T.title;
+$("b-up").textContent = T.up; $("b-dir").textContent = T.dir; $("b-ref").textContent = T.ref;
+$("drop").textContent = T.drop; $("t-note").textContent = T.note;
+$("b-up").onclick = () => $("pick").click();
+$("pick").onchange = e => { upload([...e.target.files]); e.target.value = ""; };
+$("b-ref").onclick = load;
+$("b-dir").onclick = async () => { const n = prompt(T.askdir); if (n && await post(q("mkdir", cur, {name: n.trim()}))) load(); };
+const d = $("drop");
+["dragenter", "dragover"].forEach(t => document.addEventListener(t, e => { e.preventDefault(); d.classList.add("on"); }));
+["dragleave", "drop"].forEach(t => document.addEventListener(t, e => { e.preventDefault(); d.classList.remove("on"); }));
+document.addEventListener("drop", e => upload([...e.dataTransfer.files]));
+window.onhashchange = () => { cur = decodeURIComponent(location.hash.slice(1)); load(); };
+window.onhashchange();
+</script>
+</body>
+</html>
