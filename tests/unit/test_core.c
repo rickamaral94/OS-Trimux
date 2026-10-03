@@ -1004,6 +1004,22 @@ static void test_popular_video(void)
     tm_ini_set(&st, "video.GBA", "aspect", "bogus");
     CHECK(tm_video_ra_lines(&st, "GBA", T, lines, sizeof lines, shader, sizeof shader) == 0 && !lines[0] && !shader[0]);
     tm_ini_free(&st);
+
+    /* Ports: PortMaster's own ports are recognised, plain scripts are not */
+    char s1[700], s2[700];
+    snprintf(s1, sizeof s1, "%s/Celeste.sh", T);
+    snprintf(s2, sizeof s2, "%s/mine.sh", T);
+    f = fopen(s1, "w");
+    fputs("#!/bin/bash\ncontrolfolder=/x\nsource $controlfolder/control.txt\n", f);
+    fclose(f);
+    f = fopen(s2, "w");
+    fputs("#!/bin/sh\necho hi\n", f);
+    fclose(f);
+    CHECK(tm_port_is_portmaster(s1) && !tm_port_is_portmaster(s2) && tm_port_is_portmaster("/x/PortMaster.SH"));
+    char pm[600];
+    CHECK(tm_portmaster_launcher("/mnt/SDCARD/TriMux/retroarch/cores", pm, sizeof pm) == 0);
+    CHECK_STR(pm, "/mnt/SDCARD/Emus/tg5040/PORTS.pak/launch.sh");
+    CHECK(tm_portmaster_launcher("/elsewhere/cores", pm, sizeof pm) == -1);
 }
 
 int main(void)

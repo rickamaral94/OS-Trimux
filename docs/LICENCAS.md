@@ -52,6 +52,17 @@ usar as alternativas GPL quando existem).
 obtido exatamente pelos commits de `sources/sources.lock`, e o processo de
 compilação completo está neste repositório (`make all-docker`).
 
+## Baixados sob demanda pela loja (não incluídos na imagem)
+
+| Componente | Uso | Licença | Origem |
+|---|---|---|---|
+| MinUI PortMaster 2.14.0 (inclui PortMaster GUI e programas de terceiros) | Ports | MIT (cada programa incluído tem sua licença) | github.com/ben16w/minui-portmaster |
+| Grout 5.3.1.2 | cliente do RomM | MIT | github.com/rommapp/grout |
+
+Estes pacotes só são baixados quando você escolhe instalar em *Aplicativos ›
+Loja*, direto dos projetos, com versão e SHA-256 fixados em
+`TriMux/share/store.ini`.
+
 ## Usados na compilação ou nos testes (não incluídos na imagem)
 
 | Componente | Uso | Licença |

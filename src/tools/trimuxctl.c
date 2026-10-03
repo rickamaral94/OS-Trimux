@@ -31,6 +31,7 @@
 #include "../core/scrape.h"
 #include "../core/paths.h"
 #include "../core/power.h"
+#include "../core/store.h"
 #include "../core/sysinfo.h"
 #include "../core/update.h"
 #include "../core/util.h"
@@ -398,6 +399,26 @@ static int run_retroarch(const char *ra, const char *cfg, const char *append, co
             execv("/bin/sh", args);
             _exit(127);
         }
+        if (strcmp(l->emu->type, "portmaster") == 0) {
+            /* PortMaster from the app store (MinUI PortMaster pak): its
+             * launch.sh expects MinUI's environment; its own data and logs
+             * go to TriMuxData */
+            char pak[TM_PATH_MAX], data[TM_PATH_MAX];
+            if (tm_portmaster_launcher(P.cores, pak, sizeof pak) != 0 ||
+                tm_path_join(data, sizeof data, P.data, "portmaster") != 0)
+                _exit(127);
+            tm_mkdir_p(data);
+            tm_mkdir_p(P.logdir);
+            setenv("SDCARD_PATH", P.sd, 1);
+            setenv("PLATFORM", "tg5040", 1);
+            setenv("USERDATA_PATH", data, 1);
+            setenv("SHARED_USERDATA_PATH", data, 1);
+            setenv("LOGS_PATH", P.logdir, 1);
+            setenv("TRIMUX", "1", 1);
+            char *args[] = {"/bin/sh", pak, (char *)l->rom_abs, NULL};
+            execv("/bin/sh", args);
+            _exit(127);
+        }
         setenv("HOME", P.ra_home, 1);
         if (chdir(P.retroarch) != 0)
             _exit(127);
@@ -525,7 +546,8 @@ static int cmd_launch(void)
     tm_path_join(ra, sizeof ra, P.retroarch, "retroarch");
     tm_path_join(cache, sizeof cache, P.tmp, "cache"); /* RetroArch archive extraction, in RAM */
     tm_mkdir_p(cache);
-    if (!tm_file_exists(ra) || ensure_ra_config(cfg, sizeof cfg) != 0 ||
+    int needs_ra = strcmp(l.emu->type, "retroarch") == 0; /* ports and PortMaster run scripts */
+    if ((needs_ra && (!tm_file_exists(ra) || ensure_ra_config(cfg, sizeof cfg) != 0)) ||
         tm_launch_write_ra_append(&P, &l, extra, append, sizeof append) != 0) {
         LOGE("launch: RetroArch or its configuration is missing");
         tm_ini_free(&ini);
@@ -833,6 +855,41 @@ static int cmd_scrape(int argc, char **argv)
 /* Online updates. check [--auto] [--wait N]: --auto only if [update]
  * auto_check = 1 (boot). install: the release found by the last check.
  * Exit status: check 0 = up to date, 2 = update available, 1 = error. */
+/* trimuxctl store list|status|install <id>|remove <id> */
+static int cmd_store(int argc, char **argv)
+{
+    const char *sub = argc > 0 ? argv[0] : "list";
+    char path[TM_PATH_MAX];
+    TmStoreItem items[TM_STORE_MAX];
+    size_t n = 0;
+    if (tm_path_join(path, sizeof path, P.share, "store.ini") == 0)
+        n = tm_store_load(path, items, TM_STORE_MAX);
+    if (strcmp(sub, "list") == 0) {
+        for (size_t i = 0; i < n; i++)
+            printf("%s\t%s\t%s\t%s\n", items[i].id, items[i].version,
+                   tm_store_installed(&P, &items[i]) ? "installed" : "available", items[i].name);
+        return 0;
+    }
+    if (strcmp(sub, "status") == 0) {
+        TmStoreStatus st;
+        if (tm_store_status_read(&P, &st) == 0)
+            printf("%s %s %d%% %s%s\n", st.state, st.id, st.percent, st.error,
+                   tm_store_running(&P) ? " (running)" : "");
+        return 0;
+    }
+    const TmStoreItem *it = argc > 1 ? tm_store_find(items, n, argv[1]) : NULL;
+    if ((strcmp(sub, "install") == 0 || strcmp(sub, "remove") == 0) && !it) {
+        fprintf(stderr, "unknown app; see: trimuxctl store list\n");
+        return 1;
+    }
+    if (strcmp(sub, "install") == 0)
+        return tm_store_install(&P, it) == 0 ? 0 : 1;
+    if (strcmp(sub, "remove") == 0)
+        return tm_store_remove(&P, it) == 0 ? 0 : 1;
+    fprintf(stderr, "usage: trimuxctl store list|status|install <id>|remove <id>\n");
+    return 2;
+}
+
 static int cmd_update(int argc, char **argv)
 {
     const char *sub = argc > 0 ? argv[0] : "status";
@@ -1000,6 +1057,8 @@ int main(int argc, char **argv)
         return cmd_scrape(argc - 2, argv + 2);
     if (strcmp(c, "update") == 0)
         return cmd_update(argc - 2, argv + 2);
+    if (strcmp(c, "store") == 0)
+        return cmd_store(argc - 2, argv + 2);
     if (strcmp(c, "app") == 0)
         return cmd_app();
     if (strcmp(c, "time") == 0)

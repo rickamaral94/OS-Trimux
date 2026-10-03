@@ -4,6 +4,7 @@
 #include "log.h"
 #include "util.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -104,7 +105,8 @@ int tm_catalog_load(TmCatalog *cat, const char *systems_ini, const char *emulato
         tm_strlcpy(em->profile, tm_ini_get(&e, id, "profile", "balanced"), sizeof em->profile);
         tm_strlcpy(em->note_key, tm_ini_get(&e, id, "note", ""), sizeof em->note_key);
         em->experimental = (int)tm_ini_get_long(&e, id, "experimental", 0);
-        int is_script = strcmp(em->type, "script") == 0;
+        /* "script" and "portmaster" run a launcher script, no core file */
+        int is_script = strcmp(em->type, "script") == 0 || strcmp(em->type, "portmaster") == 0;
         if ((!is_script && strcmp(em->type, "retroarch") != 0) || (!is_script && !tm_name_is_safe(em->core)) ||
             !tm_name_is_safe(em->config_name)) {
             LOGW("catalog: emulator %s rejected (type/core/config_name)", id);
@@ -169,11 +171,29 @@ int tm_system_supports_emu(const TmSystem *sys, const char *emu_id)
     return 0;
 }
 
+int tm_portmaster_launcher(const char *cores_dir, char *out, size_t size)
+{
+    /* cores_dir is <card>/TriMux/retroarch/cores; PortMaster (installed from
+     * the app store) lives in <card>/Emus/tg5040/PORTS.pak */
+    static const char tail[] = "/TriMux/retroarch/cores";
+    size_t n = strlen(cores_dir), t = sizeof tail - 1;
+    if (n < t || strcmp(cores_dir + n - t, tail) != 0)
+        return -1;
+    char sd[TM_PATH_MAX];
+    if (n - t >= sizeof sd)
+        return -1;
+    memcpy(sd, cores_dir, n - t);
+    sd[n - t] = '\0';
+    return tm_path_join(out, size, sd, TM_PORTMASTER_LAUNCH);
+}
+
 int tm_emulator_available(const TmEmulator *emu, const char *cores_dir)
 {
     char path[TM_PATH_MAX];
     if (emu && strcmp(emu->type, "script") == 0)
         return 1; /* runs with the firmware's /bin/sh */
+    if (emu && strcmp(emu->type, "portmaster") == 0)
+        return tm_portmaster_launcher(cores_dir, path, sizeof path) == 0 && tm_file_exists(path);
     if (!emu || tm_path_join(path, sizeof path, cores_dir, emu->core) != 0)
         return 0;
     return tm_file_exists(path);
@@ -200,4 +220,21 @@ const TmEmulator *tm_catalog_resolve(const TmCatalog *cat, const TmSystem *sys,
     for (int i = 0; !em && i < sys->nemus; i++)
         em = usable(cat, sys, sys->emulators[i], cores_dir);
     return em;
+}
+
+int tm_port_is_portmaster(const char *script_path)
+{
+    const char *base = strrchr(script_path, '/');
+    base = base ? base + 1 : script_path;
+    if (tm_strcasecmp_ascii(base, "portmaster.sh") == 0)
+        return 1;
+    /* PortMaster ports find their tools through $controlfolder */
+    FILE *f = fopen(script_path, "rb");
+    if (!f)
+        return 0;
+    char buf[8192];
+    size_t n = fread(buf, 1, sizeof buf - 1, f);
+    fclose(f);
+    buf[n] = '\0';
+    return strstr(buf, "controlfolder") != NULL;
 }

@@ -8,6 +8,7 @@
 #include "../core/log.h"
 #include "../core/perf.h"
 #include "../core/scrape.h"
+#include "../core/store.h"
 #include "../core/update.h"
 #include "../core/util.h"
 #include "../core/video.h"
@@ -30,7 +31,7 @@ enum {
     ACT_SSH_TOGGLE, ACT_FTP, ACT_CHEEVOS_USER, ACT_CHEEVOS_PASS, ACT_CLEAR_LOGS, ACT_COVERS_RUN, ACT_COVERS_RETRY, ACT_COVERS_SHOW, ACT_COVERS_KIND,
     ACT_UPDATE_CHECK, ACT_UPDATE_INSTALL, ACT_UPDATE_ROLLBACK, ACT_UPDATE_REBOOT,
     ACT_LED_POWER, ACT_TZ, ACT_TIME_SYNC, ACT_TIME_FIELD, ACT_TIME_APPLY, ACT_APP,
-    ACT_VID_ASPECT, ACT_VID_FILTER, ACT_VID_RES, ACT_VID_COLORS, ACT_VID_GHOST, ACT_VID_HD, ACT_SORT,
+    ACT_VID_ASPECT, ACT_VID_FILTER, ACT_VID_RES, ACT_VID_COLORS, ACT_VID_GHOST, ACT_VID_HD, ACT_SORT, ACT_STORE,
 };
 
 static const struct {
@@ -940,6 +941,7 @@ static void ftp_start(void)
 }
 
 static void update_tick(int page);
+static void store_tick(int page);
 
 void net_tick(void)
 {
@@ -975,6 +977,7 @@ void net_tick(void)
         menu_rebuild(); /* download progress / clock */
     }
     update_tick(page);
+    store_tick(page);
 }
 
 void menu_keyboard_done(int purpose, const char *ctx, const char *text, int cancelled)
@@ -1404,13 +1407,108 @@ size_t apps_count(void)
     return g_napps;
 }
 
+/* ---- app store (Aplicativos › Loja) ---- */
+
+static int store_state(TmStoreStatus *st);
+
+static void store_tick(int page)
+{
+    static char last[16];
+    static int seeded;
+    TmStoreStatus st;
+    int busy = store_state(&st);
+    if (!seeded) {
+        seeded = 1;
+        tm_strlcpy(last, st.state, sizeof last);
+    }
+    if (strcmp(st.state, last) != 0) {
+        if (strcmp(st.state, "done") == 0)
+            app_toast(tr("store.done"));
+        else if (strcmp(st.state, "error") == 0)
+            app_toast(tr("store.failed"));
+        tm_strlcpy(last, st.state, sizeof last);
+        if (page == PAGE_APPS)
+            menu_rebuild();
+        if (strcmp(st.state, "done") == 0 || strcmp(st.state, "removed") == 0)
+            app_rescan(); /* new entries in Ports / Apps */
+    } else if (busy && page == PAGE_APPS) {
+        menu_rebuild(); /* progress */
+    }
+}
+
+static TmStoreItem g_store[TM_STORE_MAX];
+static size_t g_nstore;
+
+static size_t store_load(void)
+{
+    char path[TM_PATH_MAX];
+    g_nstore = tm_path_join(path, sizeof path, A.paths.share, "store.ini") == 0 ? tm_store_load(path, g_store, TM_STORE_MAX) : 0;
+    return g_nstore;
+}
+
+/* A busy state whose process is gone was interrupted. */
+static int store_state(TmStoreStatus *st)
+{
+    if (tm_store_status_read(&A.paths, st) != 0) {
+        memset(st, 0, sizeof *st);
+        return 0;
+    }
+    int busy = strcmp(st->state, "downloading") == 0 || strcmp(st->state, "installing") == 0;
+    if (busy && !tm_store_running(&A.paths)) {
+        tm_strlcpy(st->state, "error", sizeof st->state);
+        tm_strlcpy(st->error, "interrupted", sizeof st->error);
+        busy = 0;
+    }
+    return busy;
+}
+
+static void store_spawn(const char *sub, const char *id)
+{
+    char ctl[TM_PATH_MAX];
+    if (tm_path_join(ctl, sizeof ctl, A.paths.sys, "bin/trimuxctl") != 0 || !tm_file_exists(ctl))
+        return;
+    char *argv[] = {ctl, "store", (char *)sub, (char *)id, NULL};
+    tm_spawn(argv, "/", NULL);
+    LOGI("ui: store %s %s started", sub, id);
+}
+
+static void store_items(Menu *m)
+{
+    if (!store_load())
+        return;
+    header_row(m, tr("store.header"));
+    TmStoreStatus st;
+    int busy = store_state(&st);
+    for (size_t i = 0; i < g_nstore; i++) {
+        const TmStoreItem *it = &g_store[i];
+        int inst = tm_store_installed(&A.paths, it), mine = strcmp(st.id, it->id) == 0;
+        char value[64], desc[900], k[64];
+        if (mine && strcmp(st.state, "downloading") == 0)
+            snprintf(value, sizeof value, tr("store.downloading"), st.percent);
+        else if (mine && strcmp(st.state, "installing") == 0)
+            tm_strlcpy(value, tr("store.installing"), sizeof value);
+        else
+            tm_strlcpy(value, tr(inst ? "store.installed" : "store.install"), sizeof value);
+        snprintf(desc, sizeof desc, tr("store.info"), it->desc_key[0] ? tr(it->desc_key) : "", it->version,
+                 (it->size + (1L << 19)) >> 20, it->license, it->source,
+                 tr(it->system ? "store.system.yes" : "store.system.no"));
+        if (mine && strcmp(st.state, "error") == 0) {
+            snprintf(k, sizeof k, "store.err.%s", st.error[0] ? st.error : "unknown");
+            size_t n = strlen(desc);
+            snprintf(desc + n, sizeof desc - n, "\n\n%s", tr(k));
+        }
+        MenuItem *mi = add(m, ACT_STORE, it->name, value, desc);
+        tm_strlcpy(mi->sarg, it->id, sizeof mi->sarg);
+        mi->arg = inst;
+        mi->enabled = !busy || mine;
+    }
+}
+
 static void page_apps(Menu *m)
 {
     tm_strlcpy(m->title, tr("apps.title"), sizeof m->title);
-    if (!apps_count()) {
+    if (!apps_count())
         add(m, ACT_NONE, tr("apps.none"), "", tr("apps.none.desc"))->enabled = 1;
-        return;
-    }
     for (size_t i = 0; i < g_napps; i++) {
         char desc[320];
         snprintf(desc, sizeof desc, "%s%s%s", g_apps[i].desc, g_apps[i].desc[0] ? "\n\n" : "",
@@ -1418,6 +1516,7 @@ static void page_apps(Menu *m)
         MenuItem *it = add(m, ACT_APP, g_apps[i].label, "", desc);
         tm_strlcpy(it->sarg, g_apps[i].dir, sizeof it->sarg);
     }
+    store_items(m);
 }
 
 void menu_rebuild(void)
@@ -1536,7 +1635,8 @@ void menu_draw(void)
         MenuItem *it = &m->items[m->sel];
         int y = top + S(20);
         y += gfx_text_wrap(FONT_M, px + S(22), y, pw - S(44), 3, t->text, it->label) + S(12);
-        y += gfx_text_wrap(FONT_S, px + S(22), y, pw - S(44), 12, t->dim, it->desc) + S(16);
+        int lines = (bottom - y - S(20)) / (gfx_font_height(FONT_S) > 0 ? gfx_font_height(FONT_S) : 1);
+        y += gfx_text_wrap(FONT_S, px + S(22), y, pw - S(44), lines > 12 ? lines : 12, t->dim, it->desc) + S(16);
         if (m->page == PAGE_POWER || (m->page == PAGE_QUICK && it->id == ACT_PROFILE)) {
             long curf = -1, mn = -1, mx = -1;
             char gov[32] = "?", line[96];
@@ -1952,6 +2052,30 @@ static void activate(MenuItem *it, TmButton b)
         if (b == BTN_A)
             app_exit(EXIT_REBOOT);
         return;
+    case ACT_STORE: {
+        if (b != BTN_A)
+            return;
+        TmStoreStatus st;
+        if (store_state(&st))
+            return; /* one at a time */
+        const TmStoreItem *si = tm_store_find(g_store, g_nstore, it->sarg);
+        if (!si)
+            return;
+        char text[512];
+        if (it->arg) {
+            snprintf(text, sizeof text, tr("store.remove.confirm"), si->name);
+            app_dialog(DLG_STORE_REMOVE, si->name, text, 0, si->id, 0);
+        } else {
+            refresh_wifi_status(1);
+            if (!wifi_connected()) {
+                app_dialog(DLG_INFO, si->name, tr("store.needs_wifi"), 0, NULL, 1);
+                return;
+            }
+            snprintf(text, sizeof text, tr("store.install.confirm"), si->name, si->version, (si->size + (1L << 19)) >> 20);
+            app_dialog(DLG_STORE_INSTALL, si->name, text, 0, si->id, 0);
+        }
+        return;
+    }
     case ACT_SORT: {
         int mode = (games_sort_mode() + (b == BTN_LEFT ? 2 : 1)) % 3;
         tm_ini_set(&A.settings, "general", "sort", k_sort_ids[mode]);
@@ -2149,6 +2273,11 @@ void menu_dialog_result(int id, long arg, const char *sarg, int yes)
     }
     case DLG_WIFI_FORGET:
         app_toast(tr(tm_wifi_forget((int)arg) == 0 ? "wifi.forgotten" : "wifi.connect_error"));
+        menu_rebuild();
+        break;
+    case DLG_STORE_INSTALL:
+    case DLG_STORE_REMOVE:
+        store_spawn(id == DLG_STORE_INSTALL ? "install" : "remove", sarg);
         menu_rebuild();
         break;
     case DLG_UPDATE_INSTALL:

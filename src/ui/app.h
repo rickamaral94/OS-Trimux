@@ -41,7 +41,7 @@ enum { VIEW_ALL = -1, VIEW_FAVORITES = -2, VIEW_RECENT = -3 };
 typedef struct {
     char label[96];
     char value[64];
-    char desc[320];
+    char desc[1024];
     int enabled;
     int id;       /* action id (menus.c) */
     long arg;
@@ -223,6 +223,7 @@ enum {
     DLG_NONE = 0, DLG_STOCK, DLG_POWEROFF, DLG_REBOOT, DLG_MKDIRS, DLG_RESTORE_EMU, DLG_GROW, DLG_EXPERIMENTAL,
     DLG_WIZ_SKIP, DLG_POWER_DEFAULT, DLG_INFO, DLG_IDLE, DLG_BOOST,
     DLG_FTP, DLG_SSH, DLG_WIFI_FORGET, DLG_CLEAR_LOGS, DLG_UPDATE_INSTALL, DLG_UPDATE_ROLLBACK, DLG_UPDATE_READY,
+    DLG_STORE_INSTALL, DLG_STORE_REMOVE,
 };
 
 #endif
