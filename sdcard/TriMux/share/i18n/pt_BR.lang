@@ -807,3 +807,7 @@ covers.waiting = %d de %d: esperando o Wi-Fi voltar…
 home.last_played = Último jogado
 settings.animations = Animações
 settings.animations.desc = A seleção desliza suavemente entre os itens e a cor do fundo acompanha a plataforma escolhida. Desligue para um menu mais seco (gasta um pouco menos de bateria no menu).
+view.title = Ver jogos como
+view.list = Lista
+view.grid = Grade de capas
+view.desc = Lista: nomes com a capa no painel ao lado. Grade de capas: 10 capas por tela (5 × 2), boa depois de baixar as capas; jogos sem capa aparecem como um cartão com a cor da plataforma. Nas duas, A joga, X favorita e START abre as opções; na grade, as setas andam pela grade e L1/R1 trocam de página.

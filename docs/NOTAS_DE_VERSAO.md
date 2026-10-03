@@ -1,3 +1,19 @@
+# TriMux 0.5.2 (pré-lançamento)
+
+**Estado: não testado em um Brick Pro físico.** Novidade:
+
+* **Grade de capas:** a lista de jogos pode ser vista como uma grade de 10
+  capas por tela (5 × 2). Mude em *START › Ver jogos como* na lista de jogos,
+  ou em *Configurações › Aparência*.
+  * As setas andam pela grade, e L1/R1 trocam de página.
+  * O jogo selecionado fica em destaque e as outras capas um pouco
+    escurecidas. O nome e a plataforma dele aparecem embaixo.
+  * Jogos sem capa aparecem como um cartão com a cor e a sigla da
+    plataforma.
+  * As capas carregam aos poucos (duas por quadro), para a navegação não
+    travar enquanto as imagens abrem.
+  * A lista continua sendo o padrão.
+
 # TriMux 0.5.1 (pré-lançamento)
 
 **Estado: não testado em um Brick Pro físico.** Novidade: **visual

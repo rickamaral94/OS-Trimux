@@ -55,6 +55,14 @@ int gfx_badge(int x, int y, int h, uint32_t rgb, const char *label);
  * cache; a missing file is looked up again after a few seconds, so covers
  * downloaded in the background show up. */
 int gfx_image(const char *path, int x, int y, int max_w, int max_h);
+/* Same, reporting the drawn size. Returns 1 drawn, 0 no image, -1 not loaded
+ * yet (only a couple of new images are decoded per frame; see
+ * gfx_image_pending). */
+int gfx_image_box(const char *path, int x, int y, int max_w, int max_h, int *out_w, int *out_h);
+/* 1 when an image was put off this frame: draw again soon. */
+int gfx_image_pending(void);
+/* New images decoded per frame (0 = no limit, for screenshots and tests). */
+void gfx_set_load_budget(int n);
 
 /* Saves the current frame as BMP (host screenshots for documentation). */
 int gfx_screenshot(const char *path);

@@ -805,3 +805,7 @@ covers.waiting = %d of %d: waiting for the Wi-Fi to come back…
 home.last_played = Last played
 settings.animations = Animations
 settings.animations.desc = The selection glides between items and the background colour follows the chosen platform. Turn off for a plainer menu (uses slightly less battery in the menu).
+view.title = Show games as
+view.list = List
+view.grid = Cover grid
+view.desc = List: names with the cover in the side panel. Cover grid: 10 covers per screen (5 × 2), great once covers are downloaded; games without a cover show as a card in the platform colour. In both, A plays, X favourites and START opens the options; in the grid, the d-pad moves around and L1/R1 change page.

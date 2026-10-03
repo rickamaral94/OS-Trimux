@@ -32,7 +32,7 @@ enum {
     ACT_UPDATE_CHECK, ACT_UPDATE_INSTALL, ACT_UPDATE_ROLLBACK, ACT_UPDATE_REBOOT,
     ACT_LED_POWER, ACT_TZ, ACT_TIME_SYNC, ACT_TIME_FIELD, ACT_TIME_APPLY, ACT_APP,
     ACT_VID_ASPECT, ACT_VID_FILTER, ACT_VID_RES, ACT_VID_COLORS, ACT_VID_GHOST, ACT_VID_HD, ACT_SORT, ACT_STORE,
-    ACT_COVERS_SYS,
+    ACT_COVERS_SYS, ACT_GAMES_VIEW,
 };
 
 static const struct {
@@ -170,6 +170,7 @@ static void page_appearance(Menu *m)
     it = add(m, ACT_TOGGLE, tr("settings.show_empty"), onoff((int)setting_long("general", "show_empty", 0)),
              tr("settings.show_empty.desc"));
     tm_strlcpy(it->sarg, "general/show_empty", sizeof it->sarg);
+    add(m, ACT_GAMES_VIEW, tr("view.title"), tr(games_grid() ? "view.grid" : "view.list"), tr("view.desc"));
     it = add(m, ACT_TOGGLE, tr("settings.animations"), onoff((int)setting_long("general", "animations", 1)),
              tr("settings.animations.desc"));
     tm_strlcpy(it->sarg, "general/animations", sizeof it->sarg);
@@ -635,6 +636,7 @@ static void page_game_options(Menu *m)
     add(m, ACT_SEARCH, tr("game.search"), "Y", tr("game.search.desc"));
     add(m, ACT_FAV_ONLY, tr("game.fav_only"), onoff(A.fav_only), tr("game.fav_only.desc"));
     add_sort_item(m);
+    add(m, ACT_GAMES_VIEW, tr("view.title"), tr(games_grid() ? "view.grid" : "view.list"), tr("view.desc"));
 }
 
 static int grow_plan(TmFatGrowPlan *plan, char *err, size_t errsz)
@@ -2092,6 +2094,11 @@ static void activate(MenuItem *it, TmButton b)
         app_mark_settings();
         break;
     case ACT_COVERS_SYS: covers_toggle_system(it->sarg); break;
+    case ACT_GAMES_VIEW:
+        tm_ini_set(&A.settings, "general", "games_view", games_grid() ? "list" : "grid");
+        app_mark_settings();
+        A.games_top = 0;
+        break;
     case ACT_COVERS_KIND: {
         static const char *const kinds[] = {"boxart", "snap", "title"};
         int i = (int)tm_thumb_kind_parse(tm_ini_get(&A.settings, "covers", "kind", "boxart"));

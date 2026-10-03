@@ -184,6 +184,8 @@ int games_sort_mode(void);
 int games_rank(long gi);
 void games_draw(void);
 uint32_t games_ambient(void);
+/* 1 when the game list is shown as a cover grid */
+int games_grid(void);
 void games_input(TmButton b);
 long games_selected_index(void);
 

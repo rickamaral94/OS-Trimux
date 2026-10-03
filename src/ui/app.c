@@ -970,8 +970,10 @@ int app_main(int argc, char **argv)
     A.dirty = 1;
     A.last_input = tm_now_ms();
 
-    if (script || shot)
+    if (script || shot) {
         g_anim_off = 1; /* screenshots and tests see the final frame */
+        gfx_set_load_budget(0);
+    }
     if (shot) {
         draw();
         gfx_screenshot(shot);
@@ -1011,6 +1013,8 @@ int app_main(int argc, char **argv)
             }
         }
         /* 200 ms: the volume/brightness indicator follows the keys closely */
+        if (gfx_image_pending())
+            g_animating = 1; /* covers still loading, a couple per frame */
         int timeout = (input_any_held() || A.screen == SCR_CTRLTEST || g_animating) ? 16 : 200;
         if (g_animating)
             A.dirty = 1; /* next animation frame */
