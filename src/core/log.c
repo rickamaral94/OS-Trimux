@@ -7,7 +7,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <time.h>
+#include <unistd.h>
 
 static char g_path[TM_PATH_MAX];
 static char g_tag[32] = "trimux";
@@ -68,6 +70,17 @@ void tm_log(int level, const char *fmt, ...)
 }
 
 void tm_log_close(void) {}
+
+void tm_log_sync(void)
+{
+    if (!g_path[0])
+        return;
+    int fd = open(g_path, O_WRONLY | O_APPEND | O_CLOEXEC);
+    if (fd < 0)
+        return;
+    fsync(fd);
+    close(fd);
+}
 
 void tm_log_set_level(int min_level)
 {

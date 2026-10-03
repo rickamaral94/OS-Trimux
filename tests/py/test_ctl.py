@@ -1,5 +1,6 @@
 """trimuxctl against a simulated Brick Pro (see conftest.py)."""
 import os
+import shutil
 import time
 
 from conftest import POLICY, ctl, make_device, read, write
@@ -228,6 +229,33 @@ def test_scrape_auto_respects_setting_and_network_errors(env, device, card):
     assert len(curl_calls(device)) == 3              # gives up after 3 network failures
     missing = os.path.join(card, "TriMuxData/cache/covers-missing.txt")
     assert not os.path.exists(missing) or read(missing) == ""   # network errors are not "not found"
+
+
+def test_scrape_interrupted_by_a_restart_does_not_loop(env, device, card):
+    """A restart in the middle of a download leaves TriMuxData/state/scrape_active:
+    the next automatic run (boot) does not download again until the following
+    boot; a manual run always does. The restart is simulated by creating the
+    marker and clearing the RAM folder."""
+    connect(device)
+    write(os.path.join(card, "TriMuxData/config/trimux.ini"), "[covers]\nauto = 1\n")
+    write(os.path.join(device, "netstate/covers"), GBA + "Celeste%20Classic%20%28World%29.png\n")
+    marker = os.path.join(card, "TriMuxData/state/scrape_active")
+    write(marker, "")
+    r = ctl(env, "scrape", "--auto", check=False)
+    assert r.returncode == 4 and not curl_calls(device) and not os.path.exists(marker)
+    assert "state=interrupted" in ctl(env, "scrape", "--status").stdout
+    assert "did not finish" in read(os.path.join(card, "TriMuxData/logs/trimux.log"))
+    assert ctl(env, "scrape", "--auto", check=False).returncode == 4 and not curl_calls(device)
+    # a manual run downloads, logs its progress and leaves no marker
+    ctl(env, "scrape")
+    assert os.path.exists(os.path.join(card, "Imgs/GBA/Celeste Classic (World).png"))
+    assert not os.path.exists(marker)
+    assert "scrape: progress" in read(os.path.join(card, "TriMuxData/logs/trimux.log"))
+    # next boot (RAM folder cleared): automatic downloads are back
+    shutil.rmtree(env["TRIMUX_TMP"])
+    curl_n = len(curl_calls(device))
+    ctl(env, "scrape", "--auto", "--retry")
+    assert len(curl_calls(device)) > curl_n
 
 
 def test_card_grow_auto_needs_the_image_marker(env):

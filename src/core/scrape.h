@@ -48,7 +48,7 @@ void tm_arcade_free(TmArcadeNames *a);
 /* ---- status shared with the menu (/tmp/trimux/scrape.status) ---- */
 
 typedef struct {
-    char state[16]; /* running, done, stopped, nowifi, network, error */
+    char state[16]; /* running, done, stopped, nowifi, network, error, interrupted */
     int done, total, found, missing;
 } TmScrapeStatus;
 
@@ -63,7 +63,14 @@ typedef struct {
     TmThumbKind kind;
     int retry_missing; /* also try games that were not found before */
     int wait_wifi_s;   /* wait this long for a Wi-Fi connection */
+    int autorun;       /* started by itself (boot, after a rescan), not by the user */
 } TmScrapeOptions;
+
+/* While downloading, TriMuxData/state/scrape_active exists on the card. If
+ * an automatic run finds it, the previous run never finished (the device
+ * restarted or lost power): it does not start again by itself until the next
+ * boot, so a crash while downloading can never become a restart loop. The
+ * state is then "interrupted"; a manual download always runs. */
 
 /* Returns 0 when it ran to the end (even if some covers were not found). */
 int tm_scrape_run(const TmPaths *p, const TmCatalog *cat, const TmLibrary *lib, const TmScrapeOptions *o);

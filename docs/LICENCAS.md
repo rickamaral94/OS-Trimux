@@ -33,6 +33,8 @@ verificados pelo `scripts/fetch_sources.sh`.
 | Handy | Lynx | Zlib | libretro/libretro-handy |
 | Stella 2014 | Atari 2600 | GPL-2.0-or-later | libretro/stella2014-libretro |
 | ProSystem | Atari 7800 | GPL-2.0-only | libretro/prosystem-libretro |
+| Mupen64Plus-Next | Nintendo 64 | GPL-2.0-or-later (inclui GLideN64, GPL-2.0-or-later) | libretro/mupen64plus-libretro-nx |
+| Flycast | Dreamcast | GPL-2.0-only | flyinghead/flycast |
 | FinalBurn Neo | Arcade/Neo Geo | **Licença FBNeo (não comercial)** | libretro/FBNeo |
 | PrBoom (+ `prboom.wad`) | DOOM | GPL-2.0-or-later | libretro/libretro-prboom |
 | TyrQuake | Quake | GPL-2.0-or-later | libretro/tyrquake |
@@ -68,6 +70,7 @@ Loja*, direto dos projetos, com versão e SHA-256 fixados em
 | Componente | Uso | Licença |
 |---|---|---|
 | Debian bullseye (snapshot 2026-08-24): GCC 10, glibc 2.31, binutils, mtools, dosfstools, QEMU | contêiner de compilação | várias livres (GPL/LGPL) |
+| CMake 3.28.6 (binário oficial da Kitware) | compilar o Flycast no contêiner | BSD-3-Clause |
 | SDL 2.30.8 | cabeçalhos e biblioteca para *linkar* (no aparelho é usada a cópia do firmware) | Zlib |
 | Firmware oficial TrimUI v1.1.1 | auditoria de hardware e testes de ABI em QEMU; **não redistribuído** | proprietário (TrimUI) |
 

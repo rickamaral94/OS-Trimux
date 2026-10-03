@@ -60,4 +60,13 @@ RUN echo "${SDL2_SHA256}  /tmp/sdl2.tar.gz" | sha256sum -c - \
 
 ENV PKG_CONFIG_PATH=/opt/aarch64/lib/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig
 
+# Newer CMake (Kitware's official build), only for cores that need it
+# (Flycast requires 3.22+); installed as /opt/cmake-3.28/bin/cmake so the
+# rest of the build keeps bullseye's CMake. Fetched and checked on the host.
+ARG CMAKE_NEW_SHA256=931e3c0d546ee03ca72bb147ccd9b49e3b6252f765f66bf21b9d165519940458
+COPY downloads/cmake-3.28.6-linux-x86_64.tar.gz /tmp/cmake.tar.gz
+RUN echo "${CMAKE_NEW_SHA256}  /tmp/cmake.tar.gz" | sha256sum -c - \
+ && mkdir -p /opt/cmake-3.28 && tar -xzf /tmp/cmake.tar.gz -C /opt/cmake-3.28 --strip-components=1 \
+ && rm -f /tmp/cmake.tar.gz
+
 WORKDIR /src

@@ -36,7 +36,9 @@ fbneo|src/burner/libretro|Makefile|platform=unix|fbneo_libretro.so
 mgba|cmake|-|-|mgba_libretro.so
 prboom|.|Makefile|platform=unix|prboom_libretro.so
 tyrquake|.|Makefile|platform=unix|tyrquake_libretro.so
-nxengine|.|Makefile|platform=unix|nxengine_libretro.so'
+nxengine|.|Makefile|platform=unix|nxengine_libretro.so
+mupen64plus_next|.|Makefile|platform=unix ARCH=aarch64 WITH_DYNAREC=aarch64 FORCE_GLES3=1|mupen64plus_next_libretro.so
+flycast|cmake-new|-|-|flycast_libretro.so'
 
 want="$*"
 failed=""
@@ -57,6 +59,16 @@ echo "$RECIPES" | while IFS='|' read -r name sub mkfile extra out; do
                  -DUSE_SQLITE3=OFF -DUSE_ELF=OFF -DUSE_LUA=OFF -DUSE_EDITLINE=OFF -DUSE_EPOXY=OFF \
                  -DUSE_DISCORD_RPC=OFF -DENABLE_SCRIPTING=OFF -DSKIP_GIT=ON \
               && cmake --build "$b" -j "$JOBS"; } >"$log" 2>&1; then
+            echo "FAILED $name (see $log)"; continue
+        fi
+        cp "$b/$out" "$OUT/$out"
+    elif [ "$sub" = "cmake-new" ]; then
+        # Flycast needs CMake 3.22+ (the toolchain's /opt/cmake-3.28); GLES 3, no Vulkan
+        b=$ROOT/build/obj/$name
+        rm -rf "$b"
+        if ! { /opt/cmake-3.28/bin/cmake -S "$SRC/$name" -B "$b" -G Ninja -DCMAKE_TOOLCHAIN_FILE=/opt/cmake-aarch64.cmake \
+                 -DCMAKE_BUILD_TYPE=Release -DLIBRETRO=ON -DUSE_GLES=ON -DUSE_VULKAN=OFF -DUSE_OPENMP=OFF \
+              && /opt/cmake-3.28/bin/cmake --build "$b" -j "$JOBS"; } >"$log" 2>&1; then
             echo "FAILED $name (see $log)"; continue
         fi
         cp "$b/$out" "$OUT/$out"

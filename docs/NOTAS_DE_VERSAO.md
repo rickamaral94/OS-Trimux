@@ -1,3 +1,38 @@
+# TriMux 0.4.9 (pré-lançamento)
+
+**Estado: não testado em um Brick Pro físico.** Novidades:
+
+* **Nintendo 64** (pasta `Roms/N64`): emulador Mupen64Plus-Next, com
+  recompilador para ARM64 e vídeo GLideN64 em GLES 3.
+  * Jogos leves devem rodar bem; os mais pesados podem ficar lentos neste
+    processador.
+  * Em *Configurações › Emuladores › Nintendo 64* há a **Resolução interna**:
+    Padrão 640×480, Original (mais leve) ou 2x.
+* **Dreamcast** (pasta `Roms/DC`): emulador Flycast, em GLES 3.
+  * Funciona sem BIOS, mas `Bios/dc/dc_boot.bin` e `Bios/dc/dc_flash.bin`
+    (do seu console) melhoram a compatibilidade.
+  * Formatos `.chd`, `.cdi`, `.gdi`, `.cue` e `.m3u`.
+  * **Resolução interna**: 640×480, 1,5x ou 2x.
+* **Ordem por popularidade** também no N64 (53 jogos, da lista de vendas da
+  Wikipedia). O Dreamcast não tem lista publicada e fica sem ranking.
+* Os dois emuladores são compilados pelo TriMux a partir dos fontes
+  oficiais (GPL), nos commits de `sources/sources.lock`. Nada do sistema
+  oficial é copiado.
+* **Capas: sem ciclo de reinício.** Se o aparelho reiniciar no meio do
+  download de capas, o download automático não recomeça sozinho no boot
+  seguinte (antes, com capas automáticas ligadas, ele recomeçava a cada boot
+  e podia reiniciar de novo). O estado mostra *Não terminou: o aparelho
+  reiniciou*; *Baixar capas agora* continua de onde parou
+  ([CAPAS.md](CAPAS.md)).
+  * A cada 50 capas o registro grava o andamento, a memória livre e a
+    temperatura, direto no cartão, para mostrar onde e em que condições o
+    reinício aconteceu.
+  * Pausa curta entre downloads, para um ritmo mais leve no Wi-Fi e no
+    cartão.
+  * A causa dos reinícios ainda não foi confirmada no aparelho. Nenhum
+    vazamento de memória foi encontrado no TriMux; a suspeita é o driver de
+    Wi-Fi ou o kernel sob tráfego contínuo, ou temperatura.
+
 # TriMux 0.4.8 (pré-lançamento)
 
 **Estado: não testado em um Brick Pro físico.** Novidades:
