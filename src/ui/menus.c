@@ -527,8 +527,10 @@ static void video_items(Menu *m, const char *sys_id, const TmEmulator *em)
         long r = strtol(video_get(sys_id, "res") ? video_get(sys_id, "res") : "0", NULL, 10);
         if (r < 0 || r >= caps->nres)
             r = 0;
-        it = add(m, ACT_VID_RES, tr("video.res"), tr(caps->res[r].label_key),
-                 tr(strcmp(em->id, "pcsx_rearmed") == 0 ? "video.res.desc.ps" : "video.res.desc"));
+        const char *rdesc = strcmp(em->id, "pcsx_rearmed") == 0 ? "video.res.desc.ps"
+                            : strcmp(em->id, "mupen64plus_next") == 0 || strcmp(em->id, "flycast") == 0 ? "video.res.desc.3d"
+                                                                                                        : "video.res.desc";
+        it = add(m, ACT_VID_RES, tr("video.res"), tr(caps->res[r].label_key), tr(rdesc));
         it->arg = caps->nres;
         tm_strlcpy(it->sarg, sys_id, sizeof it->sarg);
     } else {

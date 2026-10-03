@@ -1,6 +1,7 @@
 Coloque aqui as BIOS (cópias dos seus próprios aparelhos), com estes nomes:
 
   PlayStation        scph5501.bin (ou scph1001.bin / scph7001.bin) - opcional
+  Dreamcast          dc/dc_boot.bin e dc/dc_flash.bin (pasta dc)   - recomendada
   Game Boy Advance   gba_bios.bin                                   - opcional
   Sega CD            bios_CD_U.bin / bios_CD_E.bin / bios_CD_J.bin   - obrigatória
   PC Engine CD       syscard3.pce                                   - para jogos em CD

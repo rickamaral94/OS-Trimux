@@ -1,3 +1,24 @@
+# TriMux 0.4.9 (pré-lançamento)
+
+**Estado: não testado em um Brick Pro físico.** Novidades:
+
+* **Nintendo 64** (pasta `Roms/N64`): emulador Mupen64Plus-Next, com
+  recompilador para ARM64 e vídeo GLideN64 em GLES 3.
+  * Jogos leves devem rodar bem; os mais pesados podem ficar lentos neste
+    processador.
+  * Em *Configurações › Emuladores › Nintendo 64* há a **Resolução interna**:
+    Padrão 640×480, Original (mais leve) ou 2x.
+* **Dreamcast** (pasta `Roms/DC`): emulador Flycast, em GLES 3.
+  * Funciona sem BIOS, mas `Bios/dc/dc_boot.bin` e `Bios/dc/dc_flash.bin`
+    (do seu console) melhoram a compatibilidade.
+  * Formatos `.chd`, `.cdi`, `.gdi`, `.cue` e `.m3u`.
+  * **Resolução interna**: 640×480, 1,5x ou 2x.
+* **Ordem por popularidade** também no N64 (53 jogos, da lista de vendas da
+  Wikipedia). O Dreamcast não tem lista publicada e fica sem ranking.
+* Os dois emuladores são compilados pelo TriMux a partir dos fontes
+  oficiais (GPL), nos commits de `sources/sources.lock`. Nada do sistema
+  oficial é copiado.
+
 # TriMux 0.4.8 (pré-lançamento)
 
 **Estado: não testado em um Brick Pro físico.** Novidades:

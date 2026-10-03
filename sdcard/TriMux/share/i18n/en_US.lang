@@ -725,3 +725,11 @@ store.err.unknown = Not finished.
 store.portmaster.desc = Hundreds of adapted PC games (ports) such as Stardew Valley, Celeste, Half-Life and Cave Story. Once installed, open Ports › Portmaster to pick and install ports; they show up in the same Ports list. Some need files from a purchased copy of the game. This is "MinUI PortMaster", which bundles everything PortMaster needs.
 store.grout.desc = RomM client: downloads games, saves and covers from your RomM server (romm.app) straight to the card. Needs your own RomM server, on your network or online.
 emu.portmaster.note = Opens PortMaster and the ports it installed. Experimental on this device.
+
+# N64 and Dreamcast
+emu.mupen64.note = Nintendo 64 with dynarec and GLideN64 video (GLES 3). Light games run well; heavier ones may slow down. Use the Safe performance profile.
+emu.flycast.note = Dreamcast. Works without BIOS (HLE mode), but dc_boot.bin and dc_flash.bin in Bios/dc improve compatibility. Heavy games may slow down.
+video.res.n64default = Default (640×480)
+video.res.native_light = Original (lighter)
+video.res.1_5x = 1.5x
+video.res.desc.3d = Draws the 3D graphics with more pixels: sharper, but much heavier on this CPU. If the game slows down, go back to the lighter option.

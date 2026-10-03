@@ -20,8 +20,9 @@ cartão devolve o aparelho ao estado original.
   Brasil** (inglês incluído; novos idiomas são um arquivo de texto).
 * Poucos passos até jogar: **Continuar**, Recentes, Favoritos, Todos os jogos,
   plataformas com contagem, busca com teclado na tela, filtros.
-* **22 plataformas, 20 núcleos** (RetroArch 1.22.2 + núcleos libretro
-  compilados para Cortex-A53), incluindo **ports**: DOOM (PrBoom), Quake
+* **24 plataformas, 22 núcleos** (RetroArch 1.22.2 + núcleos libretro
+  compilados para Cortex-A53), com **Nintendo 64** (Mupen64Plus-Next) e
+  **Dreamcast** (Flycast), incluindo **ports**: DOOM (PrBoom), Quake
   (TyrQuake), Cave Story (NXEngine) e scripts `.sh` no estilo PortMaster. Troca de emulador **por jogo** ou **por
   plataforma** com o botão SELECT.
 * Encontra jogos em pastas conhecidas (cartão oficial TrimUI, MinUI/NextUI,

@@ -72,7 +72,11 @@ docker/downloads/SDL2-2.30.8.tar.gz:
 	scripts/fetch.sh https://github.com/libsdl-org/SDL/releases/download/release-2.30.8/SDL2-2.30.8.tar.gz \
 	    380c295ea76b9bd72d90075793971c8bcb232ba0a69a9b14da4ae8f603350058 $@
 
-toolchain: docker/downloads/SDL2-2.30.8.tar.gz
+docker/downloads/cmake-3.28.6-linux-x86_64.tar.gz:
+	scripts/fetch.sh https://github.com/Kitware/CMake/releases/download/v3.28.6/cmake-3.28.6-linux-x86_64.tar.gz \
+	    931e3c0d546ee03ca72bb147ccd9b49e3b6252f765f66bf21b9d165519940458 $@
+
+toolchain: docker/downloads/SDL2-2.30.8.tar.gz docker/downloads/cmake-3.28.6-linux-x86_64.tar.gz
 	docker image inspect $(TOOLCHAIN_IMAGE) >/dev/null 2>&1 || docker build -t $(TOOLCHAIN_IMAGE) docker/
 
 docker-%: toolchain

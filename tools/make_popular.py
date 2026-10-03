@@ -30,6 +30,7 @@ SOURCES = {
     "GBA": "List_of_best-selling_Game_Boy_Advance_video_games",
     "MD": "List_of_best-selling_Sega_Genesis_video_games",
     "PS": "List_of_best-selling_PlayStation_video_games",
+    "N64": "List_of_best-selling_Nintendo_64_video_games",
 }
 
 # Entries that stand for more than one game, or whose cartridge is named
@@ -82,6 +83,7 @@ ALIASES = {
     ("SFC", "Kirby Super Star"): ["Kirby's Fun Pak", "Hoshi no Kirby Super Deluxe"],
     ("SFC", "Super Mario Kart"): ["Super Mario Kart"],
     ("MD", "Sonic the Hedgehog 2"): ["Sonic The Hedgehog 2"],
+    ("N64", "Star Fox 64"): ["Lylat Wars"],
     ("PS", "Harry Potter and the Philosopher's Stone"): ["Harry Potter and the Sorcerer's Stone"],
     ("PS", "Everybody's Golf"): ["Hot Shots Golf", "Minna no Golf"],
     ("PS", "Resident Evil"): ["Biohazard"],
@@ -168,6 +170,9 @@ def main():
             print("missing", path)
             continue
         games = parse(open(path, encoding="utf-8").read())
+        if not games:
+            print(sysid, "no table found, skipped")
+            continue
         with open(os.path.join(OUT, sysid + ".txt"), "w", encoding="utf-8") as f:
             f.write("# Best-selling games, most sold first (%d entries).\n" % len(games))
             f.write("# Source: https://en.wikipedia.org/wiki/%s (retrieved %s),\n" % (page, RETRIEVED))
