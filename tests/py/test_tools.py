@@ -186,15 +186,66 @@ def test_stats_last_game_opens_its_options(env, card):
 
 @needs_ui
 def test_file_manager_deletes_after_confirmation(env, card):
-    write(os.path.join(card, "AAA/zz.txt"), "bye")
-    write(os.path.join(card, "AAA/zzz.txt"), "stay")
-    # root: AAA, Roms, TriMux, TriMuxData -> AAA -> zz.txt -> A (dialog, "Não" selected) -> B keeps it
+    write(os.path.join(card, "AAA/zz.bin"), "bye")
+    write(os.path.join(card, "AAA/zzz.bin"), "stay")
+    # root: AAA, Roms, TriMux, TriMuxData -> AAA -> zz.bin -> A (dialog, "Não" selected) -> B keeps it
     r = ui(env, APPS + ",DOWN,DOWN,A,A,A,B,B,B,B")
-    assert r.returncode == 0 and os.path.exists(os.path.join(card, "AAA/zz.txt"))
+    assert r.returncode == 0 and os.path.exists(os.path.join(card, "AAA/zz.bin"))
     r = ui(env, APPS + ",DOWN,DOWN,A,A,A,LEFT,A,B,B,B")
     assert r.returncode == 0
-    assert not os.path.exists(os.path.join(card, "AAA/zz.txt"))
-    assert read(os.path.join(card, "AAA/zzz.txt")) == "stay"
+    assert not os.path.exists(os.path.join(card, "AAA/zz.bin"))
+    assert read(os.path.join(card, "AAA/zzz.bin")) == "stay"
+
+
+LOG_LINES = "".join("line %03d of the port output, long enough to need wrapping on the screen of the device %s\n"
+                    % (i, "x" * (i % 7) * 20) for i in range(300)) + "Error: libmono.so not found\n"
+
+
+@needs_ui
+def test_file_manager_reads_text_files_and_x_deletes(env, card, tmp_path):
+    write(os.path.join(card, "AAA/Celeste.log"), LOG_LINES)
+    shot = str(tmp_path / "viewer.bmp")
+    # AAA -> Celeste.log -> A opens the reader (end of the file first), B back
+    r = ui(env, APPS + ",DOWN,DOWN,A,A,A,shot=%s,UP,L1,B,B,B,B" % shot)
+    assert r.returncode == 0 and os.path.exists(os.path.join(card, "AAA/Celeste.log"))
+    log = read(os.path.join(card, "TriMuxData/logs/trimux.log"))
+    assert "ui: viewing" in log and "AAA/Celeste.log" in log
+    assert os.path.getsize(shot) > 100000
+    # X asks to delete (default "Não"); LEFT,A confirms
+    r = ui(env, APPS + ",DOWN,DOWN,A,A,X,LEFT,A,B,B,B")
+    assert r.returncode == 0 and not os.path.exists(os.path.join(card, "AAA/Celeste.log"))
+
+
+@needs_ui
+def test_reader_shows_only_the_end_of_big_files(env, card, tmp_path):
+    write(os.path.join(card, "AAA/big.txt"), "y" * 300000 + "\nlast line\n")
+    r = ui(env, APPS + ",DOWN,DOWN,A,A,A,B,B,B,B")
+    assert r.returncode == 0
+    assert ", end only)" in read(os.path.join(card, "TriMuxData/logs/trimux.log"))
+
+
+@needs_ui
+def test_closed_app_dialog_opens_the_log(env, card, tmp_path):
+    write(os.path.join(card, "TriMuxData/logs/apps/Celeste.log"), LOG_LINES)
+    os.makedirs(env["TRIMUX_TMP"], exist_ok=True)
+    write(os.path.join(env["TRIMUX_TMP"], "lastrun.ini"),
+          "[run]\nlabel = Celeste\nlog = TriMuxData/logs/apps/Celeste.log\ncode = 1\nseconds = 2\n")
+    shot = str(tmp_path / "closed.bmp")
+    # the notice comes up with "Sim" selected: A opens the reader
+    r = ui(env, "shot=%s,A,B" % shot)
+    assert r.returncode == 0
+    assert "TriMuxData/logs/apps/Celeste.log" in read(os.path.join(card, "TriMuxData/logs/trimux.log")).split("ui: viewing")[-1]
+
+
+@needs_ui
+def test_diagnostics_lists_the_app_logs(env, card):
+    write(os.path.join(card, "TriMuxData/logs/apps/Grout.log"), "# Grout\nlib missing\n")
+    # Configurações -> Sistema -> Registros e desempenho; last items: Ver log do TriMux,
+    # Registros de aplicativos e ports, Apagar registros
+    diag = "UP,A" + ",DOWN" * 10 + ",A" + ",DOWN" * 5 + ",A"
+    r = ui(env, diag + ",UP,UP,A,A,B,B,B,B")
+    assert r.returncode == 0
+    assert "logs/apps/Grout.log" in read(os.path.join(card, "TriMuxData/logs/trimux.log"))
 
 
 @needs_ui

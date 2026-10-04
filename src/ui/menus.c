@@ -1054,7 +1054,10 @@ static void page_diag(Menu *m)
     tm_strlcpy(it->sarg, "diag/verbose", sizeof it->sarg);
     it = add(m, ACT_TOGGLE, tr("diag.ralog"), onoff((int)setting_long("diag", "retroarch_log", 0)), tr("diag.ralog.desc"));
     tm_strlcpy(it->sarg, "diag/retroarch_log", sizeof it->sarg);
-    add_page(m, PAGE_LOG, tr("diag.viewlog"), tr("system.log.desc"));
+    it = add(m, ACT_T_VIEW, tr("diag.viewlog"), "›", tr("system.log.desc"));
+    tm_strlcpy(it->sarg, "TriMuxData/logs/trimux.log", sizeof it->sarg);
+    it = add(m, ACT_T_LOGS, tr("diag.applogs"), "›", tr("diag.applogs.desc"));
+    tm_strlcpy(it->sarg, "TriMuxData/logs/apps", sizeof it->sarg);
     add(m, ACT_CLEAR_LOGS, tr("diag.clear"), "", tr("diag.clear.desc"));
 }
 
@@ -2309,6 +2312,10 @@ void menu_input(TmButton b)
     case BTN_RIGHT:
         if (n && m->items[m->sel].enabled)
             activate(&m->items[m->sel], b);
+        break;
+    case BTN_X:
+        if (n)
+            tools_button_x(m, &m->items[m->sel]);
         break;
     case BTN_B:
         if (!tools_back(m))

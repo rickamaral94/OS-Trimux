@@ -1,3 +1,26 @@
+# TriMux 0.5.4 (pré-lançamento)
+
+**Estado:** testado só no computador; falta confirmar no aparelho (TESTES.md,
+H83).
+
+* **Leitor de texto no aparelho.** Na 0.5.3 os registros de aplicativos e
+  ports eram gravados, mas não havia como lê-los sem tirar o cartão. Agora:
+  * **Configurações › Sistema › Registros e desempenho › Registros de
+    aplicativos e ports** abre a pasta `TriMuxData/logs/apps`, e A num
+    arquivo mostra o texto;
+  * quando um aplicativo ou port fecha logo depois de abrir, o aviso
+    pergunta *Ver o registro agora?* e abre o leitor direto;
+  * **Ver log do TriMux** usa o mesmo leitor, com o arquivo inteiro, e não
+    só as últimas 40 linhas;
+  * no **Gerenciador de arquivos**, A num arquivo de texto (`.log`, `.txt`,
+    `.sh`, `.json`, `.ini`, `.cfg` e outros) abre o leitor. Apagar passou
+    para o **X** (sempre com confirmação). Arquivos que não são texto
+    continuam pedindo para apagar com A.
+* O leitor mostra o fim do arquivo primeiro (as linhas mais novas), quebra as
+  linhas longas e rola com ▲▼, página com L1/R1 (ou ◀▶) e vai ao início ou
+  ao fim com L2/R2. Arquivos grandes mostram só os últimos 128 KiB. Ele só
+  lê: nada é gravado.
+
 # TriMux 0.5.3 (pré-lançamento)
 
 **Estado:** correções a partir do primeiro uso num Brick Pro, relatado pelo

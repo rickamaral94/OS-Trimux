@@ -193,6 +193,52 @@ typedef struct {
     long mtime;
 } FmEntry;
 
+/* Text files open in the viewer: by extension (no file read per row), so a
+ * page with hundreds of games stays quick. */
+static int file_is_text(const char *name)
+{
+    static const char *const ext[] = {".log", ".txt", ".sh", ".json", ".ini", ".cfg", ".conf", ".md",
+                                      ".csv", ".xml", ".opt", ".lang", ".m3u", ".cue", ".lst", ".py"};
+    const char *dot = strrchr(name, '.');
+    for (size_t i = 0; dot && i < sizeof ext / sizeof ext[0]; i++)
+        if (strcasecmp(dot, ext[i]) == 0)
+            return 1;
+    return 0;
+}
+
+static void view_file(const char *rel)
+{
+    char abs[TM_PATH_MAX];
+    if (tm_path_join(abs, sizeof abs, A.paths.sd, rel) != 0 || !tm_path_is_safe_under(A.paths.sd, abs))
+        return;
+    if (!textview_is_text(abs)) {
+        app_dialog(DLG_INFO, tr("tools.files"), tr("files.not_text"), 0, NULL, 1);
+        return;
+    }
+    if (textview_open(abs, rel) != 0)
+        app_toast(tr("files.unreadable_file"));
+}
+
+static void ask_delete(MenuItem *it)
+{
+    if (it->arg) {
+        app_dialog(DLG_INFO, tr("tools.files"), tr("files.protected"), 0, NULL, 1);
+        return;
+    }
+    const char *name = strrchr(it->sarg, '/');
+    char text[512];
+    snprintf(text, sizeof text, tr("files.delete.confirm"), name ? name + 1 : it->sarg, it->value);
+    app_dialog(DLG_FILE_DELETE, tr("files.delete"), text, 0, it->sarg, 0);
+}
+
+int tools_button_x(Menu *m, MenuItem *it)
+{
+    if (m->page != PAGE_FILES || it->id != ACT_T_FILE)
+        return 0;
+    ask_delete(it);
+    return 1;
+}
+
 static int cmp_fm(const void *a, const void *b)
 {
     const FmEntry *x = a, *y = b;
@@ -268,9 +314,13 @@ static void page_files(Menu *m)
         if (prot) {
             size_t l = strlen(desc);
             snprintf(desc + l, sizeof desc - l, "\n\n%s", tr("files.protected"));
+            if (!v[i].dir && file_is_text(v[i].name)) {
+                l = strlen(desc);
+                snprintf(desc + l, sizeof desc - l, "\n%s", tr("files.text.view"));
+            }
         } else if (!v[i].dir) {
             size_t l = strlen(desc);
-            snprintf(desc + l, sizeof desc - l, "\n\n%s", tr("files.delete.hint"));
+            snprintf(desc + l, sizeof desc - l, "\n\n%s", tr(file_is_text(v[i].name) ? "files.text.hint" : "files.delete.hint"));
         }
         char label[96];
         snprintf(label, sizeof label, "%s%s", v[i].dir ? "▸ " : "", v[i].name);
@@ -403,16 +453,29 @@ void tools_activate(Menu *m, MenuItem *it, TmButton b)
             menu_rebuild();
         }
         return;
-    case ACT_T_FILE:
+    case ACT_T_FILE: {
         if (b != BTN_A)
             return;
-        if (it->arg) {
-            app_dialog(DLG_INFO, tr("tools.files"), tr("files.protected"), 0, NULL, 1);
-        } else {
-            const char *name = strrchr(it->sarg, '/');
-            char text[512];
-            snprintf(text, sizeof text, tr("files.delete.confirm"), name ? name + 1 : it->sarg, it->value);
-            app_dialog(DLG_FILE_DELETE, tr("files.delete"), text, 0, it->sarg, 0);
+        const char *name = strrchr(it->sarg, '/');
+        if (file_is_text(name ? name + 1 : it->sarg))
+            view_file(it->sarg); /* X deletes (tools_button_x) */
+        else
+            ask_delete(it);
+        return;
+    }
+    case ACT_T_VIEW:
+        if (b == BTN_A) {
+            char abs[TM_PATH_MAX];
+            if (tm_path_join(abs, sizeof abs, A.paths.sd, it->sarg) != 0 || textview_open(abs, it->label) != 0)
+                app_dialog(DLG_INFO, it->label, tr("log.empty"), 0, NULL, 1);
+        }
+        return;
+    case ACT_T_LOGS:
+        if (b == BTN_A) {
+            char abs[TM_PATH_MAX];
+            if (tm_path_join(abs, sizeof abs, A.paths.logdir, "apps") == 0)
+                tm_mkdir_p(abs);
+            menu_open(PAGE_FILES, 0, it->sarg);
         }
         return;
     default: return;
@@ -444,6 +507,13 @@ int tools_dialog_result(int id, long arg, const char *sarg, int yes)
         app_toast(msg);
         g_clean_valid = 0;
         menu_rebuild();
+        return 1;
+    }
+    case DLG_RUN_LOG: {
+        char abs[TM_PATH_MAX];
+        if (yes && sarg && sarg[0] && tm_path_join(abs, sizeof abs, A.paths.sd, sarg) == 0 &&
+            tm_path_is_safe_under(A.paths.sd, abs) && textview_open(abs, sarg) != 0)
+            app_toast(tr("files.unreadable_file"));
         return 1;
     }
     case DLG_FILE_DELETE: {
