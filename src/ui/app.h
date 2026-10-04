@@ -31,7 +31,7 @@ enum {
     EXIT_CARD_GROW = 40,
 };
 
-typedef enum { SCR_HOME, SCR_GAMES, SCR_MENU, SCR_WIZARD, SCR_KEYBOARD, SCR_CTRLTEST, SCR_INFO } ScreenType;
+typedef enum { SCR_HOME, SCR_GAMES, SCR_MENU, SCR_WIZARD, SCR_KEYBOARD, SCR_CTRLTEST, SCR_INFO, SCR_TEXT } ScreenType;
 
 /* special "systems" for the game list */
 enum { VIEW_ALL = -1, VIEW_FAVORITES = -2, VIEW_RECENT = -3 };
@@ -242,13 +242,15 @@ enum {
     DLG_NONE = 0, DLG_STOCK, DLG_POWEROFF, DLG_REBOOT, DLG_MKDIRS, DLG_RESTORE_EMU, DLG_GROW, DLG_EXPERIMENTAL,
     DLG_WIZ_SKIP, DLG_POWER_DEFAULT, DLG_INFO, DLG_IDLE, DLG_BOOST,
     DLG_FTP, DLG_SSH, DLG_WIFI_FORGET, DLG_CLEAR_LOGS, DLG_UPDATE_INSTALL, DLG_UPDATE_ROLLBACK, DLG_UPDATE_READY,
-    DLG_STORE_INSTALL, DLG_STORE_REMOVE, DLG_WEB, DLG_CLEAN, DLG_FILE_DELETE,
+    DLG_STORE_INSTALL, DLG_STORE_REMOVE, DLG_WEB, DLG_CLEAN, DLG_FILE_DELETE, DLG_RUN_LOG,
 };
 
 /* menu actions of tools.c (menus.c hands every id from ACT_T_FIRST on to it) */
 enum {
     ACT_T_FIRST = 500, ACT_T_PAGE = ACT_T_FIRST, ACT_T_RANDOM, ACT_T_GAME, ACT_T_WEB, ACT_T_CLEAN_TOGGLE,
     ACT_T_CLEAN_RUN, ACT_T_CLEAN_RESCAN, ACT_T_FILE_DIR, ACT_T_FILE, ACT_T_FILE_PAGE,
+    ACT_T_VIEW,     /* opens the text viewer on sarg (a path inside the card) */
+    ACT_T_LOGS,     /* file manager at TriMuxData/logs/apps */
 };
 
 /* menus.c: rows for pages built elsewhere */
@@ -262,6 +264,15 @@ void tools_activate(Menu *m, MenuItem *it, TmButton b);
 int tools_dialog_result(int id, long arg, const char *sarg, int yes);
 /* B in the file manager goes up a folder (1) before leaving the page (0) */
 int tools_back(Menu *m);
+/* X in the file manager: delete the selected file (1 when handled) */
+int tools_button_x(Menu *m, MenuItem *it);
 void tools_web_stop(void);
+
+/* textview.c: full-screen reader for logs and other text files */
+int textview_open(const char *abs, const char *title);
+/* 1 when the file looks like text (no NUL bytes in its first 4 KiB) */
+int textview_is_text(const char *abs);
+void textview_draw(void);
+void textview_input(TmButton b);
 
 #endif

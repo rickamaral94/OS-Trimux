@@ -809,6 +809,7 @@ static void draw(void)
     case SCR_KEYBOARD: keyboard_draw(); break;
     case SCR_CTRLTEST: ctrltest_draw(); break;
     case SCR_INFO: info_draw(); break;
+    case SCR_TEXT: textview_draw(); break;
     }
     if (A.dlg.active)
         draw_dialog();
@@ -841,6 +842,7 @@ static void dispatch(TmButton b)
     case SCR_KEYBOARD: keyboard_input(b); break;
     case SCR_CTRLTEST: ctrltest_input(b); break;
     case SCR_INFO: info_input(b); break;
+    case SCR_TEXT: textview_input(b); break;
     }
 }
 
@@ -943,7 +945,14 @@ static void run_report(void)
     snprintf(title, sizeof title, tr("run.closed.title"), r.label[0] ? r.label : "?");
     snprintf(body, sizeof body, tr("run.closed.body"), r.secs, r.code, r.log[0] ? r.log : "-");
     LOGW("ui: %s closed after %lu s with code %d", r.label, r.secs, r.code);
-    app_dialog(DLG_INFO, title, body, 0, NULL, 1);
+    if (!r.log[0]) {
+        app_dialog(DLG_INFO, title, body, 0, NULL, 1);
+        return;
+    }
+    size_t l = strlen(body);
+    snprintf(body + l, sizeof body - l, "\n\n%s", tr("run.closed.view"));
+    app_dialog(DLG_RUN_LOG, title, body, 0, r.log, 0);
+    A.dlg.sel = 0; /* "Sim": reading the log is the likely next step */
 }
 
 int app_main(int argc, char **argv)

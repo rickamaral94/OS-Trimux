@@ -107,6 +107,7 @@ Marque com data, firmware, versão do TriMux e observações ao executar.
 | H80 | Grout (loja) e um aplicativo da TrimUI em `Apps/` abrem; um app quebrado de propósito (ex.: `launch.sh` com `exit 1`) volta ao menu com o aviso e o registro em `TriMuxData/logs/apps/` | pendente |
 | H81 | Modo rápido: um jogo pesado de N64, PSP, Dreamcast e PlayStation com a chave desligada e ligada; anotar FPS (*FPS na tela*), engasgos de som e resposta dos controles | pendente |
 | H82 | Ports do cartão original (ex.: Celeste) com a 0.5.3: abrem, ou o registro em `TriMuxData/logs/apps/` mostra o arquivo que falta | pendente |
+| H83 | Leitor de texto: abrir um registro de port pelo aviso *Ver o registro agora?*, pelo Diagnóstico e pelo Gerenciador de arquivos; rolar, passar página e ir ao início/fim sem travar; um arquivo grande (vários MB) abre rápido mostrando só o final; X apaga com confirmação | pendente |
 | H47 | Tela de início do TriMux aparece logo depois do logotipo da TrimUI e enquanto os jogos são indexados | pendente |
 | H15 | Primeiro boot de um cartão de 32 GB e de 128 GB gravado com a imagem: expansão automática, um reinício, aviso com o espaço total; `chkdsk`/`fsck` limpo depois. Repetir pela opção do menu num cartão regravado | pendente |
 | H16 | Cartão cheio: aviso em Armazenamento; salvar estado falha sem corromper | pendente |
