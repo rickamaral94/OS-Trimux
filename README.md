@@ -44,8 +44,10 @@ cartão devolve o aparelho ao estado original.
   [docs/CAPAS.md](docs/CAPAS.md).
 * **Imagem dos jogos** por plataforma, em linguagem simples: formato da tela,
   visual (Pixel suave, Tela de LCD, TV antiga), resolução interna no
-  PlayStation, DOOM e Quake, cores e rastro de LCD nos portáteis e texturas
-  HD no NES. [docs/IMAGEM.md](docs/IMAGEM.md).
+  PlayStation, N64, PSP, Dreamcast, DOOM e Quake, cores e rastro de LCD nos
+  portáteis, texturas HD no NES e **modo rápido** (pular quadros quando o
+  jogo fica lento) no PlayStation, N64, PSP e Dreamcast.
+  [docs/IMAGEM.md](docs/IMAGEM.md).
 * **Ordem dos jogos** por nome, por popularidade (mais vendidos da
   plataforma, das listas de vendas da Wikipedia) ou pelos que você mais
   jogou (tempo contado no aparelho).
@@ -53,7 +55,9 @@ cartão devolve o aparelho ao estado original.
   Grout): instalação em um toque pelo Wi-Fi, com versão e SHA-256 fixados.
   [docs/PORTS.md](docs/PORTS.md), [docs/LOJA.md](docs/LOJA.md).
 * **Aplicativos** em uma seção própria, separada dos jogos (formato TrimUI:
-  pasta `Apps/` do cartão, apps da memória interna e os do sistema).
+  pasta `Apps/` do cartão, apps da memória interna e os do sistema), abertos
+  como no sistema oficial e com o que mostram gravado em
+  `TriMuxData/logs/apps/`.
 * **Ferramentas próprias:** estatísticas de jogo, jogo surpresa,
   gerenciador de arquivos, **arquivos pelo navegador** (enviar e baixar
   jogos pelo Wi-Fi, sem tirar o cartão) e limpeza do cartão.

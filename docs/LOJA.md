@@ -11,7 +11,13 @@ imagem do TriMux.
 | Grout | Cliente do [RomM](https://romm.app): baixa jogos, saves e capas do seu servidor RomM | 5.3.1.2 | MIT | `Apps/Grout` |
 
 **Estado:** testado só no computador, com downloads simulados (veja
-[TESTES.md](TESTES.md), H64–H66). Ainda falta confirmar no aparelho.
+[TESTES.md](TESTES.md), H64–H66). No primeiro uso num Brick Pro, o Grout não
+abria e voltava ao menu: o `launch.sh` dele acha a biblioteca
+`libSDL2_gfx` (que o firmware não tem) a partir de um caminho relativo, e o
+TriMux o abria com o caminho completo. A 0.5.3 abre os aplicativos como o
+sistema oficial. Em QEMU, com as bibliotecas do firmware v1.1.1, o binário do
+Grout acha a biblioteca do jeito novo e não acha do antigo; a correção ainda
+não foi confirmada no aparelho (H80).
 
 ## Como funciona
 
@@ -62,3 +68,9 @@ mas alguns:
 * ou mudam configurações do sistema oficial na memória interna.
 
 Esses não entram na loja. Use-os por sua conta.
+
+Os aplicativos são abertos como no sistema oficial (`cd <pasta>;
+./launch.sh`). O que eles mostram na tela de texto vai para
+`TriMuxData/logs/apps/<pasta>.log` quando fecham (só os últimos 32 KiB; nada
+é gravado no cartão enquanto o aplicativo está aberto). Se um aplicativo
+fecha logo depois de abrir, o menu avisa e mostra esse caminho.

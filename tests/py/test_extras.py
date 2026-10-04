@@ -63,6 +63,63 @@ def test_app_requests_outside_the_app_folders_are_refused(env, apps, tmp_path):
     assert not os.path.exists(str(tmp_path / "pwned"))
 
 
+def test_app_starts_like_the_stock_menu_with_relative_launcher(env, apps):
+    """Grout's launch.sh finds its bundled library from a relative $0 (the
+    stock menu runs "cd <folder>; ./launch.sh"); with a full path it fails."""
+    sd = env["TRIMUX_SDCARD"]
+    d = make_app(os.path.join(sd, "Apps"), "Grout", "Grout",
+                 'CUR_DIR="$(dirname "$0")"\ncd "$CUR_DIR"/grout || exit 1\n'
+                 'export LD_LIBRARY_PATH=$CUR_DIR/lib:$LD_LIBRARY_PATH\n'
+                 '[ -f "${LD_LIBRARY_PATH%%:*}/libSDL2_gfx-1.0.so.0" ] || { echo "lib missing" >&2; exit 127; }\n'
+                 'echo started > ../ran\n')
+    write(os.path.join(d, "grout/lib/libSDL2_gfx-1.0.so.0"), "x")
+    os.makedirs(env["TRIMUX_TMP"], exist_ok=True)
+    write(os.path.join(env["TRIMUX_TMP"], "app.ini"), "[app]\ndir = %s\n" % d)
+    ctl(env, "app")
+    assert read(os.path.join(d, "ran")).strip() == "started"
+
+
+def test_app_output_is_saved_and_a_quick_failure_is_reported(env, apps):
+    sd, tmp = env["TRIMUX_SDCARD"], env["TRIMUX_TMP"]
+    d = make_app(os.path.join(sd, "Apps"), "Fails", "Falha", 'echo "hello from app"\necho "no libfoo.so" >&2\nexit 3\n')
+    os.makedirs(tmp, exist_ok=True)
+    write(os.path.join(tmp, "app.ini"), "[app]\ndir = %s\n" % d)
+    ctl(env, "app")
+    log = read(os.path.join(sd, "TriMuxData/logs/apps/Fails.log"))
+    assert "hello from app" in log and "no libfoo.so" in log and "exit code 3" in log
+    last = read(os.path.join(tmp, "lastrun.ini"))
+    assert "label = Falha" in last and "code = 3" in last and "log = TriMuxData/logs/apps/Fails.log" in last
+
+
+def test_app_output_keeps_only_the_end(env, apps):
+    sd, tmp = env["TRIMUX_SDCARD"], env["TRIMUX_TMP"]
+    # ~200 KB of output: only the last 32 KiB reach the card
+    d = make_app(os.path.join(sd, "Apps"), "Chatty", "Chatty",
+                 'i=0\nwhile [ $i -lt 4000 ]; do echo "line $i ................................"; i=$((i+1)); done\n')
+    os.makedirs(tmp, exist_ok=True)
+    write(os.path.join(tmp, "app.ini"), "[app]\ndir = %s\n" % d)
+    ctl(env, "app")
+    log = read(os.path.join(sd, "TriMuxData/logs/apps/Chatty.log"))
+    assert "line 3999 " in log and "line 0 " not in log and "only the last 32 KiB" in log
+    assert len(log) < 33 * 1024
+
+
+@needs_ui
+def test_menu_tells_when_an_app_closed_right_away(env, apps, tmp_path):
+    tmp = env["TRIMUX_TMP"]
+    os.makedirs(tmp, exist_ok=True)
+    write(os.path.join(tmp, "lastrun.ini"),
+          "[run]\nlabel = Grout\nlog = TriMuxData/logs/apps/Grout.log\ncode = 127\nseconds = 1\n")
+    shot = str(tmp_path / "closed.bmp")
+    ui(env, "shot=%s" % shot)
+    assert "Grout closed after 1 s with code 127" in read(os.path.join(env["TRIMUX_SDCARD"], "TriMuxData/logs/trimux.log"))
+    assert not os.path.exists(os.path.join(tmp, "lastrun.ini"))
+    # a normal session (minutes, code 0) says nothing
+    write(os.path.join(tmp, "lastrun.ini"), "[run]\nlabel = Notes\ncode = 0\nseconds = 600\n")
+    ui(env, "shot=%s" % shot)
+    assert "Notes closed" not in read(os.path.join(env["TRIMUX_SDCARD"], "TriMuxData/logs/trimux.log"))
+
+
 @needs_ui
 def test_apps_section_lists_and_starts(env, apps):
     shot = os.path.join(os.path.dirname(apps["marker"]), "apps.bmp")
@@ -201,6 +258,18 @@ def test_image_page_extras_follow_the_emulator(env, tmp_path):
     shot = str(tmp_path / "hd.bmp")
     assert ui(env, EMULATORS + ",DOWN,A,DOWN,DOWN,DOWN,shot=%s,A,B,B,B" % shot).returncode == 0
     assert "hdpacks = 0" in read(cfg)
+
+
+@needs_ui
+def test_fast_mode_switch_on_heavy_platforms(env, tmp_path):
+    cfg = os.path.join(env["TRIMUX_SDCARD"], "TriMuxData/config/trimux.ini")
+    shot = str(tmp_path / "psp.bmp")
+    write(os.path.join(env["TRIMUX_SDCARD"], "TriMux/retroarch/cores/ppsspp_libretro.so"), "fake core\n")
+    # PSP (13th platform): Formato, Visual, Resolução interna, Modo rápido -> on
+    assert ui(env, EMULATORS + ",DOWN" * 13 + ",A,DOWN,DOWN,DOWN,A,shot=%s,B,B,B" % shot).returncode == 0
+    ini = read(cfg)
+    assert "[video.PSP]" in ini and "speed = 1" in ini
+    assert os.path.getsize(shot) > 100000
 
 
 # ---- game order (Settings > Library) ----

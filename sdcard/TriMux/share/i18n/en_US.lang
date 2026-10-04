@@ -42,6 +42,8 @@ games.hints = A:Play|X:Favorite|Y:Search|SELECT:Emulator|START:Options|B:Back
 games.hints_empty = Y:Search|B:Back
 
 launch.cannot = Cannot open
+run.closed.title = %s closed
+run.closed.body = It closed %lu s after opening (code %d). What it printed was saved to %s. That file helps find out what is missing.
 launch.no_emu = No emulator for %s is installed on this card.
 launch.bios_missing = This system needs a BIOS. Copy it to the card's /Bios folder: %s
 launch.experimental.title = Experimental feature
@@ -684,6 +686,12 @@ video.ghost = LCD trail
 video.ghost.desc = Imitates the slight trail of old LCD screens. Some games need it for transparency and to stop objects flickering (e.g. F-Zero, Wave Race).
 video.hd = HD textures
 video.hd.desc = Replaces the graphics with high-resolution versions when the game has an HD pack (Mesen HD Pack format).\n\nHow to use: put the pack folder in Bios/HdPacks/<game file name, without extension>/ with its hires.txt inside. Works best with the game as .nes (not inside a .zip). Packs are not included with TriMux.\n\nPacks found on the card: %d.
+video.speed = Fast mode
+video.speed.desc = For games that slow down or stutter in the sound. When the device cannot keep up, the emulator skips drawing some frames so the game and the sound keep the right speed. The picture is a little less smooth at those moments. Off: nothing changes.
+video.speed.desc.pcsx_rearmed = PlayStation: skips a frame when the sound is about to break up.
+video.speed.desc.mupen64plus_next = Nintendo 64: draws the picture on another processor core and repeats the last frame when the next one is late. Controls may respond a little later.
+video.speed.desc.ppsspp = PSP: skips frames automatically when the game falls behind.
+video.speed.desc.flycast = Dreamcast: skips frames automatically when the game slows down (with threaded rendering, the default).
 game.image = Platform picture
 game.image.desc = Screen shape, look (LCD, old TV…), resolution and textures for this platform's games.
 

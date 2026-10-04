@@ -1,3 +1,37 @@
+# TriMux 0.5.3 (pré-lançamento)
+
+**Estado:** correções a partir do primeiro uso num Brick Pro, relatado pelo
+usuário. As correções desta versão foram testadas só no computador e ainda
+precisam ser confirmadas no aparelho (TESTES.md, H80–H82).
+
+* **Grout e outros aplicativos voltavam ao menu sem abrir.** O sistema
+  oficial abre os aplicativos com `cd <pasta>; ./launch.sh`; o TriMux passava
+  o caminho completo do script. O `launch.sh` do Grout acha a biblioteca
+  `libSDL2_gfx`, que vem com ele e não existe no firmware, a partir desse
+  caminho, e com o caminho completo procurava na pasta errada. Agora
+  aplicativos e ports no formato da TrimUI são abertos exatamente como no
+  sistema oficial. Verificado em QEMU com o binário do Grout 5.3.1.2 e as
+  bibliotecas do firmware v1.1.1: com o caminho completo a biblioteca não é
+  encontrada, com o relativo é. Ainda falta confirmar no aparelho.
+* **Registro de aplicativos e ports:** o que eles mostram na tela de texto,
+  inclusive os erros, vai para `TriMuxData/logs/apps/<nome>.log` quando
+  fecham. Só os últimos 32 KiB são guardados, e nada é gravado no cartão
+  enquanto o programa está aberto, para não deixá-lo mais lento.
+* **Aviso quando algo fecha logo:** se um aplicativo ou port fecha poucos
+  segundos depois de abrir, o menu mostra quanto tempo ele ficou aberto, o
+  código de saída e o caminho do registro.
+* **Ports do cartão original (ex.: Celeste):** abertos do mesmo jeito que no
+  sistema oficial. Muitos deles também precisam de pastas de fora da pasta
+  do jogo, como `Apps/PortMaster` ou `Data/` do cartão original. Se ainda
+  não abrirem, o registro diz qual arquivo falta ([PORTS.md](PORTS.md),
+  seção 4).
+* **Modo rápido** para PlayStation, Nintendo 64, PSP e Dreamcast, em
+  *Configurações › Emuladores › <plataforma>* (ou *START › Imagem da
+  plataforma* num jogo). Quando o jogo fica lento, o emulador pula quadros
+  para manter a velocidade e o som. No N64 a imagem também passa a ser
+  desenhada em outro núcleo do processador. Desligado por padrão
+  ([IMAGEM.md](IMAGEM.md)).
+
 # TriMux 0.5.2 (pré-lançamento)
 
 **Estado: não testado em um Brick Pro físico.** Novidade:

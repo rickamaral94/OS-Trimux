@@ -22,6 +22,7 @@
 #include "../../src/core/power.h"
 #include "../../src/core/sysinfo.h"
 #include "../../src/core/tools.h"
+#include "../../src/core/runlog.h"
 #include "../../src/core/util.h"
 #include "../../src/core/video.h"
 
@@ -1021,6 +1022,32 @@ static void test_popular_video(void)
     CHECK(tm_video_ra_lines(&st, "GBA", T, lines, sizeof lines, shader, sizeof shader) == 0 && !lines[0] && !shader[0]);
     tm_ini_free(&st);
 
+    /* fast mode: every option of the emulator, on and off; unset writes nothing */
+    TmIni sp;
+    tm_ini_init(&sp);
+    snprintf(p, sizeof p, "%s/PPSSPP.opt", T);
+    unlink(p);
+    CHECK(tm_video_core_options(&sp, "PSP", tm_video_caps("ppsspp"), p) == 0 && !tm_file_exists(p));
+    tm_ini_set(&sp, "video.PSP", "speed", "1");
+    CHECK(tm_video_core_options(&sp, "PSP", tm_video_caps("ppsspp"), p) == 0);
+    o = tm_read_file(p, 4096, &len);
+    CHECK(o && strstr(o, "ppsspp_auto_frameskip = \"enabled\"") && strstr(o, "ppsspp_frameskip = \"1\""));
+    free(o);
+    tm_ini_set(&sp, "video.PSP", "speed", "0");
+    CHECK(tm_video_core_options(&sp, "PSP", tm_video_caps("ppsspp"), p) == 0);
+    o = tm_read_file(p, 4096, &len);
+    CHECK(o && strstr(o, "ppsspp_auto_frameskip = \"disabled\"") && strstr(o, "ppsspp_frameskip = \"disabled\""));
+    free(o);
+    snprintf(p, sizeof p, "%s/Flycast.opt", T);
+    tm_ini_set(&sp, "video.DC", "speed", "1");
+    CHECK(tm_video_core_options(&sp, "DC", tm_video_caps("flycast"), p) == 0);
+    o = tm_read_file(p, 4096, &len);
+    CHECK(o && strstr(o, "reicast_auto_skip_frame = \"some\"") && strstr(o, "reicast_threaded_rendering = \"enabled\""));
+    free(o);
+    CHECK(tm_video_caps("pcsx_rearmed")->speed_key[0] && tm_video_caps("mupen64plus_next")->speed_key[1]);
+    CHECK(!tm_video_caps("gambatte")->speed_key[0]);
+    tm_ini_free(&sp);
+
     /* Ports: PortMaster's own ports are recognised, plain scripts are not */
     char s1[700], s2[700];
     snprintf(s1, sizeof s1, "%s/Celeste.sh", T);
@@ -1085,6 +1112,59 @@ static void test_tools(void)
     tm_ini_free(&plays);
 }
 
+static void test_runlog(void)
+{
+    static TmTail t;
+    static char out[TM_TAIL_SIZE];
+    tm_tail_init(&t);
+    tm_tail_add(&t, "abc", 3);
+    CHECK(tm_tail_get(&t, out, sizeof out) == 3 && memcmp(out, "abc", 3) == 0);
+    /* wraps: keeps the last TM_TAIL_SIZE bytes in order */
+    static char big[TM_TAIL_SIZE + 100];
+    for (size_t i = 0; i < sizeof big; i++)
+        big[i] = (char)('a' + i % 26);
+    tm_tail_add(&t, big, 1000);
+    tm_tail_add(&t, big + 1000, sizeof big - 1000);
+    CHECK(t.total == 3 + sizeof big);
+    CHECK(tm_tail_get(&t, out, sizeof out) == TM_TAIL_SIZE);
+    CHECK(memcmp(out, big + sizeof big - TM_TAIL_SIZE, TM_TAIL_SIZE) == 0);
+    tm_tail_init(&t);
+    tm_tail_add(&t, big, sizeof big); /* one write larger than the buffer */
+    CHECK(tm_tail_get(&t, out, sizeof out) == TM_TAIL_SIZE && memcmp(out, big + 100, TM_TAIL_SIZE) == 0);
+
+    TmPaths p;
+    memset(&p, 0, sizeof p);
+    snprintf(p.logdir, sizeof p.logdir, "%s/logs", T);
+    snprintf(p.tmp, sizeof p.tmp, "%s/tmp", T);
+    tm_mkdir_p(p.tmp);
+    char path[TM_PATH_MAX], want[TM_PATH_MAX];
+    CHECK(tm_runlog_path(&p, "Cave Story/../x", path, sizeof path) == 0);
+    snprintf(want, sizeof want, "%s/logs/apps/Cave_Story_.._x.log", T);
+    CHECK_STR(path, want);
+    CHECK(tm_runlog_path(&p, ".hidden", path, sizeof path) == 0 && strstr(path, "/apps/_hidden.log"));
+
+    TmLastRun r, back;
+    CHECK(tm_lastrun_read(&p, &back) != 0); /* nothing yet */
+    memset(&r, 0, sizeof r);
+    tm_strlcpy(r.label, "Grout", sizeof r.label);
+    tm_strlcpy(r.log, "TriMuxData/logs/apps/Grout.log", sizeof r.log);
+    r.code = 127;
+    r.secs = 1;
+    CHECK(tm_lastrun_write(&p, &r) == 0 && tm_lastrun_read(&p, &back) == 0);
+    CHECK_STR(back.label, "Grout");
+    CHECK(back.code == 127 && back.secs == 1 && tm_lastrun_failed(&back));
+    back.code = 0;
+    back.secs = 600;
+    CHECK(!tm_lastrun_failed(&back));
+    back.secs = 2; /* closed by itself right away, even with code 0 */
+    CHECK(tm_lastrun_failed(&back));
+    back.code = 1;
+    back.secs = 120; /* an error after a real session is not reported */
+    CHECK(!tm_lastrun_failed(&back));
+    tm_lastrun_clear(&p);
+    CHECK(tm_lastrun_read(&p, &back) != 0);
+}
+
 int main(void)
 {
     snprintf(T, sizeof T, "/tmp/trimux-unit-%d", (int)getpid());
@@ -1109,6 +1189,7 @@ int main(void)
     test_clock_apps();
     test_popular_video();
     test_tools();
+    test_runlog();
     char cmd[600];
     snprintf(cmd, sizeof cmd, "rm -rf '%s'", T);
     if (system(cmd) != 0)

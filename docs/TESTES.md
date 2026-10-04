@@ -90,7 +90,7 @@ Marque com data, firmware, versão do TriMux e observações ao executar.
 | H63 | *Mais jogados*: depois de jogar um jogo por alguns minutos, ele sobe para o topo e o painel mostra vezes e tempo; jogos abertos por menos de 10 s não contam | pendente |
 | H64 | *Loja › PortMaster › Instalar*: download de 149 MB pelo Wi-Fi conclui, `Emus/tg5040/PORTS.pak` e `Roms/PORTS/Portmaster.sh` aparecem; *Remover* apaga só isso | pendente |
 | H65 | *Ports › Portmaster*: o PortMaster abre (primeira vez descompacta), instala um port gratuito (ex.: um homebrew sem arquivos externos) e o port aparece em Ports e roda com os controles certos | pendente |
-| H66 | *Loja › Grout*: instala em `Apps/Grout`, aparece em Aplicativos e abre | pendente |
+| H66 | *Loja › Grout*: instala em `Apps/Grout`, aparece em Aplicativos e abre | **falhou** no aparelho com a 0.5.2 (relato do usuário): demora, volta à tela de início do TriMux e não abre. Causa encontrada no pacote e corrigida na 0.5.3 (H80) |
 | H67 | N64: Super Mario 64 e Mario Kart 64 abrem, imagem e som corretos; anotar FPS com Padrão e com Original | pendente |
 | H68 | Dreamcast: um jogo `.chd` e um `.gdi` abrem com e sem BIOS em `Bios/dc`; anotar FPS em 640×480 | pendente |
 | H69 | Capas com milhares de jogos (ex.: 14 mil) por 1 h com Wi-Fi: o aparelho não reinicia; se reiniciar, anotar no registro a última linha `scrape: progress` (memória livre e temperatura) e conferir que o download não recomeça sozinho no boot seguinte | pendente |
@@ -102,8 +102,11 @@ Marque com data, firmware, versão do TriMux e observações ao executar.
 | H75 | PSP: um jogo 2D e um 3D (.iso e .cso) abrem com texto e som corretos (fontes do PPSSPP); salvar no jogo e reabrir; anotar FPS em Original e 2x | pendente |
 | H76 | Capas: suspender com POWER no meio do download e acordar depois de 1 e de 10 min; o status mostra *esperando o Wi-Fi*, o Wi-Fi volta e o download continua; plataformas desligadas não são baixadas | pendente |
 | H77 | Visual 0.5.1: a seleção desliza sem travar (menu fluido em listas de mil jogos), o fundo muda de cor com a plataforma, o ícone do Wi-Fi acende conectado; com *Animações* desligado tudo para no lugar; uso de CPU e bateria no menu parecido com a 0.5.0 | pendente |
-| H78 | Ports copiados do cartão original da TrimUI (pasta `Ports`, ex.: Celeste) aparecem em Ports com nome e ícone e abrem como no sistema oficial | pendente |
+| H78 | Ports copiados do cartão original da TrimUI (pasta `Ports`, ex.: Celeste) aparecem em Ports com nome e ícone e abrem como no sistema oficial | **parcial** no aparelho com a 0.5.2 (relato do usuário): aparecem, mas voltam ao menu sem abrir. Ver H82 |
 | H79 | Grade de capas com centenas de jogos e capas baixadas: navegação sem travar, capas aparecem em menos de 1 s, memória do menu estável depois de percorrer a lista inteira | pendente |
+| H80 | Grout (loja) e um aplicativo da TrimUI em `Apps/` abrem; um app quebrado de propósito (ex.: `launch.sh` com `exit 1`) volta ao menu com o aviso e o registro em `TriMuxData/logs/apps/` | pendente |
+| H81 | Modo rápido: um jogo pesado de N64, PSP, Dreamcast e PlayStation com a chave desligada e ligada; anotar FPS (*FPS na tela*), engasgos de som e resposta dos controles | pendente |
+| H82 | Ports do cartão original (ex.: Celeste) com a 0.5.3: abrem, ou o registro em `TriMuxData/logs/apps/` mostra o arquivo que falta | pendente |
 | H47 | Tela de início do TriMux aparece logo depois do logotipo da TrimUI e enquanto os jogos são indexados | pendente |
 | H15 | Primeiro boot de um cartão de 32 GB e de 128 GB gravado com a imagem: expansão automática, um reinício, aviso com o espaço total; `chkdsk`/`fsck` limpo depois. Repetir pela opção do menu num cartão regravado | pendente |
 | H16 | Cartão cheio: aviso em Armazenamento; salvar estado falha sem corromper | pendente |

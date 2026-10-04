@@ -31,6 +31,7 @@
 #include "../core/scrape.h"
 #include "../core/paths.h"
 #include "../core/power.h"
+#include "../core/runlog.h"
 #include "../core/store.h"
 #include "../core/tools.h"
 #include "../core/webfiles.h"
@@ -41,6 +42,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <poll.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -373,11 +375,118 @@ static void perf_sample(TmPerf *perf, TmPowerCaps *caps, int have_power, const c
     tm_perf_sample(perf, tm_now_ms(), cur, mx, caps->has_temp ? tm_power_temp_mc(caps) : -1, bat, chg, profile);
 }
 
+/* Output of apps and port scripts: a pipe that the parent reads into a ring
+ * buffer (runlog.h); nothing is written to the card while the program runs. */
+static void capture_child(int fds[2])
+{
+    if (fds[1] < 0)
+        return;
+    dup2(fds[1], 1);
+    dup2(fds[1], 2);
+    close(fds[0]);
+    if (fds[1] > 2)
+        close(fds[1]);
+}
+
+static void capture_parent(int fds[2])
+{
+    if (fds[1] >= 0)
+        close(fds[1]);
+    fds[1] = -1;
+    if (fds[0] >= 0)
+        fcntl(fds[0], F_SETFL, fcntl(fds[0], F_GETFL) | O_NONBLOCK);
+}
+
+/* Waits about ms milliseconds, reading the program's output meanwhile. */
+static void capture_wait(int *fd, TmTail *tail, int ms)
+{
+    uint64_t end = tm_now_ms() + (uint64_t)ms;
+    for (;;) {
+        uint64_t now = tm_now_ms();
+        if (now >= end)
+            return;
+        if (*fd < 0 || !tail) {
+            usleep((useconds_t)(end - now) * 1000u);
+            return;
+        }
+        struct pollfd pf = {*fd, POLLIN, 0};
+        int r = poll(&pf, 1, (int)(end - now));
+        if (r < 0 && errno != EINTR)
+            return;
+        if (r > 0 && tm_tail_drain(tail, *fd)) { /* every writer closed it */
+            close(*fd);
+            *fd = -1;
+        }
+    }
+}
+
+static void capture_close(int *fd, TmTail *tail)
+{
+    if (*fd < 0)
+        return;
+    if (tail)
+        tm_tail_drain(tail, *fd);
+    close(*fd);
+    *fd = -1;
+}
+
+/* Saves the output and tells the menu how the run ended. */
+static void capture_report(const char *name, const char *label, int code, uint64_t elapsed_ms, const TmTail *tail)
+{
+    TmLastRun r;
+    memset(&r, 0, sizeof r);
+    char path[TM_PATH_MAX];
+    tm_strlcpy(r.label, label, sizeof r.label);
+    r.code = code;
+    r.secs = (unsigned long)(elapsed_ms / 1000);
+    if (tm_runlog_path(&P, name, path, sizeof path) == 0 && tm_runlog_save(path, label, code, r.secs, tail) == 0) {
+        size_t n = strlen(P.sd);
+        tm_strlcpy(r.log, strncmp(path, P.sd, n) == 0 && path[n] == '/' ? path + n + 1 : path, sizeof r.log);
+    } else {
+        LOGW("app: could not save the output of %s", label);
+    }
+    tm_lastrun_write(&P, &r);
+}
+
+/* A port in the TrimUI app format: its launcher sits next to config.json. */
+static int is_app_folder_launcher(const char *script)
+{
+    char cfg[TM_PATH_MAX];
+    tm_strlcpy(cfg, script, sizeof cfg);
+    char *slash = strrchr(cfg, '/');
+    if (!slash || (size_t)(slash - cfg) + 13 > sizeof cfg)
+        return 0;
+    strcpy(slash + 1, "config.json");
+    return tm_file_exists(cfg);
+}
+
+/* Name shown and used for the log: the folder of an app-format port, or the
+ * script name without its extension. */
+static void port_name(const char *script, char *out, size_t size)
+{
+    char buf[TM_PATH_MAX];
+    tm_strlcpy(buf, script, sizeof buf);
+    char *slash = strrchr(buf, '/');
+    if (is_app_folder_launcher(script) && slash) {
+        *slash = '\0';
+        slash = strrchr(buf, '/');
+        tm_strlcpy(out, slash ? slash + 1 : buf, size);
+        return;
+    }
+    tm_strlcpy(out, slash ? slash + 1 : buf, size);
+    char *dot = strrchr(out, '.');
+    if (dot && dot != out)
+        *dot = '\0';
+}
+
 static int run_retroarch(const char *ra, const char *cfg, const char *append, const char *shader, const TmLaunch *l,
                          TmPowerCaps *caps, int have_power, int guard_on, const TmPowerProfile *prof,
-                         uint64_t *elapsed_ms, TmPerf *perf)
+                         uint64_t *elapsed_ms, TmPerf *perf, TmTail *tail)
 {
     uint64_t t0 = tm_now_ms();
+    int out[2] = {-1, -1};
+    if (tail && pipe(out) != 0)
+        out[0] = out[1] = -1;
     pid_t pid = fork();
     if (pid < 0) {
         LOGE("launch: fork failed");
@@ -397,7 +506,14 @@ static int run_retroarch(const char *ra, const char *cfg, const char *append, co
             setenv("TRIMUX_DEVICE", "brickpro", 1);
             if (chdir(dir) != 0)
                 _exit(127);
-            char *args[] = {"/bin/sh", (char *)l->rom_abs, NULL};
+            capture_child(out);
+            /* A port in the TrimUI app format is started the way the stock
+             * menu starts it (cd <folder>; ./launch.sh): some launchers find
+             * their own files from a relative $0. Loose scripts keep the
+             * full path, as PortMaster's launchers expect. */
+            char rel[TM_PATH_MAX];
+            snprintf(rel, sizeof rel, "./%s", slash ? slash + 1 : l->rom_abs);
+            char *args[] = {"/bin/sh", is_app_folder_launcher(l->rom_abs) ? rel : (char *)l->rom_abs, NULL};
             execv("/bin/sh", args);
             _exit(127);
         }
@@ -417,6 +533,7 @@ static int run_retroarch(const char *ra, const char *cfg, const char *append, co
             setenv("SHARED_USERDATA_PATH", data, 1);
             setenv("LOGS_PATH", P.logdir, 1);
             setenv("TRIMUX", "1", 1);
+            capture_child(out);
             char *args[] = {"/bin/sh", pak, (char *)l->rom_abs, NULL};
             execv("/bin/sh", args);
             _exit(127);
@@ -437,6 +554,7 @@ static int run_retroarch(const char *ra, const char *cfg, const char *append, co
         _exit(127);
     }
     g_child = pid;
+    capture_parent(out);
     signal(SIGTERM, forward_signal);
     signal(SIGINT, forward_signal);
     TmThermalGuard g;
@@ -451,7 +569,7 @@ static int run_retroarch(const char *ra, const char *cfg, const char *append, co
         pid_t w = waitpid(pid, &status, WNOHANG);
         if (w == pid || (w < 0 && errno != EINTR))
             break;
-        sleep(1);
+        capture_wait(&out[0], tail, 1000);
         /* side switch: one GPIO read per second */
         TmSwitchAction now = tm_switch_active(&ini);
         if (now != sw) {
@@ -493,6 +611,7 @@ static int run_retroarch(const char *ra, const char *cfg, const char *append, co
         }
     }
     tm_ini_free(&ini);
+    capture_close(&out[0], tail);
     g_child = 0;
     *elapsed_ms = tm_now_ms() - t0;
     return WIFEXITED(status) ? WEXITSTATUS(status) : 128 + (WIFSIGNALED(status) ? WTERMSIG(status) : 0);
@@ -579,7 +698,13 @@ static int cmd_launch(void)
             LOGW("perf: could not create the performance log");
     }
     uint64_t elapsed = 0;
-    int code = run_retroarch(ra, cfg, append, shader, &l, &caps, have_power, guard_on, prof, &elapsed, perf);
+    /* ports' scripts: their output goes to TriMuxData/logs/apps */
+    static TmTail tail;
+    int is_script = strcmp(l.emu->type, "retroarch") != 0;
+    tm_tail_init(&tail);
+    tm_lastrun_clear(&P);
+    int code = run_retroarch(ra, cfg, append, shader, &l, &caps, have_power, guard_on, prof, &elapsed, perf,
+                             is_script ? &tail : NULL);
     if (code != 0 && elapsed < 5000 && strcmp(l.emu->type, "retroarch") == 0) {
         /* Failed right away: retry once with RetroArch's SDL2 renderer, in
          * case the GLES context could not be created on this firmware. */
@@ -588,9 +713,14 @@ static int cmd_launch(void)
         char extra2[2100];
         snprintf(extra2, sizeof extra2, "%s\nvideo_driver = \"sdl2\"", extra);
         if (tm_launch_write_ra_append(&P, &l, extra2, append, sizeof append) == 0)
-            code = run_retroarch(ra, cfg, append, NULL, &l, &caps, have_power, guard_on, prof, &elapsed, perf);
+            code = run_retroarch(ra, cfg, append, NULL, &l, &caps, have_power, guard_on, prof, &elapsed, perf, NULL);
     }
     unlink(marker);
+    if (is_script) {
+        char name[128];
+        port_name(l.rom_abs, name, sizeof name);
+        capture_report(name, name, code, elapsed, &tail);
+    }
     /* "Mais jogados por você": one more session for this game (starts that
      * failed within 10 s are not counted) */
     char plays[TM_PATH_MAX];
@@ -970,6 +1100,12 @@ static int cmd_app(void)
     char script[TM_PATH_MAX];
     tm_path_join(script, sizeof script, app.dir, app.launch);
     LOGI("app: starting %s (%s)", app.label, script);
+    static TmTail tail;
+    tm_tail_init(&tail);
+    tm_lastrun_clear(&P);
+    int out[2] = {-1, -1};
+    if (pipe(out) != 0)
+        out[0] = out[1] = -1;
     uint64_t t0 = tm_now_ms();
     pid_t pid = fork();
     if (pid < 0)
@@ -979,19 +1115,33 @@ static int cmd_app(void)
         setenv("TRIMUX_DEVICE", "brickpro", 1);
         if (chdir(app.dir) != 0)
             _exit(127);
-        char *args[] = {"/bin/sh", script, NULL};
+        capture_child(out);
+        /* like the stock menu (cd <folder>; ./launch.sh): launchers such as
+         * Grout's find their libraries from a relative $0 */
+        char rel[TM_PATH_MAX];
+        snprintf(rel, sizeof rel, "./%s", app.launch);
+        char *args[] = {"/bin/sh", rel, NULL};
         execv("/bin/sh", args);
         _exit(127);
     }
     g_child = pid;
+    capture_parent(out);
     signal(SIGTERM, forward_signal);
     signal(SIGINT, forward_signal);
     int status = 0;
-    while (waitpid(pid, &status, 0) < 0 && errno == EINTR)
-        ;
+    for (;;) {
+        pid_t w = waitpid(pid, &status, WNOHANG);
+        if (w == pid || (w < 0 && errno != EINTR))
+            break;
+        capture_wait(&out[0], &tail, 500);
+    }
+    capture_close(&out[0], &tail);
     g_child = 0;
     int code = WIFEXITED(status) ? WEXITSTATUS(status) : 128 + (WIFSIGNALED(status) ? WTERMSIG(status) : 0);
-    LOGI("app: %s exited with %d after %llu s", app.label, code, (unsigned long long)(tm_now_ms() - t0) / 1000);
+    uint64_t elapsed = tm_now_ms() - t0;
+    LOGI("app: %s exited with %d after %llu s", app.label, code, (unsigned long long)elapsed / 1000);
+    const char *base = strrchr(app.dir, '/');
+    capture_report(base ? base + 1 : app.dir, app.label, code, elapsed, &tail);
     sync();
     return 0;
 }

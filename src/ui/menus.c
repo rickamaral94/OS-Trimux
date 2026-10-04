@@ -31,7 +31,7 @@ enum {
     ACT_SSH_TOGGLE, ACT_FTP, ACT_CHEEVOS_USER, ACT_CHEEVOS_PASS, ACT_CLEAR_LOGS, ACT_COVERS_RUN, ACT_COVERS_RETRY, ACT_COVERS_SHOW, ACT_COVERS_KIND,
     ACT_UPDATE_CHECK, ACT_UPDATE_INSTALL, ACT_UPDATE_ROLLBACK, ACT_UPDATE_REBOOT,
     ACT_LED_POWER, ACT_TZ, ACT_TIME_SYNC, ACT_TIME_FIELD, ACT_TIME_APPLY, ACT_APP,
-    ACT_VID_ASPECT, ACT_VID_FILTER, ACT_VID_RES, ACT_VID_COLORS, ACT_VID_GHOST, ACT_VID_HD, ACT_SORT, ACT_STORE,
+    ACT_VID_ASPECT, ACT_VID_FILTER, ACT_VID_RES, ACT_VID_COLORS, ACT_VID_GHOST, ACT_VID_HD, ACT_VID_SPEED, ACT_SORT, ACT_STORE,
     ACT_COVERS_SYS, ACT_GAMES_VIEW,
 };
 
@@ -562,6 +562,15 @@ static void video_items(Menu *m, const char *sys_id, const TmEmulator *em)
         snprintf(desc, sizeof desc, tr("video.hd.desc"), tm_video_count_hdpacks(bios));
         it = add(m, ACT_VID_HD, tr("video.hd"), onoff(on), desc);
         it->arg = on;
+        tm_strlcpy(it->sarg, sys_id, sizeof it->sarg);
+    }
+    if (caps && caps->speed_key[0]) {
+        const char *v = video_get(sys_id, "speed");
+        char k2[64];
+        snprintf(k2, sizeof k2, "video.speed.desc.%s", em->id);
+        snprintf(desc, sizeof desc, "%s\n\n%s", tr("video.speed.desc"), tr(k2));
+        it = add(m, ACT_VID_SPEED, tr("video.speed"), onoff(v && atoi(v)), desc);
+        it->arg = v && atoi(v);
         tm_strlcpy(it->sarg, sys_id, sizeof it->sarg);
     }
 }
@@ -2200,7 +2209,12 @@ static void activate(MenuItem *it, TmButton b)
     case ACT_VID_COLORS:
     case ACT_VID_GHOST:
     case ACT_VID_HD:
-        video_set(it->sarg, it->id == ACT_VID_COLORS ? "colors" : it->id == ACT_VID_GHOST ? "ghost" : "hdpacks",
+    case ACT_VID_SPEED:
+        video_set(it->sarg,
+                  it->id == ACT_VID_COLORS  ? "colors"
+                  : it->id == ACT_VID_GHOST ? "ghost"
+                  : it->id == ACT_VID_HD    ? "hdpacks"
+                                            : "speed",
                   it->arg ? "0" : "1");
         break;
     case ACT_TZ: {

@@ -10,7 +10,9 @@
  *   res     = index into the emulator's internal resolutions (0 = native)
  *   colors  = 0 | 1   colours as on the original handheld's screen
  *   ghost   = 0 | 1   LCD ghosting (needed for transparency in some games)
- *   hdpacks = 0 | 1   HD texture packs (Bios/HdPacks/<rom name>/hires.txt) */
+ *   hdpacks = 0 | 1   HD texture packs (Bios/HdPacks/<rom name>/hires.txt)
+ *   speed   = 0 | 1   fast mode of the heavier emulators (frame skipping when
+ *                     the game runs slow, threaded rendering) */
 #ifndef TRIMUX_VIDEO_H
 #define TRIMUX_VIDEO_H
 
@@ -19,6 +21,7 @@
 #include <stddef.h>
 
 #define TM_VIDEO_MAX_RES 4
+#define TM_VIDEO_MAX_SPEED 2
 
 typedef struct {
     const char *value;     /* core option value */
@@ -35,6 +38,8 @@ typedef struct {
     int color_def; /* the core's own default (1 = on) */
     const char *ghost_key, *ghost_on, *ghost_off;
     const char *hd_key; /* HD texture packs: "enabled" / "disabled" */
+    /* fast mode: up to TM_VIDEO_MAX_SPEED options set together */
+    const char *speed_key[TM_VIDEO_MAX_SPEED], *speed_on[TM_VIDEO_MAX_SPEED], *speed_off[TM_VIDEO_MAX_SPEED];
 } TmVideoCaps;
 
 typedef struct {
