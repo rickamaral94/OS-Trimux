@@ -1022,6 +1022,32 @@ static void test_popular_video(void)
     CHECK(tm_video_ra_lines(&st, "GBA", T, lines, sizeof lines, shader, sizeof shader) == 0 && !lines[0] && !shader[0]);
     tm_ini_free(&st);
 
+    /* fast mode: every option of the emulator, on and off; unset writes nothing */
+    TmIni sp;
+    tm_ini_init(&sp);
+    snprintf(p, sizeof p, "%s/PPSSPP.opt", T);
+    unlink(p);
+    CHECK(tm_video_core_options(&sp, "PSP", tm_video_caps("ppsspp"), p) == 0 && !tm_file_exists(p));
+    tm_ini_set(&sp, "video.PSP", "speed", "1");
+    CHECK(tm_video_core_options(&sp, "PSP", tm_video_caps("ppsspp"), p) == 0);
+    o = tm_read_file(p, 4096, &len);
+    CHECK(o && strstr(o, "ppsspp_auto_frameskip = \"enabled\"") && strstr(o, "ppsspp_frameskip = \"1\""));
+    free(o);
+    tm_ini_set(&sp, "video.PSP", "speed", "0");
+    CHECK(tm_video_core_options(&sp, "PSP", tm_video_caps("ppsspp"), p) == 0);
+    o = tm_read_file(p, 4096, &len);
+    CHECK(o && strstr(o, "ppsspp_auto_frameskip = \"disabled\"") && strstr(o, "ppsspp_frameskip = \"disabled\""));
+    free(o);
+    snprintf(p, sizeof p, "%s/Flycast.opt", T);
+    tm_ini_set(&sp, "video.DC", "speed", "1");
+    CHECK(tm_video_core_options(&sp, "DC", tm_video_caps("flycast"), p) == 0);
+    o = tm_read_file(p, 4096, &len);
+    CHECK(o && strstr(o, "reicast_auto_skip_frame = \"some\"") && strstr(o, "reicast_threaded_rendering = \"enabled\""));
+    free(o);
+    CHECK(tm_video_caps("pcsx_rearmed")->speed_key[0] && tm_video_caps("mupen64plus_next")->speed_key[1]);
+    CHECK(!tm_video_caps("gambatte")->speed_key[0]);
+    tm_ini_free(&sp);
+
     /* Ports: PortMaster's own ports are recognised, plain scripts are not */
     char s1[700], s2[700];
     snprintf(s1, sizeof s1, "%s/Celeste.sh", T);

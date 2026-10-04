@@ -260,6 +260,18 @@ def test_image_page_extras_follow_the_emulator(env, tmp_path):
     assert "hdpacks = 0" in read(cfg)
 
 
+@needs_ui
+def test_fast_mode_switch_on_heavy_platforms(env, tmp_path):
+    cfg = os.path.join(env["TRIMUX_SDCARD"], "TriMuxData/config/trimux.ini")
+    shot = str(tmp_path / "psp.bmp")
+    write(os.path.join(env["TRIMUX_SDCARD"], "TriMux/retroarch/cores/ppsspp_libretro.so"), "fake core\n")
+    # PSP (13th platform): Formato, Visual, Resolução interna, Modo rápido -> on
+    assert ui(env, EMULATORS + ",DOWN" * 13 + ",A,DOWN,DOWN,DOWN,A,shot=%s,B,B,B" % shot).returncode == 0
+    ini = read(cfg)
+    assert "[video.PSP]" in ini and "speed = 1" in ini
+    assert os.path.getsize(shot) > 100000
+
+
 # ---- game order (Settings > Library) ----
 LIBRARY = "UP,A" + ",DOWN" * 7 + ",A"           # Configurações -> Biblioteca
 

@@ -688,6 +688,12 @@ video.ghost = Rastro de tela LCD
 video.ghost.desc = Imita o pequeno rastro da tela LCD antiga. Alguns jogos dependem disso para mostrar transparências e evitar que objetos pisquem (ex.: F-Zero, Wave Race).
 video.hd = Texturas HD
 video.hd.desc = Troca os gráficos por versões em alta resolução quando o jogo tem um pacote HD (formato Mesen HD Pack).\n\nComo usar: coloque a pasta do pacote em Bios/HdPacks/<nome do arquivo do jogo, sem a extensão>/ com o arquivo hires.txt dentro. Funciona melhor com o jogo em .nes (fora do .zip). Os pacotes não vêm com o TriMux.\n\nPacotes encontrados no cartão: %d.
+video.speed = Modo rápido
+video.speed.desc = Para jogos que ficam lentos ou com o som engasgando. Quando o aparelho não dá conta, o emulador deixa de desenhar alguns quadros para o jogo e o som seguirem na velocidade certa. A imagem fica um pouco menos fluida nesses momentos. Desligado, nada muda.
+video.speed.desc.pcsx_rearmed = PlayStation: pula um quadro quando o som está para falhar.
+video.speed.desc.mupen64plus_next = Nintendo 64: desenha a imagem em outro núcleo do processador e repete o último quadro quando o próximo atrasa. Pode deixar os controles um pouco mais lentos para responder.
+video.speed.desc.ppsspp = PSP: pula quadros automaticamente quando o jogo fica para trás.
+video.speed.desc.flycast = Dreamcast: pula quadros automaticamente quando o jogo fica lento (com a imagem desenhada em outro núcleo, o padrão).
 game.image = Imagem da plataforma
 game.image.desc = Formato da tela, visual (LCD, TV antiga…), resolução e texturas dos jogos desta plataforma.
 

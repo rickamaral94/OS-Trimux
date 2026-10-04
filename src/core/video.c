@@ -27,7 +27,9 @@ static const TmVideoCaps k_caps[] = {
     {.emu = "pcsx_rearmed",
      .res_key = "pcsx_rearmed_neon_enhancement_enable",
      .res = {{"disabled", "video.res.native"}, {"enabled", "video.res.2x"}},
-     .nres = 2},
+     .nres = 2,
+     /* "auto": skips a frame when the audio buffer runs low */
+     .speed_key = {"pcsx_rearmed_frameskip_type"}, .speed_on = {"auto"}, .speed_off = {"disabled"}},
     {.emu = "prboom",
      .res_key = "prboom-resolution",
      .res = {{"320x200", "video.res.native"}, {"640x400", "video.res.2x"}, {"960x600", "video.res.3x"}},
@@ -39,15 +41,25 @@ static const TmVideoCaps k_caps[] = {
     {.emu = "mupen64plus_next",
      .res_key = "mupen64plus-EnableNativeResFactor",
      .res = {{"0", "video.res.n64default"}, {"1", "video.res.native_light"}, {"2", "video.res.2x"}},
-     .nres = 3},
+     .nres = 3,
+     /* GLideN64 on its own thread, and frames repeated instead of waited for */
+     .speed_key = {"mupen64plus-ThreadedRenderer", "mupen64plus-FrameDuping"},
+     .speed_on = {"True", "True"}, .speed_off = {"False", "False"}},
     {.emu = "ppsspp",
      .res_key = "ppsspp_internal_resolution",
      .res = {{"480x272", "video.res.native"}, {"960x544", "video.res.2x"}},
-     .nres = 2},
+     .nres = 2,
+     /* auto frameskip only acts with a frameskip value other than 0
+      * (Core/HLE/sceDisplay.cpp, DoFrameTiming) */
+     .speed_key = {"ppsspp_auto_frameskip", "ppsspp_frameskip"},
+     .speed_on = {"enabled", "1"}, .speed_off = {"disabled", "disabled"}},
     {.emu = "flycast",
      .res_key = "reicast_internal_resolution",
      .res = {{"640x480", "video.res.native"}, {"960x720", "video.res.1_5x"}, {"1280x960", "video.res.2x"}},
-     .nres = 3},
+     .nres = 3,
+     /* auto skip needs threaded rendering (on by default; set anyway) */
+     .speed_key = {"reicast_auto_skip_frame", "reicast_threaded_rendering"},
+     .speed_on = {"some", "enabled"}, .speed_off = {"disabled", "enabled"}},
     {.emu = "gambatte",
      .color_key = "gambatte_gbc_color_correction", .color_on = "GBC only", .color_off = "disabled", .color_def = 1,
      .ghost_key = "gambatte_mix_frames", .ghost_on = "lcd_ghosting_fast", .ghost_off = "disabled"},
@@ -183,7 +195,7 @@ int tm_video_core_options(const TmIni *settings, const char *system, const TmVid
     char sec[48];
     if (tm_snprintf(sec, sizeof sec, "video.%s", system) != 0)
         return -1;
-    const char *keys[4], *vals[4];
+    const char *keys[4 + TM_VIDEO_MAX_SPEED], *vals[4 + TM_VIDEO_MAX_SPEED];
     int n = 0;
     long res = tm_ini_get_long(settings, sec, "res", -1);
     if (caps->res_key && res >= 0 && res < caps->nres) {
@@ -204,6 +216,11 @@ int tm_video_core_options(const TmIni *settings, const char *system, const TmVid
     if (caps->hd_key && hd >= 0) {
         keys[n] = caps->hd_key;
         vals[n++] = hd ? "enabled" : "disabled";
+    }
+    long speed = tm_ini_get_long(settings, sec, "speed", -1);
+    for (int i = 0; speed >= 0 && i < TM_VIDEO_MAX_SPEED && caps->speed_key[i]; i++) {
+        keys[n] = caps->speed_key[i];
+        vals[n++] = speed ? caps->speed_on[i] : caps->speed_off[i];
     }
     if (n == 0)
         return 0;
