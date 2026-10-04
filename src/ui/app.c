@@ -2,6 +2,7 @@
 #define _GNU_SOURCE
 #include "app.h"
 #include "../core/apps.h"
+#include "../core/runlog.h"
 #include "../core/buttons.h"
 #include "../core/scrape.h"
 #include "../core/launch.h"
@@ -928,6 +929,23 @@ static void card_grow_report(void)
     app_toast(msg);
 }
 
+/* An app or port script that closed right after opening: say so, and where
+ * its output was saved (trimuxctl writes lastrun.ini after each run). */
+static void run_report(void)
+{
+    TmLastRun r;
+    if (tm_lastrun_read(&A.paths, &r) != 0)
+        return;
+    tm_lastrun_clear(&A.paths);
+    if (!tm_lastrun_failed(&r))
+        return;
+    static char title[128], body[512];
+    snprintf(title, sizeof title, tr("run.closed.title"), r.label[0] ? r.label : "?");
+    snprintf(body, sizeof body, tr("run.closed.body"), r.secs, r.code, r.log[0] ? r.log : "-");
+    LOGW("ui: %s closed after %lu s with code %d", r.label, r.secs, r.code);
+    app_dialog(DLG_INFO, title, body, 0, NULL, 1);
+}
+
 int app_main(int argc, char **argv)
 {
     int win_w = 0, win_h = 0;
@@ -995,6 +1013,7 @@ int app_main(int argc, char **argv)
         wizard_open();
     app_refresh_sysinfo(1);
     card_grow_report();
+    run_report();
     A.running = 1;
     A.dirty = 1;
     A.last_input = tm_now_ms();

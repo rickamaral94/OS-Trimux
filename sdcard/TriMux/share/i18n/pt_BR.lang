@@ -44,6 +44,8 @@ games.hints = A:Jogar|X:Favorito|Y:Buscar|SELECT:Emulador|START:Opções|B:Volta
 games.hints_empty = Y:Buscar|B:Voltar
 
 launch.cannot = Não foi possível abrir
+run.closed.title = %s fechou
+run.closed.body = Fechou %lu s depois de abrir (código %d). O que ele mostrou foi gravado em %s. Esse arquivo ajuda a descobrir o que falta.
 launch.no_emu = Nenhum emulador para %s está instalado neste cartão.
 launch.bios_missing = Este sistema precisa de BIOS. Copie para a pasta /Bios do cartão: %s
 launch.experimental.title = Recurso experimental

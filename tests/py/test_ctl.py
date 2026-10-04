@@ -298,7 +298,7 @@ def test_trimui_format_ports_are_found_and_start_from_their_folder(env, card):
     """Ports copied from the stock TrimUI card: one folder with config.json +
     launch.sh, in Roms/PORTS or in the stock Ports folder at the card root."""
     import json
-    launch = '#!/bin/sh\npwd > started\n'
+    launch = '#!/bin/sh\npwd > started\necho "$0" >> started\necho "port says hi"\n'
     for base, label in (("Roms/PORTS/Celeste", "Celeste"), ("Ports/Cave Story", "Cave Story (TrimUI)")):
         write(os.path.join(card, base, "config.json"), json.dumps({"label": label, "launch": "launch.sh", "icon": "icon.png"}))
         write(os.path.join(card, base, "launch.sh"), launch, 0o755)
@@ -314,8 +314,10 @@ def test_trimui_format_ports_are_found_and_start_from_their_folder(env, card):
     write(os.path.join(env["TRIMUX_TMP"], "launch.ini"),
           "[launch]\nsystem = PORTS\nrom = Ports/Cave Story/launch.sh\nemulator = shell\n")
     ctl(env, "launch", check=False)
-    assert os.path.realpath(read(os.path.join(card, "Ports/Cave Story/started"))) == \
-        os.path.realpath(os.path.join(card, "Ports/Cave Story"))
+    started = read(os.path.join(card, "Ports/Cave Story/started")).splitlines()
+    assert os.path.realpath(started[0]) == os.path.realpath(os.path.join(card, "Ports/Cave Story"))
+    assert started[1] == "./launch.sh"      # like the stock menu: cd <folder>; ./launch.sh
+    assert "port says hi" in read(os.path.join(card, "TriMuxData/logs/apps/Cave_Story.log"))
 
 
 def test_card_grow_auto_needs_the_image_marker(env):

@@ -42,6 +42,8 @@ games.hints = A:Play|X:Favorite|Y:Search|SELECT:Emulator|START:Options|B:Back
 games.hints_empty = Y:Search|B:Back
 
 launch.cannot = Cannot open
+run.closed.title = %s closed
+run.closed.body = It closed %lu s after opening (code %d). What it printed was saved to %s. That file helps find out what is missing.
 launch.no_emu = No emulator for %s is installed on this card.
 launch.bios_missing = This system needs a BIOS. Copy it to the card's /Bios folder: %s
 launch.experimental.title = Experimental feature
