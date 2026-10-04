@@ -27,6 +27,8 @@ listadas). Ao abrir:
 * o script roda com `/bin/sh` do firmware, a partir da própria pasta, com as
   variáveis `TRIMUX=1` e `TRIMUX_DEVICE=brickpro` e as bibliotecas do firmware
   no `LD_LIBRARY_PATH`;
+* o que o script mostra é gravado em `TriMuxData/logs/apps/<nome>.log` ao
+  terminar (veja a seção 4);
 * ao terminar, o TriMux volta ao menu e restaura o perfil padrão.
 
 Situação: **experimental**. A plataforma é marcada assim no menu e pede
@@ -99,8 +101,19 @@ início, normalmente `launch.sh`) e os arquivos do jogo.
   oficial) e também em **`Roms/PORTS/<jogo>/`**.
 * O nome que aparece é o `label` do `config.json`, e o ícone da pasta vira a
   capa no painel.
-* O jogo começa pelo script indicado em `launch`, executado de dentro da
-  própria pasta, como no sistema oficial.
+* O jogo começa pelo script indicado em `launch`, do mesmo jeito que o
+  sistema oficial faz: `cd <pasta>; ./launch.sh` (a partir da 0.5.3; antes
+  o TriMux passava o caminho completo, e scripts que acham os próprios
+  arquivos a partir de um caminho relativo falhavam).
+* O que o script mostra na tela de texto (erros incluídos) é gravado em
+  `TriMuxData/logs/apps/<nome da pasta>.log` quando ele termina. Se o port
+  fecha logo depois de abrir, o menu avisa e diz qual é o arquivo. Mande
+  esse arquivo junto com o `config.json` e o `launch.sh` quando um port não
+  abrir.
+* Muitos ports do cartão original dependem de arquivos que ficam fora da
+  pasta do jogo, como o PortMaster da TrimUI em `Apps/PortMaster` ou
+  bibliotecas em `Data/`. Copie também essas pastas do cartão original. O
+  registro mostra qual arquivo falta.
 * Prefira copiar a pasta `Ports` inteira para a raiz do cartão do TriMux,
   como estava no cartão original. Alguns scripts usam o caminho completo
   `/mnt/SDCARD/Ports/...`, e numa outra pasta eles não acham os próprios

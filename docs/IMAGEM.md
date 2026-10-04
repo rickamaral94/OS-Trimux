@@ -85,6 +85,25 @@ Pacotes grandes usam mais memória e demoram mais para abrir. O Nestopia não
 lê pacotes HD: para usá-los, o emulador da plataforma (ou do jogo) precisa
 ser o FCEUmm.
 
+### Modo rápido (PlayStation, N64, PSP e Dreamcast)
+
+Para jogos que ficam lentos ou com o som engasgando. Quando o aparelho não dá
+conta, o emulador deixa de desenhar alguns quadros e o jogo e o som seguem na
+velocidade certa; a imagem fica um pouco menos fluida nesses momentos.
+Desligado (o padrão), nada muda.
+
+| Plataforma | Opções do núcleo que a chave liga |
+|---|---|
+| PlayStation (PCSX ReARMed) | `pcsx_rearmed_frameskip_type = auto`: pula um quadro quando o som está para falhar |
+| Nintendo 64 (Mupen64Plus-Next) | `mupen64plus-ThreadedRenderer = True` (GLideN64 em outro núcleo do processador) e `mupen64plus-FrameDuping = True` (repete o último quadro quando o próximo atrasa). Pode atrasar um pouco a resposta dos controles |
+| PSP (PPSSPP) | `ppsspp_auto_frameskip = enabled` e `ppsspp_frameskip = 1`: o pulo automático do PPSSPP só age com um valor de frameskip diferente de 0 |
+| Dreamcast (Flycast) | `reicast_auto_skip_frame = some`, com `reicast_threaded_rendering = enabled` (o padrão do núcleo, exigido pelo pulo automático) |
+
+Desligar a chave grava os valores padrão de cada núcleo. Os nomes e valores
+foram conferidos nos fontes dos núcleos, nos commits de
+`sources/sources.lock`. O ganho real em cada jogo só pode ser medido no
+aparelho (TESTES.md, H81).
+
 ## Como funciona
 
 As escolhas ficam em `TriMuxData/config/trimux.ini`, na seção
@@ -95,7 +114,7 @@ As escolhas ficam em `TriMuxData/config/trimux.ini`, na seção
    configuração temporária em RAM, a mesma dos diretórios de saves;
 2. passa o shader escolhido com `--set-shader`, só para aquele jogo. Se o
    arquivo do shader não existir, o jogo abre com a imagem simples;
-3. grava as opções do núcleo (resolução, cores, rastro, texturas) no arquivo
+3. grava as opções do núcleo (resolução, cores, rastro, texturas, modo rápido) no arquivo
    de opções do próprio núcleo, `TriMuxData/retroarch/config/<núcleo>/<núcleo>.opt`.
    Só as chaves escolhidas no TriMux mudam; o resto do arquivo fica como
    estava.

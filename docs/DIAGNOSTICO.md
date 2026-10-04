@@ -79,6 +79,7 @@ arquivos de sessão mais recentes são mantidos; o `sessions.csv` vira
 |---|---|---|
 | Log detalhado do TriMux | `TriMuxData/logs/trimux.log` (máx. 256 KB + 1 cópia) | Investigar menu, lançamento, rede, energia. |
 | Log do RetroArch | `TriMuxData/logs/retroarch/retroarch.log`, substituído a cada jogo | Jogo que não abre, fecha sozinho, BIOS não encontrada, núcleo com erro. |
+| Saída de aplicativos e ports (sempre) | `TriMuxData/logs/apps/<nome>.log`, substituído a cada vez que o programa abre; só os últimos 32 KiB | Aplicativo ou port que volta ao menu sem abrir. O menu avisa quando um deles fecha logo depois de abrir. |
 | Ver log do TriMux | — | Mostra as últimas 40 linhas no próprio aparelho. |
 | Apagar registros de desempenho | — | Apaga sessões, arquivos de amostras e o log do RetroArch (pede confirmação). Não toca em jogos, saves ou configurações. |
 
