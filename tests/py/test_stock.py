@@ -5,7 +5,9 @@ device's display): the tests check the files it reads and run the written
 launch.sh with a stand-in RetroArch. Not a hardware test."""
 import json
 import os
+import struct
 import subprocess
+import zlib
 
 import pytest
 
@@ -112,6 +114,75 @@ def test_prepare_twice_keeps_files_and_refreshes_trimux_ones(env, card, ra):
     write(p, "#!/bin/sh\nexit 9\n", 0o755)                     # an outdated launcher of TriMux's
     ctl(env, "stock", "prepare")
     assert "Emus/_TriMux" in read(p)
+
+
+def png_rgba(path):
+    """Decodes an 8-bit RGBA PNG (all five row filters) without PIL."""
+    data = open(path, "rb").read()
+    assert data[:8] == b"\x89PNG\r\n\x1a\n"
+    pos, idat, w = 8, b"", 0
+    while pos < len(data):
+        n, tag = struct.unpack(">I4s", data[pos:pos + 8])
+        body = data[pos + 8:pos + 8 + n]
+        if tag == b"IHDR":
+            w, h, depth, ctype = struct.unpack(">IIBB", body[:10])
+            assert (depth, ctype) == (8, 6)
+        elif tag == b"IDAT":
+            idat += body
+        pos += 12 + n
+    raw, rows, prev, stride = zlib.decompress(idat), [], bytearray(w * 4), w * 4
+    for y in range(h):
+        f, line = raw[y * (stride + 1)], bytearray(raw[y * (stride + 1) + 1:(y + 1) * (stride + 1)])
+        for i in range(stride):
+            a = line[i - 4] if i >= 4 else 0
+            b, c = prev[i], prev[i - 4] if i >= 4 else 0
+            if f == 1:
+                line[i] = (line[i] + a) & 255
+            elif f == 2:
+                line[i] = (line[i] + b) & 255
+            elif f == 3:
+                line[i] = (line[i] + (a + b) // 2) & 255
+            elif f == 4:
+                pa, pb, pc = abs(b - c), abs(a - c), abs(a + b - 2 * c)
+                line[i] = (line[i] + (a if pa <= pb and pa <= pc else b if pb <= pc else c)) & 255
+        rows.append(line)
+        prev = line
+    return w, h, rows
+
+
+def test_icons_are_console_drawings(env, card, tmp_path):
+    systems = [l[1:-1] for l in read(os.path.join(card, "TriMux/share/systems.ini")).splitlines()
+               if l.startswith("[") and l.endswith("]")]
+    assert "N64" in systems and "GBA" in systems
+    seen = set()
+    for sys_id in systems + ["UNKNOWN"]:
+        out = str(tmp_path / ("%s.png" % sys_id))
+        ctl(env, "stock", "icon", sys_id, out)
+        w, h, rows = png_rgba(out)
+        assert (w, h) == (300, 300)
+        # transparent background (the stock menu shows the name below), a drawing in the middle
+        for x, y in ((0, 0), (299, 0), (0, 299), (299, 299), (150, 2)):
+            assert rows[y][x * 4 + 3] == 0, (sys_id, x, y)
+        opaque = sum(1 for r in rows for i in range(3, len(r), 4) if r[i] == 255)
+        assert 0.12 < opaque / (w * h) < 0.75, sys_id
+        colours = {bytes(r[i:i + 3]) for r in rows[::7] for i in range(0, len(r), 28) if r[i + 3] == 255}
+        assert len(colours) > 40, sys_id                         # shaded, not a flat badge
+        seen.add(zlib.crc32(b"".join(rows)))
+    assert len(seen) >= len(systems) - 3                         # one drawing per console (PC games share one)
+
+
+def test_prepare_refreshes_icons_written_by_older_versions(env, card, ra):
+    ctl(env, "stock", "prepare")
+    mark = os.path.join(card, "Emus/FC/.trimux-stock")
+    assert "files=2" in read(mark)
+    assert check(env)[1]["FC"][0] == "trimux"
+    write(mark, "FC fceumm\n")                                  # as 0.5.5 wrote it (label icons)
+    write(os.path.join(card, "Emus/FC/icon.png"), "old")
+    assert check(env)[1]["FC"][0] == "missing"
+    ctl(env, "stock", "prepare")
+    assert check(env)[1]["FC"][0] == "trimux"
+    png_rgba(os.path.join(card, "Emus/FC/icon.png"))
+    assert read(os.path.join(card, "Emus/FC/config.json")).count("icon.png") == 2
 
 
 def test_prepare_reports_a_copy_error(env, card, ra):

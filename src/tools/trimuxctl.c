@@ -1264,8 +1264,11 @@ static int cmd_stock(int argc, char **argv)
         rc = tm_stock_prepare(&P, &cat, &ini, err, sizeof err) == 0 ? 0 : 1;
         if (rc)
             fprintf(stderr, "%s\n", err);
+    } else if (strcmp(sub, "icon") == 0 && argc == 3) { /* icon <platform> <out.png> */
+        const TmSystem *sys = tm_catalog_system(&cat, argv[1]);
+        rc = tm_stock_icon(argv[2], argv[1], sys ? sys->color : 0) == 0 ? 0 : 1;
     } else {
-        fprintf(stderr, "usage: trimuxctl stock check|prepare\n");
+        fprintf(stderr, "usage: trimuxctl stock check|prepare|icon <platform> <out.png>\n");
     }
     tm_ini_free(&ini);
     tm_catalog_free(&cat);
