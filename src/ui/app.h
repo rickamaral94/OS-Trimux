@@ -139,6 +139,8 @@ const char *tr(const char *key);
 
 /* app.c */
 void app_toast(const char *msg);
+/* Full-screen message drawn right away (before a slow step that blocks the menu). */
+void app_progress(const char *msg);
 void app_dialog(int id, const char *title, const char *text, long arg, const char *sarg, int info_only);
 void app_header(const char *title);
 /* Smoothly moving value for the selection highlight of list `slot`
@@ -235,7 +237,7 @@ enum {
     PAGE_QUICK, PAGE_GAME_OPTIONS, PAGE_EMU_CHOOSE, PAGE_HOTKEYS, PAGE_DISPLAY, PAGE_ABOUT, PAGE_LOG,
     PAGE_ADD_GAMES, PAGE_BUTTONS, PAGE_NETWORK, PAGE_WIFI_SCAN, PAGE_WIFI_SAVED, PAGE_CHEEVOS,
     PAGE_DIAG, PAGE_PERF, PAGE_COVERS, PAGE_UPDATE, PAGE_DATETIME, PAGE_APPS, PAGE_STATS, PAGE_CLEAN,
-    PAGE_FILES, PAGE_UNINSTALL,
+    PAGE_FILES, PAGE_UNINSTALL, PAGE_STOCK,
 };
 
 /* dialog ids */
@@ -243,7 +245,7 @@ enum {
     DLG_NONE = 0, DLG_STOCK, DLG_POWEROFF, DLG_REBOOT, DLG_MKDIRS, DLG_RESTORE_EMU, DLG_GROW, DLG_EXPERIMENTAL,
     DLG_WIZ_SKIP, DLG_POWER_DEFAULT, DLG_INFO, DLG_IDLE, DLG_BOOST,
     DLG_FTP, DLG_SSH, DLG_WIFI_FORGET, DLG_CLEAR_LOGS, DLG_UPDATE_INSTALL, DLG_UPDATE_ROLLBACK, DLG_UPDATE_READY,
-    DLG_STORE_INSTALL, DLG_STORE_REMOVE, DLG_WEB, DLG_CLEAN, DLG_FILE_DELETE, DLG_RUN_LOG, DLG_UNINSTALL,
+    DLG_STORE_INSTALL, DLG_STORE_REMOVE, DLG_WEB, DLG_CLEAN, DLG_FILE_DELETE, DLG_RUN_LOG, DLG_UNINSTALL, DLG_STOCK_PREPARE, DLG_STOCK_TEST,
 };
 
 /* menu actions of tools.c (menus.c hands every id from ACT_T_FIRST on to it) */
@@ -253,6 +255,8 @@ enum {
     ACT_T_VIEW,     /* opens the text viewer on sarg (a path inside the card) */
     ACT_T_LOGS,     /* file manager at TriMuxData/logs/apps */
     ACT_T_UNINSTALL,
+    ACT_T_STOCK_PREPARE,
+    ACT_T_STOCK_TEST,
 };
 
 /* menus.c: rows for pages built elsewhere */

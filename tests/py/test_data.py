@@ -45,7 +45,7 @@ def test_default_language_has_every_key():
     dynamic = {"theme.dark", "theme.light", "theme.contrast", "system.log"}
     dynamic |= {"wizard.step%d.%s" % (i, k) for i in range(6) for k in ("title", "text")}
     dynamic |= {"add.step%d" % i for i in range(1, 7)}
-    files = re.compile(r"\.(h|ini|txt|tsv|cfg|so|log|json|lang|ttf)$")
+    files = re.compile(r"\.(h|ini|txt|tsv|cfg|so|log|json|lang|ttf|sh|png)$")
     missing = sorted(k for k in used_keys() | dynamic if k not in pt and not files.search(k))
     assert not missing, missing
 

@@ -11,4 +11,7 @@ void tm_image_free(void *pixels);
  * and writes it as PNG to dst atomically. Returns 0 on success. */
 int tm_image_fit_png(const char *src, const char *dst, int max_w, int max_h);
 
+/* Writes RGBA pixels (w*h*4 bytes) as PNG to path, atomically. */
+int tm_image_write_png(const char *path, int w, int h, const unsigned char *rgba);
+
 #endif

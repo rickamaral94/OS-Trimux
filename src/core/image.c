@@ -109,6 +109,19 @@ int tm_image_fit_png(const char *src, const char *dst, int max_w, int max_h)
     return rc;
 }
 
+int tm_image_write_png(const char *path, int w, int h, const unsigned char *rgba)
+{
+    char tmp[TM_PATH_MAX];
+    if (tm_snprintf(tmp, sizeof tmp, "%s.tmp", path) != 0 || !stbi_write_png(tmp, w, h, 4, rgba, w * 4))
+        return -1;
+    if (rename(tmp, path) != 0) {
+        unlink(tmp);
+        return -1;
+    }
+    tm_fsync_parent(path);
+    return 0;
+}
+
 /* For unit tests: writes RGBA pixels as PNG. */
 int tm_test_write_png(const char *path, int w, int h, const unsigned char *rgba);
 int tm_test_write_png(const char *path, int w, int h, const unsigned char *rgba)

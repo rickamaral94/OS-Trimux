@@ -76,6 +76,9 @@ void app_apply_language(void)
 
 /* Start screen (share/splash.png, drawn by tools/make_splash.py) with a
  * status line and the version; plain text if the artwork is missing. */
+static void draw_progress_message(const char *msg);
+void app_progress(const char *msg) { draw_progress_message(msg); }
+
 static void draw_progress_message(const char *msg)
 {
     gfx_clear();

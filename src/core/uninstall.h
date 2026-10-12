@@ -27,6 +27,9 @@ typedef struct {
 } TmUninstallCheck;
 
 int tm_uninstall_check(const TmPaths *p, TmUninstallCheck *out);
+/* 1 when a Roms folder holds a game-like file (licence/readme files and
+ * hidden files do not count), up to depth sub-folder levels down. */
+int tm_roms_dir_has_games(const char *dir, int depth);
 /* Roms folder (first component after "Roms/") a stock rompath points at,
  * resolved from the emulator folder emu_rel ("Emus/FC"); 0 when found. */
 int tm_uninstall_rompath_dir(const char *emu_rel, const char *rompath, char *out, size_t size);

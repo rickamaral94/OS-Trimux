@@ -1,3 +1,38 @@
+# TriMux 0.5.5 (pré-lançamento)
+
+**Estado:** testado só no computador e, em parte, em QEMU (veja abaixo). O
+menu do sistema oficial não roda fora do aparelho, então a abertura dos jogos
+por ele precisa ser confirmada no Brick Pro (TESTES.md, H85).
+
+* **Sistema oficial** (*Configurações › Sistema › Sistema oficial*), para
+  manter o sistema oficial da TrimUI funcionando no mesmo cartão, antes e
+  depois de desinstalar o TriMux:
+  * **Verificação:** para cada pasta de `Roms` com jogos, mostra se o sistema
+    oficial já a abre com um emulador do cartão original (*pronto
+    (original)*), com um emulador feito pelo TriMux (*pronto (TriMux)*), se
+    *falta* emulador ou se não há suporte (ports, pastas desconhecidas).
+  * **Preparar o cartão:** cria em `Emus/<pasta>` os emuladores que faltam,
+    no formato que o menu oficial lê (`config.json` com `rompath`, `imgpath`
+    e `extlist`, `launch.sh` e um ícone). Eles usam uma cópia do RetroArch e
+    dos emuladores do TriMux em `Emus/_TriMux`, que continua no cartão depois
+    de desinstalar. Os saves ficam nas mesmas pastas `Saves/<plataforma>` do
+    TriMux.
+  * **Nada é apagado nem sobrescrito:** pastas de emuladores do cartão
+    original nunca são mudadas. Se uma pasta com o mesmo nome existir e não
+    for do TriMux, ele cria `Emus/<pasta>-TriMux`.
+  * O conteúdo original da pasta `Emus` da TrimUI não é publicado por ela; a
+    imagem de recuperação oficial também não o traz (conferido). Por isso o
+    TriMux usa os próprios emuladores, que são de código aberto e vão com as
+    licenças. Quem tiver o cartão original também pode copiar a pasta `Emus`
+    dele.
+  * **Testar no sistema oficial agora:** abre o sistema oficial sem
+    desinstalar nada. Para voltar ao TriMux, basta reiniciar.
+  * **Desinstalar o TriMux** passou para dentro desta página.
+* Conferido em QEMU, com as bibliotecas do firmware v1.1.1: o RetroArch e os
+  emuladores copiados para `Emus/_TriMux` carregam de lá. O `launch.sh` gerado
+  foi testado no computador com um RetroArch simulado (caminhos, saves, BIOS e
+  a segunda tentativa com o vídeo SDL2).
+
 # TriMux 0.5.4 (pré-lançamento)
 
 **Estado:** testado só no computador; falta confirmar no aparelho (TESTES.md,

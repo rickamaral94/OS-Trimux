@@ -159,41 +159,57 @@ não o modifica.
    grave por cima (por exemplo, com a imagem do TriMux, que zera a área de boot)
    ou limpe com o PhoenixCard incluído no pacote da TrimUI.
 
-## 6. Desinstalar
+## 6. Sistema oficial e desinstalar
 
-**Pelo aparelho (a partir da 0.5.4):** *Configurações › Sistema ›
-Desinstalar o TriMux*. Antes de remover qualquer coisa, a tela mostra:
+Tudo fica em *Configurações › Sistema › Sistema oficial*.
 
-* quantos **emuladores do sistema oficial** existem no cartão (pasta `Emus`)
-  ou na memória interna;
-* quantas pastas de `Roms` com jogos algum desses emuladores lê, e quais
-  ficariam de fora.
+**Por que existe:** o firmware do Brick Pro não traz emuladores na memória
+interna. O menu oficial da TrimUI usa os da pasta `Emus/<plataforma>/` do
+cartão que vem com o aparelho, cada um com um `config.json` que diz qual
+pasta de `Roms` ele lê. Um cartão gravado com a imagem do TriMux não tem essa
+pasta, e por isso o sistema oficial abre sem mostrar jogos.
 
-Depois de confirmar (a resposta já vem em *Não*), saem do cartão só as pastas
-`trimui`, `TriMux`, `TriMux.old` e `trimui.old`, nesta ordem, e o sistema
-oficial abre na hora. Jogos, saves, estados, BIOS, capas, `Apps`, `Ports`,
-`Emus` e `TriMuxData` ficam no cartão. Nada é movido ou renomeado, e a
-memória interna não é tocada.
+**Verificação:** para cada pasta de `Roms` com jogos, a página mostra:
 
-**Atenção: o sistema oficial precisa da pasta `Emus` no cartão.** O firmware
-do Brick Pro não traz emuladores na memória interna; o menu oficial usa os de
-`Emus/<plataforma>/` do cartão que vem com o aparelho. Um cartão gravado com a
-imagem do TriMux não tem essa pasta. Nesse caso, copie pelo computador a
-pasta `Emus` do cartão original da TrimUI (e a pasta `RetroArch`, se ele
-tiver uma) para a raiz do cartão. Os jogos podem ficar onde estão: o TriMux
-usa os mesmos nomes de pasta do sistema oficial (`FC`, `SFC`, `GB`, `GBA`,
-`MD`, `PS`…).
+| Estado | Significado |
+|---|---|
+| pronto (original) | um emulador do cartão original (ou da memória interna) lê esta pasta |
+| pronto (TriMux) | um emulador feito pelo TriMux lê esta pasta |
+| falta | nenhum emulador lê esta pasta; *Preparar o cartão* resolve |
+| sem suporte | ports, pastas desconhecidas ou nomes com caracteres especiais |
 
-Os saves feitos no TriMux ficam em `Saves/<plataforma>/`. Se o RetroArch do
-cartão original guardar os saves em outra pasta, copie-os para lá pelo
-computador (isso depende do cartão original e ainda não foi conferido num
-aparelho).
+**Preparar o cartão:** cria os emuladores que faltam em `Emus/<pasta>`, no
+formato do menu oficial (`config.json`, `launch.sh` e `icon.png`), e copia o
+RetroArch e os emuladores necessários do TriMux para `Emus/_TriMux` (pode
+passar de 100 MB, conforme as plataformas; a tela mostra quanto). Os saves
+continuam em `Saves/<plataforma>`, as mesmas pastas do TriMux, e as capas em
+`Imgs/<pasta>`. Pastas de emuladores que o TriMux não criou nunca são
+mudadas. Depois de atualizar o TriMux, prepare de novo para levar a versão
+nova do RetroArch.
+
+O conteúdo original da pasta `Emus` da TrimUI não é publicado por ela (nem a
+imagem de recuperação oficial o traz), por isso o TriMux usa os próprios
+emuladores, de código aberto. Quem tiver o cartão original pode, em vez
+disso, copiar a pasta `Emus` dele pelo computador; a verificação passa a
+mostrar *pronto (original)*.
+
+**Testar no sistema oficial agora:** abre o sistema oficial sem desinstalar
+nada. Veja se as plataformas aparecem e se os jogos abrem e salvam. Para
+voltar ao TriMux, reinicie o aparelho.
+
+**Desinstalar o TriMux** (último item da página): mostra de novo o que o
+sistema oficial vai encontrar e, depois de confirmar (a resposta já vem em
+*Não*), remove só `trimui`, `TriMux`, `TriMux.old` e `trimui.old`. O sistema
+oficial abre na hora. Ficam no cartão jogos, saves, estados, BIOS, capas,
+`Apps`, `Ports`, `Emus` (inclusive `Emus/_TriMux`) e `TriMuxData`. Nada é
+movido ou renomeado, e a memória interna não é tocada.
 
 **Pelo computador:** apague `trimui/` e `TriMux/` (e `TriMux.old/`,
-`trimui.old/`, se existirem). `TriMuxData/` pode ficar ou ser apagada.
+`trimui.old/`, se existirem). Antes, prepare o cartão pelo aparelho ou copie
+a pasta `Emus` do cartão original.
 
 Para voltar ao TriMux, extraia o `TriMux-<versão>-update.zip` no cartão de
-novo.
+novo: `TriMuxData`, com as configurações, continua lá.
 
 ## Perguntas frequentes
 

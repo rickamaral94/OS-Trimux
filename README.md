@@ -58,6 +58,11 @@ cartão devolve o aparelho ao estado original.
   pasta `Apps/` do cartão, apps da memória interna e os do sistema), abertos
   como no sistema oficial e com o que mostram gravado em
   `TriMuxData/logs/apps/`.
+* **Sistema oficial no mesmo cartão:** verifica quais pastas de jogos o
+  sistema oficial da TrimUI consegue abrir, cria os emuladores que faltam
+  (com o RetroArch do TriMux), deixa testar e desinstala o TriMux sem apagar
+  jogos, saves nem a pasta `Emus`. [docs/INSTALACAO.md](docs/INSTALACAO.md),
+  seção 6.
 * **Ferramentas próprias:** estatísticas de jogo, jogo surpresa,
   gerenciador de arquivos, **arquivos pelo navegador** (enviar e baixar
   jogos pelo Wi-Fi, sem tirar o cartão) e limpeza do cartão.

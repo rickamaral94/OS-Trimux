@@ -706,7 +706,7 @@ static void page_system(Menu *m)
     add_page(m, PAGE_ABOUT, tr("system.about"), tr("system.about.desc"));
     add(m, ACT_REBOOT, tr("system.reboot"), "", tr("system.reboot.desc"));
     add(m, ACT_POWEROFF, tr("system.poweroff"), "", tr("system.poweroff.desc"));
-    add_page(m, PAGE_UNINSTALL, tr("uninstall.title"), tr("uninstall.desc"));
+    add_page(m, PAGE_STOCK, tr("stock.title"), tr("stock.desc"));
 }
 
 static void page_quick(Menu *m)
