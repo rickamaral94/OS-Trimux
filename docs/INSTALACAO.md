@@ -179,7 +179,8 @@ pasta, e por isso o sistema oficial abre sem mostrar jogos.
 | sem suporte | ports, pastas desconhecidas ou nomes com caracteres especiais |
 
 **Preparar o cartão:** cria os emuladores que faltam em `Emus/<pasta>`, no
-formato do menu oficial (`config.json`, `launch.sh` e `icon.png`), e copia o
+formato do menu oficial (`config.json`, `launch.sh` e `icon.png`, um desenho
+do console de cada plataforma), e copia o
 RetroArch e os emuladores necessários do TriMux para `Emus/_TriMux` (pode
 passar de 100 MB, conforme as plataformas; a tela mostra quanto). Os saves
 continuam em `Saves/<plataforma>`, as mesmas pastas do TriMux, e as capas em

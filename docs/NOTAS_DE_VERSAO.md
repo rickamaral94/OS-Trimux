@@ -1,3 +1,24 @@
+# TriMux 0.5.7 (pré-lançamento)
+
+**Estado:** testado só no computador. Os ícones precisam ser vistos no menu
+oficial do aparelho (TESTES.md, H88).
+
+* **Ícones do sistema oficial com o desenho do console.** Os emuladores que o
+  TriMux cria em *Sistema oficial › Preparar o cartão* traziam um quadrado
+  colorido com a sigla. Agora cada plataforma tem uma ilustração do próprio
+  aparelho, em volume, sobre fundo transparente: NES com controle, Super
+  Nintendo, Mega Drive (e Sega CD e 32X), Master System, PC Engine, N64,
+  Neo Geo, Atari 2600 e 7800, PlayStation, Dreamcast, Game Boy, Game Boy
+  Color, Game Boy Advance, Game Gear, PSP, Neo Geo Pocket, WonderSwan, Lynx,
+  fliperama e um PC para DOOM, Quake e Cave Story. O nome continua embaixo,
+  escrito pelo menu oficial. Os desenhos são feitos pelo próprio TriMux, sem
+  logotipos nem imagens de terceiros.
+* Quem já preparou o cartão na 0.5.5 ou 0.5.6: abra *Sistema oficial* de
+  novo; as plataformas aparecem como *falta* e *Preparar o cartão* troca só
+  os ícones e os lançadores (nada é copiado de novo se o RetroArch não mudou).
+
+![Ícones](img/24-icones-sistema-oficial.png)
+
 # TriMux 0.5.6 (pré-lançamento)
 
 **Estado:** testado só no computador. O ganho de velocidade precisa ser

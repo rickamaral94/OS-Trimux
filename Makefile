@@ -28,11 +28,11 @@ all: test
 # ---------------------------------------------------------------- host build
 $(NATIVE)/test_core: tests/unit/test_core.c $(CORE_SRC) src/core/*.h
 	@mkdir -p $(@D)
-	$(HOST_CC) $(WARN) $(CFLAGS) -fsanitize=address,undefined -o $@ tests/unit/test_core.c $(CORE_SRC)
+	$(HOST_CC) $(WARN) $(CFLAGS) -fsanitize=address,undefined -o $@ tests/unit/test_core.c $(CORE_SRC) -lm
 
 $(NATIVE)/trimuxctl: src/tools/trimuxctl.c $(CORE_SRC) src/core/*.h
 	@mkdir -p $(@D)
-	$(HOST_CC) $(WARN) $(CFLAGS) -o $@ src/tools/trimuxctl.c $(CORE_SRC)
+	$(HOST_CC) $(WARN) $(CFLAGS) -o $@ src/tools/trimuxctl.c $(CORE_SRC) -lm
 
 # The UI also builds on the host (SDL2 dummy/offscreen drivers) for screenshots/tests.
 $(NATIVE)/trimux-ui: $(UI_SRC) $(CORE_SRC) src/core/*.h src/ui/*.h
@@ -56,7 +56,7 @@ CROSS_FLAGS := -O2 -march=armv8-a+crc -mtune=cortex-a53 -fstack-protector-strong
 
 $(CROSS)/trimuxctl: src/tools/trimuxctl.c $(CORE_SRC) src/core/*.h
 	@mkdir -p $(@D)
-	$(CROSS_CC) $(WARN) $(CROSS_FLAGS) -o $@ src/tools/trimuxctl.c $(CORE_SRC)
+	$(CROSS_CC) $(WARN) $(CROSS_FLAGS) -o $@ src/tools/trimuxctl.c $(CORE_SRC) -lm
 	aarch64-linux-gnu-strip $@
 
 $(CROSS)/trimux-ui: $(UI_SRC) $(CORE_SRC) src/core/*.h src/ui/*.h

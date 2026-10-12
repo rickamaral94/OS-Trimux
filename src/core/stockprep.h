@@ -24,6 +24,8 @@
 #define TM_STOCK_MAX 48
 #define TM_STOCK_RUNTIME "Emus/_TriMux"
 #define TM_STOCK_MARKER ".trimux-stock"
+/* in the marker: emulators written with older files (icons) are refreshed */
+#define TM_STOCK_FILES "files=2"
 
 typedef enum {
     TM_STOCK_ORIGINAL = 0, /* read by an emulator TriMux did not write (the stock card's) */
@@ -55,7 +57,8 @@ int tm_stock_plan(const TmPaths *p, const TmCatalog *cat, const TmIni *settings,
 int tm_stock_prepare(const TmPaths *p, const TmCatalog *cat, const TmIni *settings, char *err, size_t errsz);
 /* Counts per state, for summaries. */
 void tm_stock_counts(const TmStockPlan *plan, int counts[4]);
-/* Writes a 300x300 PNG icon: rounded square in rgb with label in white. */
-int tm_stock_icon(const char *path, unsigned rgb, const char *label);
+/* Writes a 300x300 PNG icon: a drawing of the platform's console on a
+ * transparent background (consoleart.h); the stock menu shows the name. */
+int tm_stock_icon(const char *path, const char *sys_id, unsigned rgb);
 
 #endif

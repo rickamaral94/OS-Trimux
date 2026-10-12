@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 #include "stockprep.h"
 #include "apps.h"
+#include "consoleart.h"
 #include "image.h"
 #include "log.h"
 #include "net.h"
@@ -21,84 +22,13 @@
 
 /* ------------------------------------------------------------ icons */
 
-/* 5x7 glyphs, one byte per row (bit 4 = left column). */
-static const struct {
-    char c;
-    unsigned char rows[7];
-} k_font[] = {
-    {'0', {14, 17, 19, 21, 25, 17, 14}}, {'1', {4, 12, 4, 4, 4, 4, 14}},    {'2', {14, 17, 1, 2, 4, 8, 31}},
-    {'3', {31, 2, 4, 2, 1, 17, 14}},     {'4', {2, 6, 10, 18, 31, 2, 2}},   {'5', {31, 16, 30, 1, 1, 17, 14}},
-    {'6', {6, 8, 16, 30, 17, 17, 14}},   {'7', {31, 1, 2, 4, 8, 8, 8}},     {'8', {14, 17, 17, 14, 17, 17, 14}},
-    {'9', {14, 17, 17, 15, 1, 2, 12}},   {'A', {14, 17, 17, 31, 17, 17, 17}}, {'B', {30, 17, 17, 30, 17, 17, 30}},
-    {'C', {14, 17, 16, 16, 16, 17, 14}}, {'D', {28, 18, 17, 17, 17, 18, 28}}, {'E', {31, 16, 16, 30, 16, 16, 31}},
-    {'F', {31, 16, 16, 30, 16, 16, 16}}, {'G', {14, 17, 16, 23, 17, 17, 15}}, {'H', {17, 17, 17, 31, 17, 17, 17}},
-    {'I', {14, 4, 4, 4, 4, 4, 14}},      {'J', {7, 2, 2, 2, 2, 18, 12}},    {'K', {17, 18, 20, 24, 20, 18, 17}},
-    {'L', {16, 16, 16, 16, 16, 16, 31}}, {'M', {17, 27, 21, 21, 17, 17, 17}}, {'N', {17, 17, 25, 21, 19, 17, 17}},
-    {'O', {14, 17, 17, 17, 17, 17, 14}}, {'P', {30, 17, 17, 30, 16, 16, 16}}, {'Q', {14, 17, 17, 17, 21, 18, 13}},
-    {'R', {30, 17, 17, 30, 20, 18, 17}}, {'S', {15, 16, 16, 14, 1, 1, 30}},  {'T', {31, 4, 4, 4, 4, 4, 4}},
-    {'U', {17, 17, 17, 17, 17, 17, 14}}, {'V', {17, 17, 17, 17, 17, 10, 4}}, {'W', {17, 17, 17, 21, 21, 21, 10}},
-    {'X', {17, 17, 10, 4, 10, 17, 17}},  {'Y', {17, 17, 17, 10, 4, 4, 4}},  {'Z', {31, 1, 2, 4, 8, 16, 31}},
-    {'-', {0, 0, 0, 31, 0, 0, 0}},       {'+', {0, 4, 4, 31, 4, 4, 0}},     {' ', {0, 0, 0, 0, 0, 0, 0}},
-};
-
-static const unsigned char *glyph(char c)
+int tm_stock_icon(const char *path, const char *sys_id, unsigned rgb)
 {
-    if (c >= 'a' && c <= 'z')
-        c = (char)(c - 32);
-    for (size_t i = 0; i < sizeof k_font / sizeof k_font[0]; i++)
-        if (k_font[i].c == c)
-            return k_font[i].rows;
-    return NULL;
-}
-
-int tm_stock_icon(const char *path, unsigned rgb, const char *label)
-{
-    enum { W = 300, R = 48 };
+    enum { W = 300 };
     unsigned char *px = calloc(1, W * W * 4);
     if (!px)
         return -1;
-    unsigned char cr = (unsigned char)(rgb >> 16), cg = (unsigned char)(rgb >> 8), cb = (unsigned char)rgb;
-    for (int y = 0; y < W; y++)
-        for (int x = 0; x < W; x++) {
-            /* rounded corners: outside the corner circles stays transparent */
-            int dx = x < R ? R - x : x >= W - R ? x - (W - R - 1) : 0;
-            int dy = y < R ? R - y : y >= W - R ? y - (W - R - 1) : 0;
-            if (dx * dx + dy * dy > R * R)
-                continue;
-            unsigned char *o = px + (y * W + x) * 4;
-            int shade = 255 - y / 6; /* soft vertical gradient */
-            o[0] = (unsigned char)(cr * shade / 255);
-            o[1] = (unsigned char)(cg * shade / 255);
-            o[2] = (unsigned char)(cb * shade / 255);
-            o[3] = 255;
-        }
-    /* label in white, as large as fits (5x7 cells, 1 cell of spacing) */
-    int n = 0;
-    char text[8];
-    for (const char *s = label; *s && n < 6; s++)
-        if (glyph(*s))
-            text[n++] = *s;
-    if (n > 0) {
-        int scale = (W - 60) / (n * 6 - 1);
-        if (scale > 22)
-            scale = 22;
-        int tw = (n * 6 - 1) * scale, x0 = (W - tw) / 2, y0 = (W - 7 * scale) / 2;
-        for (int i = 0; i < n; i++) {
-            const unsigned char *g = glyph(text[i]);
-            for (int r = 0; r < 7; r++)
-                for (int c = 0; c < 5; c++) {
-                    if (!(g[r] & (16 >> c)))
-                        continue;
-                    for (int yy = 0; yy < scale; yy++)
-                        for (int xx = 0; xx < scale; xx++) {
-                            int x = x0 + (i * 6 + c) * scale + xx, y = y0 + r * scale + yy;
-                            unsigned char *o = px + (y * W + x) * 4;
-                            o[0] = o[1] = o[2] = 255;
-                            o[3] = 255;
-                        }
-                }
-        }
-    }
+    tm_console_art(px, W, sys_id, rgb);
     int rc = tm_image_write_png(path, W, W, px);
     free(px);
     return rc;
@@ -110,6 +40,7 @@ typedef struct {
     char dir[80];  /* Emus/<name> */
     char read[64]; /* Roms folder it reads */
     int ours;
+    int current; /* ours, written by this version of the files (icons, launch.sh) */
 } Emu;
 
 /* Emulators of one Emus folder; card_rel NULL for the internal memory. */
@@ -133,6 +64,11 @@ static int scan_emus(const char *abs, const char *card_rel, Emu *out, int max, i
             m->read[0] = '\0';
         snprintf(m->dir, sizeof m->dir, "%s", ok ? rel : e->d_name);
         m->ours = card_rel && tm_path_join(mark, sizeof mark, emu, TM_STOCK_MARKER) == 0 && tm_file_exists(mark);
+        if (m->ours) {
+            char *text = tm_read_file(mark, 256, NULL);
+            m->current = text && strstr(text, TM_STOCK_FILES) != NULL;
+            free(text);
+        }
         n++;
     }
     closedir(d);
@@ -296,7 +232,7 @@ int tm_stock_plan(const TmPaths *p, const TmCatalog *cat, const TmIni *settings,
             char launch[TM_PATH_MAX];
             tm_strlcpy(it->emu_dir, mine->dir, sizeof it->emu_dir);
             int complete = need == 0 && tm_snprintf(launch, sizeof launch, "%s/%s/launch.sh", p->sd, mine->dir) == 0 &&
-                           tm_file_exists(launch) && copy_need(ra_src, ra_dst) == 0;
+                           tm_file_exists(launch) && copy_need(ra_src, ra_dst) == 0 && mine->current;
             it->state = complete ? TM_STOCK_TRIMUX : TM_STOCK_MISSING;
         } else {
             it->state = TM_STOCK_MISSING;
@@ -530,10 +466,10 @@ static int write_emu(const TmPaths *p, const TmStockItem *it, const TmSystem *sy
         return -1;
     chmod(path, 0755);
     if (tm_path_join(path, sizeof path, dir, "icon.png") != 0 ||
-        tm_stock_icon(path, sys->color ? sys->color : 0x2c3e50, sys->short_name[0] ? sys->short_name : sys->id) != 0)
+        tm_stock_icon(path, sys->id, sys->color) != 0)
         LOGW("stock: could not draw the icon of %s", it->emu_dir);
     char mark[64];
-    n = snprintf(mark, sizeof mark, "%s %s\n", sys->id, em->id);
+    n = snprintf(mark, sizeof mark, "%s %s %s\n", sys->id, em->id, TM_STOCK_FILES);
     if (tm_path_join(path, sizeof path, dir, TM_STOCK_MARKER) != 0 || tm_atomic_write(path, mark, (size_t)n) != 0)
         return -1;
     return 0;
