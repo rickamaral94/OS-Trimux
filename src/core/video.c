@@ -188,6 +188,8 @@ static int opt_set(char **text, size_t *len, const char *key, const char *val)
     return 0;
 }
 
+static int opt_write(const char *opt_path, const char *const *keys, const char *const *vals, int n);
+
 int tm_video_core_options(const TmIni *settings, const char *system, const TmVideoCaps *caps, const char *opt_path)
 {
     if (!caps)
@@ -222,6 +224,11 @@ int tm_video_core_options(const TmIni *settings, const char *system, const TmVid
         keys[n] = caps->speed_key[i];
         vals[n++] = speed ? caps->speed_on[i] : caps->speed_off[i];
     }
+    return opt_write(opt_path, keys, vals, n);
+}
+
+static int opt_write(const char *opt_path, const char *const *keys, const char *const *vals, int n)
+{
     if (n == 0)
         return 0;
     size_t len = 0;
@@ -269,4 +276,66 @@ int tm_video_count_hdpacks(const char *bios_dir)
     }
     closedir(d);
     return count;
+}
+
+/* Recommended settings for the Brick Pro (PowerVR GE8300, 4x Cortex-A53).
+ * The cores were built with their desktop defaults; these are the values
+ * their own LOW_END builds use (Flycast), or the lighter choice the core
+ * offers, for options that cost GPU time on this device. Option names and
+ * values checked against each core's libretro_core_options.h at the commits
+ * in sources/sources.lock. Bump the version to apply a changed set again. */
+static const struct {
+    const char *emu;
+    int version;
+    const char *kv[6][2];
+} k_tune[] = {
+    {"flycast", 1,
+     {{"reicast_anisotropic_filtering", "off"},                 /* default 4 */
+      {"reicast_alpha_sorting", "per-strip (fast, least accurate)"}, /* LOW_END default */
+      {"reicast_enable_dsp", "disabled"},                       /* LOW_END default */
+      {"reicast_threaded_rendering", "enabled"}}},
+    {"mupen64plus_next", 1,
+     {{"mupen64plus-EnableNativeResFactor", "1"}}},             /* 320x240 instead of 640x480 */
+    {"ppsspp", 1,
+     {{"ppsspp_texture_anisotropic_filtering", "disabled"}}},   /* default 16x */
+};
+
+int tm_video_tune(const char *emu_id, const char *opt_path, const char *state_ini)
+{
+    for (size_t i = 0; emu_id && i < TM_ARRAY_LEN(k_tune); i++) {
+        if (strcmp(k_tune[i].emu, emu_id) != 0)
+            continue;
+        TmIni st;
+        tm_ini_init(&st);
+        tm_ini_load(&st, state_ini); /* missing file: nothing applied yet */
+        int rc = 0;
+        if (tm_ini_get_long(&st, "tuned", emu_id, 0) < k_tune[i].version) {
+            const char *keys[6], *vals[6];
+            int n = 0;
+            for (; n < 6 && k_tune[i].kv[n][0]; n++) {
+                keys[n] = k_tune[i].kv[n][0];
+                vals[n] = k_tune[i].kv[n][1];
+            }
+            char v[16];
+            snprintf(v, sizeof v, "%d", k_tune[i].version);
+            if (opt_write(opt_path, keys, vals, n) == 0 && tm_ini_set(&st, "tuned", emu_id, v) == 0 &&
+                tm_ini_save(&st, state_ini) == 0)
+                rc = 1;
+            else
+                rc = -1;
+        }
+        tm_ini_free(&st);
+        return rc;
+    }
+    return 0;
+}
+
+const char *tm_video_tune_value(const char *emu_id, const char *key)
+{
+    for (size_t i = 0; emu_id && key && i < TM_ARRAY_LEN(k_tune); i++)
+        if (strcmp(k_tune[i].emu, emu_id) == 0)
+            for (int k = 0; k < 6 && k_tune[i].kv[k][0]; k++)
+                if (strcmp(k_tune[i].kv[k][0], key) == 0)
+                    return k_tune[i].kv[k][1];
+    return NULL;
 }
