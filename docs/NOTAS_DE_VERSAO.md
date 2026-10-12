@@ -20,6 +20,11 @@ medido no aparelho (TESTES.md, H86).
   e gasta mais bateria; os limites térmicos continuam.
 * Para comparar com o sistema oficial: ligue *FPS na tela* em *Registros e
   desempenho* e teste o mesmo jogo nos dois.
+* **Tela inicial em carrossel** (*Configurações › Aparência › Tela inicial*):
+  um cartão grande por plataforma, com a cor e a sigla dela, o selecionado no
+  meio e os vizinhos esmaecidos dos lados. ◀ ▶ (ou ▲ ▼) passam de um para
+  outro, deslizando; embaixo aparecem o nome, o número de jogos e o último
+  jogado. *Continuar* mostra a capa do jogo. A lista continua sendo o padrão.
 
 # TriMux 0.5.5 (pré-lançamento)
 

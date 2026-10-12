@@ -417,9 +417,9 @@ static int anim_enabled(void)
  * jumping; long jumps (scrolling a page, wrapping around) snap. */
 int app_anim(int slot, int target, int row)
 {
-    static float pos[4];
-    static int have[4];
-    if (slot < 0 || slot > 3)
+    static float pos[6];
+    static int have[6];
+    if (slot < 0 || slot > 5)
         return target;
     if (!anim_enabled() || !have[slot] || abs(target - (int)pos[slot]) > row * 3) {
         pos[slot] = (float)target;

@@ -896,3 +896,7 @@ power.heavy.desc = With the Automatic profile, N64, Dreamcast, PSP, Quake and ot
 power.heavy.unavailable = This device does not list 2.0 GHz among the CPU frequencies.
 power.heavy.confirm.title = Allow 2.0 GHz for heavy emulators?
 power.heavy.confirm.text = N64, Dreamcast, PSP and the other heavy emulators may use the CPU up to 2.0 GHz, above the maker's rated 1.8 GHz. It is the same limit the stock TrimUI firmware uses in its normal mode. Runs hotter and uses more battery; the thermal limits stay on. Continue?
+home.hints.carousel = A:Open|◀ ▶:Move|Y:Search|MENU:Quick
+view.home = Home screen
+view.carousel = Carousel
+view.home.desc = List: entries one under the other, with details in the side panel. Carousel: one big card per platform, in its colour and with its short name, the selected one in the middle; ◀ ▶ (or ▲ ▼) move between them and L1/R1 jump several.

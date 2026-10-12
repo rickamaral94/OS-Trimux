@@ -5,6 +5,7 @@
 #include "../core/util.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define S(v) ((v) * gfx_h() / 768)
@@ -202,11 +203,145 @@ uint32_t home_ambient(void)
                                    : 0;
 }
 
+int home_carousel(void)
+{
+    return strcmp(tm_ini_get(&A.settings, "general", "home_view", "list"), "carousel") == 0;
+}
+
+/* ---- carousel: one big card per entry, the selected one in the middle ---- */
+
+static uint32_t entry_color(const HomeEntry *e)
+{
+    const TmTheme *t = gfx_theme();
+    switch (e->type) {
+    case H_SYSTEM: return A.cat.systems[e->system].color;
+    case H_CONTINUE: return A.cat.systems[A.lib.games[e->game].system].color;
+    case H_FAVORITES: return 0xc9a227;
+    case H_RECENT: return 0x2e86de;
+    case H_ALL: return 0x6c5ce7;
+    case H_APPS: return 0x16a085;
+    default: return gfx_mix(t->panel2, t->dim, 30);
+    }
+}
+
+static void draw_card(const HomeEntry *e, int cx, int cy, int size, int selected, int dim)
+{
+    const TmTheme *t = gfx_theme();
+    int x = cx - size / 2, y = cy - size / 2, r = size / 7;
+    uint32_t c = entry_color(e);
+    if (selected) {
+        gfx_shadow(x, y, size, size, r, S(14));
+        gfx_round_rect(x - S(5), y - S(5), size + S(10), size + S(10), r + S(5), t->accent); /* rounded outline */
+    }
+    gfx_round_rect(x, y, size, size, r, gfx_mix(c, 0x000000, 35));
+    gfx_gradient(x, y + r, size, size - 2 * r, c, gfx_mix(c, 0x000000, 35), 255, 255);
+    gfx_round_rect(x, y, size, r * 2, r, c);
+    gfx_rect(x, y + r, size, r, c);
+    gfx_rect_a(x + r, y + S(3), size - 2 * r, 1, 0xffffff, 60); /* soft top highlight */
+    int pad = size / 10;
+    char buf[96];
+    switch (e->type) {
+    case H_CONTINUE: {
+        char path[TM_PATH_MAX];
+        int iw = 0, ih = 0;
+        int drawn = app_game_cover(&A.lib.games[e->game], path, sizeof path) == 0 &&
+                    gfx_image_box(path, x + pad, y + pad, size - 2 * pad, size - 2 * pad - S(30), &iw, &ih) > 0;
+        if (!drawn)
+            gfx_text(FONT_XL, cx, cy - gfx_font_height(FONT_XL) / 2, 0xffffff, ALIGN_CENTER, size - pad,
+                     A.cat.systems[A.lib.games[e->game].system].short_name);
+        gfx_text(FONT_S, cx, y + size - pad - gfx_font_height(FONT_S) + S(6), 0xffffff, ALIGN_CENTER, size - pad,
+                 tr("home.continue"));
+        break;
+    }
+    case H_SYSTEM:
+        gfx_text(FONT_XL, cx, cy - gfx_font_height(FONT_XL) / 2 - S(8), 0xffffff, ALIGN_CENTER, size - pad,
+                 A.cat.systems[e->system].short_name);
+        snprintf(buf, sizeof buf, "%zu", tm_library_count_system(&A.lib, e->system));
+        gfx_text(FONT_M, cx, y + size - pad - gfx_font_height(FONT_M) + S(6), gfx_mix(0xffffff, c, 25), ALIGN_CENTER,
+                 size - pad, buf);
+        break;
+    case H_FAVORITES:
+        gfx_star(cx, cy - S(10), size / 5, 0xffffff);
+        snprintf(buf, sizeof buf, "%zu", A.fav.count);
+        gfx_text(FONT_M, cx, y + size - pad - gfx_font_height(FONT_M) + S(6), 0xffffff, ALIGN_CENTER, size - pad, buf);
+        break;
+    default: {
+        char label[96], value[64];
+        entry_label(e, label, sizeof label, value, sizeof value);
+        gfx_text_wrap(FONT_L, x + pad, cy - gfx_font_height(FONT_L), size - 2 * pad, 2, 0xffffff, label);
+        if (value[0])
+            gfx_text(FONT_M, cx, y + size - pad - gfx_font_height(FONT_M) + S(6), gfx_mix(0xffffff, c, 25),
+                     ALIGN_CENTER, size - pad, value);
+    }
+    }
+    if (dim) /* cards away from the middle fade into the background */
+        gfx_round_rect_a(x, y, size, size, r, t->bg, (uint8_t)dim);
+}
+
+static void carousel_draw(void)
+{
+    const TmTheme *t = gfx_theme();
+    int top = S(64), bottom = gfx_h() - S(52);
+    int big = S(300), small = S(190), step = S(275);
+    int cy = top + (bottom - top) * 44 / 100;
+    int off = app_anim(4, A.home_sel * step, step);
+    int mid = gfx_w() / 2;
+    /* far cards first, so the middle one is drawn on top */
+    for (int pass = 0; pass < 2; pass++)
+        for (size_t i = 0; i < g_n; i++) {
+            int cx = mid + (int)i * step - off;
+            int d = abs(cx - mid);
+            if (cx < -big || cx > gfx_w() + big)
+                continue;
+            int near = d < step / 2;
+            if ((pass == 0) == near)
+                continue;
+            int size = d >= step ? small : big - (big - small) * d / step;
+            int dim = d >= step ? 150 : 150 * d / step;
+            draw_card(&g_entries[i], cx, cy, size, (int)i == A.home_sel && near, dim);
+        }
+    /* name and details of the selected entry under the cards */
+    const HomeEntry *e = &g_entries[A.home_sel];
+    char label[96], value[64], buf[256];
+    entry_label(e, label, sizeof label, value, sizeof value);
+    int ty = cy + big / 2 + S(34);
+    gfx_text(FONT_L, mid, ty, t->text, ALIGN_CENTER, gfx_w() - S(80), e->type == H_CONTINUE ? value : label);
+    ty += gfx_font_height(FONT_L) + S(8);
+    buf[0] = '\0';
+    if (e->type == H_SYSTEM) {
+        size_t ng = tm_library_count_system(&A.lib, e->system);
+        int n = snprintf(buf, sizeof buf, tr(ng == 1 ? "home.games_1" : "home.games_n"), ng);
+        long lp = last_played(e->system);
+        if (lp >= 0 && n > 0 && (size_t)n < sizeof buf)
+            snprintf(buf + n, sizeof buf - (size_t)n, " · %s: %s", tr("home.last_played"), A.lib.games[lp].name);
+    } else if (e->type == H_CONTINUE) {
+        snprintf(buf, sizeof buf, "%s · %s", tr("home.continue"), A.cat.systems[A.lib.games[e->game].system].name);
+    } else {
+        const char *k = e->type == H_RECENT ? "home.recent.desc" : e->type == H_FAVORITES ? "home.favorites.desc"
+                      : e->type == H_ALL ? "home.all.desc" : e->type == H_APPS ? "apps.desc" : "home.settings.desc";
+        tm_strlcpy(buf, tr(k), sizeof buf);
+    }
+    gfx_text(FONT_S, mid, ty, t->dim, ALIGN_CENTER, gfx_w() - S(120), buf);
+    /* position: small dots, the current one long */
+    int nd = (int)g_n, dw = S(10), gap = S(8);
+    int total = nd * dw + (nd - 1) * gap + S(14), dx = mid - total / 2, dy = bottom - S(26);
+    for (int i = 0; i < nd; i++) {
+        int w = i == A.home_sel ? dw + S(14) : dw;
+        gfx_round_rect(dx, dy, w, dw, dw / 2, i == A.home_sel ? t->accent : gfx_mix(t->panel2, t->dim, 40));
+        dx += w + gap;
+    }
+}
+
 void home_draw(void)
 {
     char title[128];
     snprintf(title, sizeof title, "TriMux · %s", tr("home.title"));
     app_header(title);
+    if (home_carousel() && g_n) {
+        carousel_draw();
+        app_footer(tr("home.hints.carousel"));
+        return;
+    }
     int top = S(64) + S(14), bottom = gfx_h() - S(52) - S(10);
     int row = S(64);
     int listw = gfx_w() * 58 / 100;
@@ -236,6 +371,12 @@ void home_input(TmButton b)
 {
     if (!g_n)
         return;
+    if (home_carousel()) { /* the cards run left to right: both directions move */
+        if (b == BTN_LEFT)
+            b = BTN_UP;
+        else if (b == BTN_RIGHT)
+            b = BTN_DOWN;
+    }
     switch (b) {
     case BTN_UP: A.home_sel = A.home_sel > 0 ? A.home_sel - 1 : (int)g_n - 1; break;
     case BTN_DOWN: A.home_sel = (size_t)(A.home_sel + 1) < g_n ? A.home_sel + 1 : 0; break;

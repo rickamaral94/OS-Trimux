@@ -32,7 +32,7 @@ enum {
     ACT_UPDATE_CHECK, ACT_UPDATE_INSTALL, ACT_UPDATE_ROLLBACK, ACT_UPDATE_REBOOT,
     ACT_LED_POWER, ACT_TZ, ACT_TIME_SYNC, ACT_TIME_FIELD, ACT_TIME_APPLY, ACT_APP,
     ACT_VID_ASPECT, ACT_VID_FILTER, ACT_VID_RES, ACT_VID_COLORS, ACT_VID_GHOST, ACT_VID_HD, ACT_VID_SPEED, ACT_SORT, ACT_STORE,
-    ACT_COVERS_SYS, ACT_GAMES_VIEW,
+    ACT_COVERS_SYS, ACT_GAMES_VIEW, ACT_HOME_VIEW,
 };
 
 static const struct {
@@ -170,6 +170,7 @@ static void page_appearance(Menu *m)
     it = add(m, ACT_TOGGLE, tr("settings.show_empty"), onoff((int)setting_long("general", "show_empty", 0)),
              tr("settings.show_empty.desc"));
     tm_strlcpy(it->sarg, "general/show_empty", sizeof it->sarg);
+    add(m, ACT_HOME_VIEW, tr("view.home"), tr(home_carousel() ? "view.carousel" : "view.list"), tr("view.home.desc"));
     add(m, ACT_GAMES_VIEW, tr("view.title"), tr(games_grid() ? "view.grid" : "view.list"), tr("view.desc"));
     it = add(m, ACT_TOGGLE, tr("settings.animations"), onoff((int)setting_long("general", "animations", 1)),
              tr("settings.animations.desc"));
@@ -2143,6 +2144,10 @@ static void activate(MenuItem *it, TmButton b)
         app_mark_settings();
         break;
     case ACT_COVERS_SYS: covers_toggle_system(it->sarg); break;
+    case ACT_HOME_VIEW:
+        tm_ini_set(&A.settings, "general", "home_view", home_carousel() ? "list" : "carousel");
+        app_mark_settings();
+        break;
     case ACT_GAMES_VIEW:
         tm_ini_set(&A.settings, "general", "games_view", games_grid() ? "list" : "grid");
         app_mark_settings();

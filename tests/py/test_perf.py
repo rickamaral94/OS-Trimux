@@ -96,3 +96,16 @@ def test_heavy_boost_switch_asks_first(env, tmp_path):
     assert "heavy_boost = 1" in read(cfg)
     assert ui(env, POWER + ",DOWN,A,B,B").returncode == 0
     assert "heavy_boost = 0" in read(cfg)
+
+
+# ---- home screen as a carousel (Configurações › Aparência › Tela inicial)
+
+@pytest.mark.skipif(not _ui_runs(), reason="build/native/trimux-ui not built for this system")
+def test_home_carousel_moves_sideways_and_opens(env, tmp_path):
+    cfg = os.path.join(env["TRIMUX_SDCARD"], "TriMuxData/config/trimux.ini")
+    write(cfg, "[general]\nwizard_done = 1\nhome_view = carousel\n")
+    shot = str(tmp_path / "carousel.bmp")
+    # Favoritos, Todos os jogos, NES, GB, GBA, PS1, Ports...: RIGHT twice -> NES, A opens its list
+    r = ui(env, "RIGHT,RIGHT,shot=%s,A,A" % shot)                # NES -> its list -> play the first game
+    assert r.returncode == 10 and os.path.getsize(shot) > 100000
+    assert "system = FC" in read(os.path.join(env["TRIMUX_TMP"], "launch.ini"))

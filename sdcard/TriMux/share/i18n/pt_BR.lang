@@ -898,3 +898,7 @@ power.heavy.desc = Com o perfil Automático, N64, Dreamcast, PSP, Quake e outros
 power.heavy.unavailable = Este aparelho não lista 2,0 GHz entre as frequências da CPU.
 power.heavy.confirm.title = Permitir 2,0 GHz nos emuladores pesados?
 power.heavy.confirm.text = N64, Dreamcast, PSP e os outros emuladores pesados poderão usar a CPU até 2,0 GHz, acima dos 1,8 GHz anunciados pelo fabricante. É o mesmo limite que o sistema oficial da TrimUI usa no modo normal. Esquenta mais e gasta mais bateria; os limites térmicos continuam ativos. Continuar?
+home.hints.carousel = A:Abrir|◀ ▶:Mover|Y:Buscar|MENU:Rápido
+view.home = Tela inicial
+view.carousel = Carrossel
+view.home.desc = Lista: entradas uma embaixo da outra, com os detalhes no painel ao lado. Carrossel: um cartão grande por plataforma, com a cor e a sigla dela, e o selecionado no meio; ◀ ▶ (ou ▲ ▼) passam de um para outro e L1/R1 pulam vários.
