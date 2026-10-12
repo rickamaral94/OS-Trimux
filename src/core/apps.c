@@ -52,6 +52,21 @@ static int json_get(const char *js, const jsmntok_t *t, int n, const char *key, 
     return -1;
 }
 
+int tm_json_file_get(const char *path, const char *key, char *out, size_t size)
+{
+    size_t len = 0;
+    char *js = tm_read_file(path, 64 * 1024, &len);
+    if (!js)
+        return -1;
+    jsmn_parser ps;
+    jsmntok_t t[256];
+    jsmn_init(&ps);
+    int n = jsmn_parse(&ps, js, len, t, 256);
+    int rc = n > 0 ? json_get(js, t, n, key, out, size) : -1;
+    free(js);
+    return rc;
+}
+
 static int name_ok(const char *s)
 {
     return s[0] && s[0] != '.' && !strchr(s, '/') && !strchr(s, '\\');

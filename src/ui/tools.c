@@ -4,6 +4,7 @@
 #include "app.h"
 #include "../core/log.h"
 #include "../core/tools.h"
+#include "../core/uninstall.h"
 #include "../core/util.h"
 #include "../core/webfiles.h"
 
@@ -393,6 +394,50 @@ void tools_web_stop(void)
         tm_web_stop(&A.paths);
 }
 
+/* ------------------------------------------------------------ uninstall */
+
+static TmUninstallCheck g_un;
+
+static void page_uninstall(Menu *m)
+{
+    tm_strlcpy(m->title, tr("uninstall.title"), sizeof m->title);
+    tm_uninstall_check(&A.paths, &g_un);
+    char v[64], d[1400];
+    menu_header(m, tr("uninstall.found"));
+    if (g_un.stock_emus > 0)
+        snprintf(v, sizeof v, "%d", g_un.stock_emus);
+    else
+        tm_strlcpy(v, tr("uninstall.none"), sizeof v);
+    menu_add(m, ACT_NONE, tr("uninstall.emus"), v, tr(g_un.stock_emus ? "uninstall.emus.desc" : "uninstall.emus.missing"))
+        ->enabled = 1;
+    snprintf(v, sizeof v, tr("uninstall.read.value"), g_un.game_dirs - g_un.nunread, g_un.game_dirs);
+    size_t l = (size_t)snprintf(d, sizeof d, "%s", tr("uninstall.read.desc"));
+    for (int i = 0; i < g_un.nread && l < sizeof d; i++)
+        l += (size_t)snprintf(d + l, sizeof d - l, "%s%s", i ? ", " : "\n\n", g_un.read[i]);
+    menu_add(m, ACT_NONE, tr("uninstall.read"), v, d)->enabled = 1;
+    for (int i = 0; i < g_un.nunread; i++) {
+        char label[96];
+        snprintf(label, sizeof label, "Roms/%s", g_un.unread[i]);
+        menu_add(m, ACT_NONE, label, tr("uninstall.unread.value"), tr("uninstall.unread.desc"))->enabled = 1;
+    }
+    menu_header(m, tr("uninstall.what"));
+    menu_add(m, ACT_NONE, tr("uninstall.keeps"), "", tr("uninstall.keeps.desc"))->enabled = 1;
+    menu_add(m, ACT_NONE, tr("uninstall.removes"), "", tr("uninstall.removes.desc"))->enabled = 1;
+    menu_add(m, ACT_T_UNINSTALL, tr("uninstall.run"), "", tr("uninstall.run.desc"));
+}
+
+static void uninstall_ask(void)
+{
+    char text[512];
+    if (g_un.stock_emus == 0)
+        tm_strlcpy(text, tr("uninstall.confirm.noemus"), sizeof text);
+    else if (g_un.nunread > 0)
+        snprintf(text, sizeof text, tr("uninstall.confirm.unread"), g_un.nunread);
+    else
+        tm_strlcpy(text, tr("uninstall.confirm"), sizeof text);
+    app_dialog(DLG_UNINSTALL, tr("uninstall.title"), text, 0, NULL, 0); /* "Não" selected */
+}
+
 /* ------------------------------------------------------------ dispatch */
 
 int tools_page(Menu *m)
@@ -401,6 +446,7 @@ int tools_page(Menu *m)
     case PAGE_STATS: page_stats(m); return 1;
     case PAGE_CLEAN: page_clean(m); return 1;
     case PAGE_FILES: page_files(m); return 1;
+    case PAGE_UNINSTALL: page_uninstall(m); return 1;
     default: return 0;
     }
 }
@@ -470,6 +516,10 @@ void tools_activate(Menu *m, MenuItem *it, TmButton b)
                 app_dialog(DLG_INFO, it->label, tr("log.empty"), 0, NULL, 1);
         }
         return;
+    case ACT_T_UNINSTALL:
+        if (b == BTN_A)
+            uninstall_ask();
+        return;
     case ACT_T_LOGS:
         if (b == BTN_A) {
             char abs[TM_PATH_MAX];
@@ -507,6 +557,20 @@ int tools_dialog_result(int id, long arg, const char *sarg, int yes)
         app_toast(msg);
         g_clean_valid = 0;
         menu_rebuild();
+        return 1;
+    }
+    case DLG_UNINSTALL: {
+        if (!yes)
+            return 1;
+        char req[TM_PATH_MAX];
+        tm_mkdir_p(A.paths.tmp);
+        if (tm_path_join(req, sizeof req, A.paths.tmp, "uninstall.req") != 0 || tm_atomic_write(req, "1\n", 2) != 0) {
+            app_toast(tr("uninstall.failed"));
+            return 1;
+        }
+        LOGI("ui: uninstall confirmed (%d stock emulators, %d of %d game folders read)", g_un.stock_emus,
+             g_un.game_dirs - g_un.nunread, g_un.game_dirs);
+        app_exit(EXIT_UNINSTALL);
         return 1;
     }
     case DLG_RUN_LOG: {

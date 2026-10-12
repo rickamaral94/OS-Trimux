@@ -31,6 +31,9 @@ size_t tm_apps_scan(const TmPaths *p, const char *lang, TmApp *out, size_t max);
  * not a blocked firmware app, valid config). Fills out. */
 int tm_app_allowed(const TmPaths *p, const char *dir, TmApp *out);
 
+/* Top-level string/number value of a small JSON file (config.json); 0 if found. */
+int tm_json_file_get(const char *path, const char *key, char *out, size_t size);
+
 /* Hand-off between the menu and the supervisor (/tmp/trimux/app.ini). */
 int tm_app_request_write(const TmPaths *p, const char *dir);
 int tm_app_request_read(const TmPaths *p, char *dir, size_t size);

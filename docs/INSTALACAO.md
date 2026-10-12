@@ -161,9 +161,39 @@ não o modifica.
 
 ## 6. Desinstalar
 
-Apague `trimui/`, `TriMux/` e, se quiser, `TriMuxData/` do cartão. Jogos,
-saves e BIOS continuam onde estão e funcionam no sistema oficial ou em outros
-firmwares que usem as mesmas pastas.
+**Pelo aparelho (a partir da 0.5.4):** *Configurações › Sistema ›
+Desinstalar o TriMux*. Antes de remover qualquer coisa, a tela mostra:
+
+* quantos **emuladores do sistema oficial** existem no cartão (pasta `Emus`)
+  ou na memória interna;
+* quantas pastas de `Roms` com jogos algum desses emuladores lê, e quais
+  ficariam de fora.
+
+Depois de confirmar (a resposta já vem em *Não*), saem do cartão só as pastas
+`trimui`, `TriMux`, `TriMux.old` e `trimui.old`, nesta ordem, e o sistema
+oficial abre na hora. Jogos, saves, estados, BIOS, capas, `Apps`, `Ports`,
+`Emus` e `TriMuxData` ficam no cartão. Nada é movido ou renomeado, e a
+memória interna não é tocada.
+
+**Atenção: o sistema oficial precisa da pasta `Emus` no cartão.** O firmware
+do Brick Pro não traz emuladores na memória interna; o menu oficial usa os de
+`Emus/<plataforma>/` do cartão que vem com o aparelho. Um cartão gravado com a
+imagem do TriMux não tem essa pasta. Nesse caso, copie pelo computador a
+pasta `Emus` do cartão original da TrimUI (e a pasta `RetroArch`, se ele
+tiver uma) para a raiz do cartão. Os jogos podem ficar onde estão: o TriMux
+usa os mesmos nomes de pasta do sistema oficial (`FC`, `SFC`, `GB`, `GBA`,
+`MD`, `PS`…).
+
+Os saves feitos no TriMux ficam em `Saves/<plataforma>/`. Se o RetroArch do
+cartão original guardar os saves em outra pasta, copie-os para lá pelo
+computador (isso depende do cartão original e ainda não foi conferido num
+aparelho).
+
+**Pelo computador:** apague `trimui/` e `TriMux/` (e `TriMux.old/`,
+`trimui.old/`, se existirem). `TriMuxData/` pode ficar ou ser apagada.
+
+Para voltar ao TriMux, extraia o `TriMux-<versão>-update.zip` no cartão de
+novo.
 
 ## Perguntas frequentes
 
