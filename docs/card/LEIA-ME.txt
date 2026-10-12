@@ -25,5 +25,7 @@ Copiar jogos sem tirar o cartão
   computador ou celular o endereço mostrado (http://...:8080).
 
 Voltar ao sistema oficial: retire o cartão (ou apague a pasta "trimui").
+Desinstalar mantendo os jogos: Configurações › Sistema › Desinstalar o TriMux.
+  O sistema oficial precisa da pasta "Emus" do cartão original da TrimUI.
 Documentação completa: https://github.com/rickamaral94/OS-Trimux
 Não incluímos jogos, BIOS ou firmware de consoles.

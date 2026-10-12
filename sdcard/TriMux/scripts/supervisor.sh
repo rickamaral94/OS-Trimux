@@ -129,6 +129,28 @@ while true; do
             "$CTL" app || log "app request refused or failed"
             ;;
         20) to_stock "requested from the menu" ;;
+        21) # uninstall, confirmed in Configurações › Sistema: everything that
+            # needs trimuxctl runs before it removes itself with TriMux/
+            log "uninstall requested"
+            settle_card
+            "$CTL" power default >/dev/null 2>&1
+            "$CTL" uninstall run >> "$TMP/uninstall.out" 2>&1
+            urc=$?
+            sync
+            if [ $urc -eq 0 ]; then
+                log "uninstalled: opening the stock interface"
+                echo "uninstalled" > "$TMP/to_stock"
+                exit 0
+            fi
+            # trimui/ is removed first, so after a partial failure the stock
+            # interface still opens; with it still there, keep TriMux running
+            if [ ! -d "$SD/trimui" ]; then
+                log "uninstall incomplete (see trimux.log); opening the stock interface"
+                echo "uninstalled" > "$TMP/to_stock"
+                exit 0
+            fi
+            log "uninstall failed (status $urc); TriMux stays"
+            ;;
         30) log "power off"; settle_card; touch /tmp/poweroff_flag; poweroff; sleep 30 ;;
         31) log "reboot"; settle_card; reboot; sleep 30 ;;
         40) log "card partition grow requested"

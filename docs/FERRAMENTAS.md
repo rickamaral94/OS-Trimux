@@ -36,13 +36,19 @@ Navega pelas pastas do cartão:
 
 * **A** numa pasta entra nela e **B** volta uma pasta;
 * o painel mostra o tamanho e a data de cada arquivo;
-* **A** num arquivo pergunta se você quer apagar. A resposta já vem marcada
-  em *Não*, e nada é apagado sem confirmar;
+* **A** num arquivo de texto (`.log`, `.txt`, `.sh`, `.json`, `.ini`, `.cfg`,
+  `.md`, `.csv` e outros) abre o **leitor de texto**: ▲▼ rolam, L1/R1 (ou
+  ◀▶) passam página, L2/R2 vão ao início e ao fim, B volta. Ele mostra
+  primeiro o fim do arquivo, onde ficam as mensagens mais novas, e lê só os
+  últimos 128 KiB de arquivos grandes;
+* **X** num arquivo pergunta se você quer apagar (A nos que não são texto
+  também). A resposta já vem marcada em *Não*, e nada é apagado sem
+  confirmar;
 * pastas com muitos arquivos são mostradas em páginas de 56 itens.
 
 As pastas `TriMux`, `TriMux.old`, `trimui` e `trimui.old` (o sistema do TriMux,
 a versão guardada para voltar atrás e o sistema oficial) são **somente
-leitura**. Apagar um jogo atualiza a lista de jogos na hora.
+leitura** (os textos delas podem ser lidos, não apagados). Apagar um jogo atualiza a lista de jogos na hora.
 
 Copiar e mover arquivos não está no aparelho. Para isso, use *Arquivos pelo
 navegador* ou FTP.

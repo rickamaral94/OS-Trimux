@@ -23,6 +23,7 @@
 #include "../../src/core/sysinfo.h"
 #include "../../src/core/tools.h"
 #include "../../src/core/runlog.h"
+#include "../../src/core/uninstall.h"
 #include "../../src/core/util.h"
 #include "../../src/core/video.h"
 
@@ -1165,6 +1166,25 @@ static void test_runlog(void)
     CHECK(tm_lastrun_read(&p, &back) != 0);
 }
 
+static void test_uninstall_paths(void)
+{
+    char d[64];
+    CHECK(tm_uninstall_rompath_dir("Emus/FC", "../../Roms/FC", d, sizeof d) == 0);
+    CHECK_STR(d, "FC");
+    CHECK(tm_uninstall_rompath_dir("Emus/FC", "..\\/..\\/Roms\\/FC\\/", d, sizeof d) == 0);
+    CHECK_STR(d, "FC");
+    CHECK(tm_uninstall_rompath_dir(NULL, "/mnt/SDCARD/Roms/PS/", d, sizeof d) == 0);
+    CHECK_STR(d, "PS");
+    CHECK(tm_uninstall_rompath_dir("Emus/X", "./../.././Roms/./GBA/sub", d, sizeof d) == 0);
+    CHECK_STR(d, "GBA");
+    CHECK(tm_uninstall_rompath_dir("Emus/X", "../../../etc", d, sizeof d) != 0);   /* above the card */
+    CHECK(tm_uninstall_rompath_dir("Emus/X", "../../Imgs/FC", d, sizeof d) != 0);  /* not a Roms folder */
+    CHECK(tm_uninstall_rompath_dir("Emus/X", "/mnt/UDISK/Roms/FC", d, sizeof d) != 0);
+    CHECK(tm_uninstall_rompath_dir(NULL, "../../Roms/FC", d, sizeof d) != 0);      /* internal emulator, relative */
+    CHECK(tm_uninstall_rompath_dir("Emus/X", "../../Roms", d, sizeof d) != 0);
+    CHECK(tm_uninstall_rompath_dir("Emus/X", "", d, sizeof d) != 0);
+}
+
 int main(void)
 {
     snprintf(T, sizeof T, "/tmp/trimux-unit-%d", (int)getpid());
@@ -1190,6 +1210,7 @@ int main(void)
     test_popular_video();
     test_tools();
     test_runlog();
+    test_uninstall_paths();
     char cmd[600];
     snprintf(cmd, sizeof cmd, "rm -rf '%s'", T);
     if (system(cmd) != 0)

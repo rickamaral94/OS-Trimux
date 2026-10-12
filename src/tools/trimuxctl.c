@@ -36,6 +36,7 @@
 #include "../core/tools.h"
 #include "../core/webfiles.h"
 #include "../core/sysinfo.h"
+#include "../core/uninstall.h"
 #include "../core/update.h"
 #include "../core/util.h"
 #include "../core/video.h"
@@ -1188,6 +1189,40 @@ static int cmd_time(int argc, char **argv)
 }
 
 /* trimuxctl clean scan | clean run <computer|logs|temp>... */
+/* uninstall check: what the stock interface will find on the card.
+ * uninstall run: removes TriMux's folders; only after the menu asked for it
+ * (it writes /tmp/trimux/uninstall.req after the user confirmed). */
+static int cmd_uninstall(int argc, char **argv)
+{
+    const char *sub = argc > 0 ? argv[0] : "check";
+    if (strcmp(sub, "check") == 0) {
+        TmUninstallCheck c;
+        if (tm_uninstall_check(&P, &c) != 0)
+            return 1;
+        printf("stock_emulators=%d\ngame_folders=%d\n", c.stock_emus, c.game_dirs);
+        printf("stock_reads=");
+        for (int i = 0; i < c.nread; i++)
+            printf("%s%s", i ? "," : "", c.read[i]);
+        printf("\nnot_read=");
+        for (int i = 0; i < c.nunread; i++)
+            printf("%s%s", i ? "," : "", c.unread[i]);
+        printf("\n");
+        return 0;
+    }
+    if (strcmp(sub, "run") == 0) {
+        char req[TM_PATH_MAX];
+        if (tm_path_join(req, sizeof req, P.tmp, "uninstall.req") != 0 || !tm_file_exists(req)) {
+            fprintf(stderr, "uninstall: not requested from the menu\n");
+            return 2;
+        }
+        unlink(req);
+        LOGI("uninstall: requested from the menu");
+        return tm_uninstall_run(&P) == 0 ? 0 : 1;
+    }
+    fprintf(stderr, "usage: trimuxctl uninstall check|run\n");
+    return 1;
+}
+
 static int cmd_clean(int argc, char **argv)
 {
     TmCleanReport r;
@@ -1261,7 +1296,7 @@ static int cmd_web(int argc, char **argv)
 int main(int argc, char **argv)
 {
     if (argc < 2) {
-        fprintf(stderr, "usage: trimuxctl power|leds|switch|net|scrape|update|store|clean|stats|web|app|time|sysinfo|device|scan|launch|boot|fat-grow|card-grow ...\n");
+        fprintf(stderr, "usage: trimuxctl power|leds|switch|net|scrape|update|store|clean|uninstall|stats|web|app|time|sysinfo|device|scan|launch|boot|fat-grow|card-grow ...\n");
         return 1;
     }
     if (tm_paths_init(&P) != 0)
@@ -1286,6 +1321,8 @@ int main(int argc, char **argv)
         return cmd_store(argc - 2, argv + 2);
     if (strcmp(c, "clean") == 0)
         return cmd_clean(argc - 2, argv + 2);
+    if (strcmp(c, "uninstall") == 0)
+        return cmd_uninstall(argc - 2, argv + 2);
     if (strcmp(c, "stats") == 0)
         return cmd_stats();
     if (strcmp(c, "web") == 0)

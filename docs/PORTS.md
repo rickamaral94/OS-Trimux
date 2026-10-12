@@ -107,9 +107,10 @@ início, normalmente `launch.sh`) e os arquivos do jogo.
   arquivos a partir de um caminho relativo falhavam).
 * O que o script mostra na tela de texto (erros incluídos) é gravado em
   `TriMuxData/logs/apps/<nome da pasta>.log` quando ele termina. Se o port
-  fecha logo depois de abrir, o menu avisa e diz qual é o arquivo. Mande
-  esse arquivo junto com o `config.json` e o `launch.sh` quando um port não
-  abrir.
+  fecha logo depois de abrir, o menu avisa e oferece abrir o registro no
+  leitor de texto. Ele também fica em *Configurações › Sistema › Registros e
+  desempenho › Registros de aplicativos e ports*. Mande esse arquivo junto
+  com o `config.json` e o `launch.sh` quando um port não abrir.
 * Muitos ports do cartão original dependem de arquivos que ficam fora da
   pasta do jogo, como o PortMaster da TrimUI em `Apps/PortMaster` ou
   bibliotecas em `Data/`. Copie também essas pastas do cartão original. O
