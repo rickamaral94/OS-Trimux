@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "gfx.h"
+#include "../core/consoleart.h"
 #include "../core/image.h"
 #include "../core/log.h"
 #include "../core/util.h"
@@ -374,10 +375,70 @@ int gfx_image_box(const char *path, int x, int y, int max_w, int max_h, int *out
     return 1;
 }
 
+#define ART_CACHE 48 /* every platform, at the carousel's two card sizes */
+static struct {
+    char id[16];
+    int px; /* rendered size */
+    SDL_Texture *tex;
+    uint32_t used;
+} g_art[ART_CACHE];
+
+int gfx_console(const char *sys_id, uint32_t accent, int x, int y, int size)
+{
+    if (!g_ren || !sys_id || size <= 0)
+        return -1;
+    /* rendered at a few fixed sizes and scaled, so the sliding cards do not
+     * draw a new picture for every in-between size */
+    int px = size > gfx_h() / 3 ? gfx_h() * 300 / 768 : gfx_h() * 190 / 768;
+    int slot = -1, lru = 0;
+    for (int i = 0; i < ART_CACHE; i++) {
+        if (g_art[i].tex && g_art[i].px == px && strcmp(g_art[i].id, sys_id) == 0)
+            slot = i;
+        if (g_art[i].used < g_art[lru].used)
+            lru = i;
+    }
+    if (slot < 0) {
+        if (g_img_budget > 0 && g_img_loads >= g_img_budget) {
+            g_img_pending = 1;
+            return -1;
+        }
+        g_img_loads++;
+        unsigned char *rgba = calloc((size_t)px * (size_t)px, 4);
+        if (!rgba)
+            return -1;
+        tm_console_art(rgba, px, sys_id, accent);
+        SDL_Texture *t = SDL_CreateTexture(g_ren, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, px, px);
+        if (t && SDL_UpdateTexture(t, NULL, rgba, px * 4) != 0) {
+            SDL_DestroyTexture(t);
+            t = NULL;
+        }
+        free(rgba);
+        if (!t)
+            return -1;
+        SDL_SetTextureBlendMode(t, SDL_BLENDMODE_BLEND);
+        slot = lru;
+        if (g_art[slot].tex)
+            SDL_DestroyTexture(g_art[slot].tex);
+        snprintf(g_art[slot].id, sizeof g_art[slot].id, "%s", sys_id);
+        g_art[slot].px = px;
+        g_art[slot].tex = t;
+    }
+    uint32_t now = SDL_GetTicks();
+    g_art[slot].used = now ? now : 1;
+    SDL_Rect r = {x, y, size, size};
+    SDL_RenderCopy(g_ren, g_art[slot].tex, NULL, &r);
+    return 1;
+}
+
 void gfx_quit(void)
 {
     for (int i = 0; i < IMG_CACHE; i++)
         img_drop(i);
+    for (int i = 0; i < ART_CACHE; i++) {
+        if (g_art[i].tex)
+            SDL_DestroyTexture(g_art[i].tex);
+        memset(&g_art[i], 0, sizeof g_art[i]);
+    }
     for (int i = 0; i < FONT_COUNT; i++) {
         font_reset(&g_fonts[i]);
         if (g_fonts[i].atlas)

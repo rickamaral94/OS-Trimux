@@ -1,7 +1,7 @@
 # TriMux 0.5.7 (pré-lançamento)
 
 **Estado:** testado só no computador. Os ícones precisam ser vistos no menu
-oficial do aparelho (TESTES.md, H88).
+oficial e no carrossel do aparelho (TESTES.md, H88 e H89).
 
 * **Ícones do sistema oficial com o desenho do console.** Os emuladores que o
   TriMux cria em *Sistema oficial › Preparar o cartão* traziam um quadrado
@@ -17,7 +17,14 @@ oficial do aparelho (TESTES.md, H88).
   novo; as plataformas aparecem como *falta* e *Preparar o cartão* troca só
   os ícones e os lançadores (nada é copiado de novo se o RetroArch não mudou).
 
+* **Os mesmos desenhos no carrossel do TriMux** (*Aparência › Tela inicial ›
+  Carrossel*): cada plataforma mostra o console no lugar da sigla, e
+  *Continuar* sem capa mostra o console do jogo. Cada desenho é feito uma vez
+  e guardado na memória enquanto o menu está aberto.
+
 ![Ícones](img/24-icones-sistema-oficial.png)
+
+![Carrossel](img/25-carrossel-consoles.png)
 
 # TriMux 0.5.6 (pré-lançamento)
 

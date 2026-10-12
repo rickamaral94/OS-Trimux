@@ -61,6 +61,10 @@ int gfx_image(const char *path, int x, int y, int max_w, int max_h);
 int gfx_image_box(const char *path, int x, int y, int max_w, int max_h, int *out_w, int *out_h);
 /* 1 when an image was put off this frame: draw again soon. */
 int gfx_image_pending(void);
+/* Drawing of a platform's console (core/consoleart.h), size x size at
+ * (x, y). Drawn once per platform and size and kept; new ones count against
+ * the per-frame budget like images. Returns 1 drawn, -1 not drawn yet. */
+int gfx_console(const char *sys_id, uint32_t accent, int x, int y, int size);
 /* New images decoded per frame (0 = no limit, for screenshots and tests). */
 void gfx_set_load_budget(int n);
 

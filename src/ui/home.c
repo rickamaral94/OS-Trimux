@@ -246,20 +246,26 @@ static void draw_card(const HomeEntry *e, int cx, int cy, int size, int selected
         int iw = 0, ih = 0;
         int drawn = app_game_cover(&A.lib.games[e->game], path, sizeof path) == 0 &&
                     gfx_image_box(path, x + pad, y + pad, size - 2 * pad, size - 2 * pad - S(30), &iw, &ih) > 0;
-        if (!drawn)
-            gfx_text(FONT_XL, cx, cy - gfx_font_height(FONT_XL) / 2, 0xffffff, ALIGN_CENTER, size - pad,
-                     A.cat.systems[A.lib.games[e->game].system].short_name);
+        if (!drawn) {
+            const TmSystem *sys = &A.cat.systems[A.lib.games[e->game].system];
+            int as = size * 80 / 100;
+            gfx_console(sys->id, sys->color, cx - as / 2, y + size * 2 / 100, as);
+        }
         gfx_text(FONT_S, cx, y + size - pad - gfx_font_height(FONT_S) + S(6), 0xffffff, ALIGN_CENTER, size - pad,
                  tr("home.continue"));
         break;
     }
-    case H_SYSTEM:
-        gfx_text(FONT_XL, cx, cy - gfx_font_height(FONT_XL) / 2 - S(8), 0xffffff, ALIGN_CENTER, size - pad,
-                 A.cat.systems[e->system].short_name);
+    case H_SYSTEM: {
+        /* the console's drawing (the name is under the cards) */
+        const TmSystem *sys = &A.cat.systems[e->system];
+        int as = size * 84 / 100;
+        gfx_round_rect_a(x + size / 8, y + size / 8, size - size / 4, size - size / 3, size / 3, 0xffffff, 26);
+        gfx_console(sys->id, sys->color, cx - as / 2, y + size * 1 / 100, as);
         snprintf(buf, sizeof buf, "%zu", tm_library_count_system(&A.lib, e->system));
         gfx_text(FONT_M, cx, y + size - pad - gfx_font_height(FONT_M) + S(6), gfx_mix(0xffffff, c, 25), ALIGN_CENTER,
                  size - pad, buf);
         break;
+    }
     case H_FAVORITES:
         gfx_star(cx, cy - S(10), size / 5, 0xffffff);
         snprintf(buf, sizeof buf, "%zu", A.fav.count);
