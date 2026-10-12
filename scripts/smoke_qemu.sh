@@ -95,5 +95,29 @@ else
     ko "firmware httpd file server"
 fi
 kill "$HP" 2>/dev/null || true
+
+# 6. "Sistema oficial › Preparar o cartão": the RetroArch and cores TriMux
+#    copies to Emus/_TriMux for the stock interface still load from there with
+#    the firmware's libraries (the generated launch.sh sets the same
+#    LD_LIBRARY_PATH). The stock menu itself is not run: it needs the display.
+S=$OUT/stock
+rm -rf "$S"
+mkdir -p "$S/sd/TriMux/retroarch/cores" "$S/sd/Roms/GBA" "$S/sd/Roms/FC" "$S/tmp"
+cp -r sdcard/TriMux/share "$S/sd/TriMux/share"
+cp -r sdcard/TriMux/retroarch/. "$S/sd/TriMux/retroarch/"
+cp build/retroarch/retroarch "$S/sd/TriMux/retroarch/retroarch"
+cp build/cores/gpsp_libretro.so build/cores/fceumm_libretro.so "$S/sd/TriMux/retroarch/cores/"
+echo x > "$S/sd/Roms/GBA/Homebrew (World).gba"
+echo x > "$S/sd/Roms/FC/Homebrew (World).nes"
+RT=$S/sd/Emus/_TriMux
+if TRIMUX_SDCARD=$S/sd TRIMUX_TMP=$S/tmp TRIMUX_SYSFS_ROOT=$S/dev "$W/sd/TriMux/bin/trimuxctl" stock prepare &&
+    sh -n "$S/sd/Emus/GBA/launch.sh" && sh -n "$S/sd/Emus/FC/launch.sh" &&
+    grep -q '"rompath": "../../Roms/GBA"' "$S/sd/Emus/GBA/config.json" &&
+    $Q "$RT/retroarch" --features > "$OUT/stock-retroarch.txt" 2>&1 &&
+    $Q "$OUT/coreprobe" "$RT"/cores/*.so > "$OUT/stock-cores.txt" 2>&1; then
+    ok "stock emulators: Emus/_TriMux RetroArch and $(grep -c '^ok' "$OUT/stock-cores.txt") cores load with firmware libraries"
+else
+    ko "stock emulators (Emus/_TriMux)"
+fi
 echo "smoke: $pass passed, $fail failed"
 [ $fail -eq 0 ]

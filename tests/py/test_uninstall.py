@@ -117,8 +117,10 @@ def test_supervisor_without_request_keeps_trimux(rig):  # noqa: F811
     assert "uninstall failed" in read(os.path.join(card, "TriMuxData/logs/trimux.log"))
 
 
-# Configurações -> Sistema (DOWN*10) -> last item "Desinstalar o TriMux" (UP from the first row)
-UNINSTALL = "UP,A" + ",DOWN" * 10 + ",A,UP,A"
+# Configurações -> Sistema (DOWN*10) -> last item "Sistema oficial" (UP from the first row)
+# -> its last item "Desinstalar o TriMux"
+STOCK = "UP,A" + ",DOWN" * 10 + ",A,UP,A"
+UNINSTALL = STOCK + ",UP,A"
 
 
 @needs_ui

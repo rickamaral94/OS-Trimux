@@ -36,6 +36,7 @@
 #include "../core/tools.h"
 #include "../core/webfiles.h"
 #include "../core/sysinfo.h"
+#include "../core/stockprep.h"
 #include "../core/uninstall.h"
 #include "../core/update.h"
 #include "../core/util.h"
@@ -1223,6 +1224,41 @@ static int cmd_uninstall(int argc, char **argv)
     return 1;
 }
 
+/* stock check: which Roms folders the stock interface can play, and how.
+ * stock prepare: writes the missing emulators (Emus/<folder>) for it. */
+static int cmd_stock(int argc, char **argv)
+{
+    const char *sub = argc > 0 ? argv[0] : "check";
+    TmCatalog cat;
+    if (load_catalog(&cat) != 0)
+        return 1;
+    TmIni ini;
+    tm_settings_load(&ini, &P);
+    int rc = 1;
+    if (strcmp(sub, "check") == 0) {
+        static TmStockPlan plan;
+        static const char *const names[] = {"original", "trimux", "missing", "unsupported"};
+        if (tm_stock_plan(&P, &cat, &ini, &plan) == 0) {
+            printf("original_emulators=%d\ntrimux_emulators=%d\nneed_bytes=%llu\n", plan.original_emus,
+                   plan.trimux_emus, plan.need_bytes);
+            for (int i = 0; i < plan.n; i++)
+                printf("folder=%s|%s|%s|%s|%s\n", plan.items[i].dir, names[plan.items[i].state], plan.items[i].sys_id,
+                       plan.items[i].emu_id, plan.items[i].emu_dir);
+            rc = 0;
+        }
+    } else if (strcmp(sub, "prepare") == 0) {
+        char err[64];
+        rc = tm_stock_prepare(&P, &cat, &ini, err, sizeof err) == 0 ? 0 : 1;
+        if (rc)
+            fprintf(stderr, "%s\n", err);
+    } else {
+        fprintf(stderr, "usage: trimuxctl stock check|prepare\n");
+    }
+    tm_ini_free(&ini);
+    tm_catalog_free(&cat);
+    return rc;
+}
+
 static int cmd_clean(int argc, char **argv)
 {
     TmCleanReport r;
@@ -1296,7 +1332,7 @@ static int cmd_web(int argc, char **argv)
 int main(int argc, char **argv)
 {
     if (argc < 2) {
-        fprintf(stderr, "usage: trimuxctl power|leds|switch|net|scrape|update|store|clean|uninstall|stats|web|app|time|sysinfo|device|scan|launch|boot|fat-grow|card-grow ...\n");
+        fprintf(stderr, "usage: trimuxctl power|leds|switch|net|scrape|update|store|clean|stock|uninstall|stats|web|app|time|sysinfo|device|scan|launch|boot|fat-grow|card-grow ...\n");
         return 1;
     }
     if (tm_paths_init(&P) != 0)
@@ -1321,6 +1357,8 @@ int main(int argc, char **argv)
         return cmd_store(argc - 2, argv + 2);
     if (strcmp(c, "clean") == 0)
         return cmd_clean(argc - 2, argv + 2);
+    if (strcmp(c, "stock") == 0)
+        return cmd_stock(argc - 2, argv + 2);
     if (strcmp(c, "uninstall") == 0)
         return cmd_uninstall(argc - 2, argv + 2);
     if (strcmp(c, "stats") == 0)

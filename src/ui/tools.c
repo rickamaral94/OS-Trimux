@@ -4,6 +4,7 @@
 #include "app.h"
 #include "../core/log.h"
 #include "../core/tools.h"
+#include "../core/stockprep.h"
 #include "../core/uninstall.h"
 #include "../core/util.h"
 #include "../core/webfiles.h"
@@ -426,6 +427,86 @@ static void page_uninstall(Menu *m)
     menu_add(m, ACT_T_UNINSTALL, tr("uninstall.run"), "", tr("uninstall.run.desc"));
 }
 
+/* ------------------------------------------------------------ sistema oficial */
+
+static TmStockPlan g_stock;
+
+static void page_stock(Menu *m)
+{
+    tm_strlcpy(m->title, tr("stock.title"), sizeof m->title);
+    tm_stock_plan(&A.paths, &A.cat, &A.settings, &g_stock);
+    int cnt[4];
+    tm_stock_counts(&g_stock, cnt);
+    char v[64], d[900], label[96];
+    menu_header(m, tr("stock.check"));
+    snprintf(v, sizeof v, "%d", g_stock.original_emus);
+    menu_add(m, ACT_NONE, tr("stock.original"), g_stock.original_emus ? v : tr("uninstall.none"), tr("stock.original.desc"))
+        ->enabled = 1;
+    snprintf(v, sizeof v, "%d", g_stock.trimux_emus);
+    menu_add(m, ACT_NONE, tr("stock.made"), v, tr("stock.made.desc"))->enabled = 1;
+    static const char *const vk[] = {"stock.state.original", "stock.state.trimux", "stock.state.missing",
+                                     "stock.state.unsupported"};
+    for (int i = 0; i < g_stock.n; i++) {
+        const TmStockItem *it = &g_stock.items[i];
+        char k[48];
+        snprintf(label, sizeof label, "Roms/%s", it->dir);
+        snprintf(k, sizeof k, "%s.desc", vk[it->state]);
+        snprintf(d, sizeof d, tr(k), it->sys_name[0] ? it->sys_name : it->dir, it->emu_dir);
+        menu_add(m, ACT_NONE, label, tr(vk[it->state]), d)->enabled = 1;
+    }
+    if (g_stock.n == 0)
+        menu_add(m, ACT_NONE, tr("stock.nogames"), "", tr("stock.nogames.desc"))->enabled = 1;
+    menu_header(m, tr("stock.actions"));
+    int todo = cnt[TM_STOCK_MISSING];
+    if (g_stock.need_bytes > 0) {
+        size_text(g_stock.need_bytes, v, sizeof v);
+    } else {
+        tm_strlcpy(v, todo ? "" : tr("stock.ready"), sizeof v);
+    }
+    snprintf(d, sizeof d, tr("stock.prepare.desc"), todo);
+    menu_add(m, ACT_T_STOCK_PREPARE, tr("stock.prepare"), v, d);
+    menu_add(m, ACT_T_STOCK_TEST, tr("stock.test"), "", tr("stock.test.desc"));
+    MenuItem *it = menu_add(m, ACT_T_PAGE, tr("uninstall.title"), "›", tr("uninstall.desc"));
+    it->arg = PAGE_UNINSTALL;
+}
+
+static void stock_prepare_ask(void)
+{
+    int cnt[4];
+    tm_stock_counts(&g_stock, cnt);
+    if (cnt[TM_STOCK_MISSING] == 0) {
+        app_dialog(DLG_INFO, tr("stock.prepare"), tr(cnt[TM_STOCK_TRIMUX] + cnt[TM_STOCK_ORIGINAL] ? "stock.prepare.nothing"
+                                                                                                    : "stock.nogames.desc"),
+                   0, NULL, 1);
+        return;
+    }
+    char text[512], sz[24];
+    size_text(g_stock.need_bytes, sz, sizeof sz);
+    snprintf(text, sizeof text, tr("stock.prepare.confirm"), cnt[TM_STOCK_MISSING], sz);
+    app_dialog(DLG_STOCK_PREPARE, tr("stock.prepare"), text, 0, NULL, 0);
+    A.dlg.sel = 0; /* nothing is deleted or overwritten: "Sim" selected */
+}
+
+static void stock_prepare_run(void)
+{
+    app_progress(tr("stock.preparing"));
+    char err[64];
+    TmIni st;
+    tm_settings_load(&st, &A.paths);
+    int rc = tm_stock_prepare(&A.paths, &A.cat, &st, err, sizeof err);
+    tm_ini_free(&st);
+    menu_rebuild();
+    int cnt[4];
+    tm_stock_counts(&g_stock, cnt);
+    if (rc == 0) {
+        char msg[256];
+        snprintf(msg, sizeof msg, tr("stock.prepared"), cnt[TM_STOCK_ORIGINAL] + cnt[TM_STOCK_TRIMUX]);
+        app_dialog(DLG_INFO, tr("stock.prepare"), msg, 0, NULL, 1);
+    } else {
+        app_dialog(DLG_INFO, tr("stock.prepare"), tr(err[0] ? err : "stock.err.copy"), 0, NULL, 1);
+    }
+}
+
 static void uninstall_ask(void)
 {
     char text[512];
@@ -447,6 +528,7 @@ int tools_page(Menu *m)
     case PAGE_CLEAN: page_clean(m); return 1;
     case PAGE_FILES: page_files(m); return 1;
     case PAGE_UNINSTALL: page_uninstall(m); return 1;
+    case PAGE_STOCK: page_stock(m); return 1;
     default: return 0;
     }
 }
@@ -516,6 +598,16 @@ void tools_activate(Menu *m, MenuItem *it, TmButton b)
                 app_dialog(DLG_INFO, it->label, tr("log.empty"), 0, NULL, 1);
         }
         return;
+    case ACT_T_STOCK_PREPARE:
+        if (b == BTN_A)
+            stock_prepare_ask();
+        return;
+    case ACT_T_STOCK_TEST:
+        if (b == BTN_A) {
+            app_dialog(DLG_STOCK_TEST, tr("stock.test"), tr("stock.test.confirm"), 0, NULL, 0);
+            A.dlg.sel = 0;
+        }
+        return;
     case ACT_T_UNINSTALL:
         if (b == BTN_A)
             uninstall_ask();
@@ -559,6 +651,16 @@ int tools_dialog_result(int id, long arg, const char *sarg, int yes)
         menu_rebuild();
         return 1;
     }
+    case DLG_STOCK_PREPARE:
+        if (yes)
+            stock_prepare_run();
+        return 1;
+    case DLG_STOCK_TEST:
+        if (yes) {
+            LOGI("ui: testing the card in the stock interface");
+            app_exit(EXIT_STOCK);
+        }
+        return 1;
     case DLG_UNINSTALL: {
         if (!yes)
             return 1;

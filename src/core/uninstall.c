@@ -62,8 +62,7 @@ static int is_license_name(const char *name)
     return 0;
 }
 
-/* 1 when the folder holds a game-like file (two levels down at most). */
-static int has_games(const char *dir, int depth)
+int tm_roms_dir_has_games(const char *dir, int depth)
 {
     DIR *d = opendir(dir);
     if (!d)
@@ -80,7 +79,7 @@ static int has_games(const char *dir, int depth)
         if (S_ISREG(st.st_mode))
             found = 1;
         else if (S_ISDIR(st.st_mode) && depth > 0)
-            found = has_games(p, depth - 1);
+            found = tm_roms_dir_has_games(p, depth - 1);
     }
     closedir(d);
     return found;
@@ -138,7 +137,7 @@ int tm_uninstall_check(const TmPaths *p, TmUninstallCheck *c)
         char sub[TM_PATH_MAX];
         struct stat st;
         if (e->d_name[0] == '.' || tm_path_join(sub, sizeof sub, roms, e->d_name) != 0 || lstat(sub, &st) != 0 ||
-            !S_ISDIR(st.st_mode) || !has_games(sub, 2))
+            !S_ISDIR(st.st_mode) || !tm_roms_dir_has_games(sub, 2))
             continue;
         c->game_dirs++;
         int read = 0;
