@@ -1,3 +1,26 @@
+# TriMux 0.5.6 (pré-lançamento)
+
+**Estado:** testado só no computador. O ganho de velocidade precisa ser
+medido no aparelho (TESTES.md, H86).
+
+* **N64, Dreamcast e PSP mais leves.** Os emuladores vinham com os padrões
+  pensados para PCs. Na primeira vez que cada um abre, o TriMux grava os
+  valores mais leves para a GPU do Brick Pro:
+  * **Dreamcast:** sem filtro anisotrópico (era 4x), ordenação de
+    transparências mais simples e sem a emulação do DSP de áudio, os mesmos
+    padrões das versões do Flycast para aparelhos portáteis.
+  * **N64:** resolução nativa (320×240) em vez de 640×480. Pode ser mudada em
+    *Configurações › Emuladores › Nintendo 64 › Resolução interna*.
+  * **PSP:** sem filtro anisotrópico (era 16x).
+  * Depois disso, o que você mudar no menu do RetroArch fica.
+* **Emuladores pesados até 2,0 GHz** (*Configurações › Energia*). O sistema
+  oficial deixa a CPU ir até 2,0 GHz no modo normal; o TriMux parava em
+  1,8 GHz. Ligada (pede confirmação), N64, Dreamcast, PSP e os outros
+  emuladores pesados usam até 2,0 GHz com o perfil Automático. Esquenta mais
+  e gasta mais bateria; os limites térmicos continuam.
+* Para comparar com o sistema oficial: ligue *FPS na tela* em *Registros e
+  desempenho* e teste o mesmo jogo nos dois.
+
 # TriMux 0.5.5 (pré-lançamento)
 
 **Estado:** testado só no computador e, em parte, em QEMU (veja abaixo). O
