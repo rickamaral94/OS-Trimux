@@ -92,8 +92,14 @@ static const char *chosen_profile(const TmEmulator *emu)
     TmIni ini;
     tm_settings_load(&ini, &P);
     const char *v = tm_ini_get(&ini, "power", "profile", "auto");
-    if (strcmp(v, "auto") == 0)
+    if (strcmp(v, "auto") == 0) {
         v = emu ? emu->profile : TM_POWER_DEFAULT;
+        /* "Emuladores pesados até 2,0 GHz" (opt-in, confirmed in the menu):
+         * N64, Dreamcast, PSP... may use 2.0 GHz, as the stock firmware's
+         * normal mode allows; the thermal limits still apply */
+        if (strcmp(v, "performance") == 0 && tm_ini_get_long(&ini, "power", "heavy_boost", 0))
+            v = "boost";
+    }
     tm_strlcpy(prof, tm_power_profile(v) ? v : TM_POWER_DEFAULT, sizeof prof);
     tm_ini_free(&ini);
     return prof;
@@ -660,9 +666,16 @@ static int cmd_launch(void)
         len > 0 && (size_t)len < sizeof extra)
         len += snprintf(extra + len, sizeof extra - (size_t)len, "\n%s", vlines);
     const TmVideoCaps *vcaps = tm_video_caps(l.emu->id);
-    char opt[TM_PATH_MAX], optrel[TM_PATH_MAX];
-    if (vcaps && tm_snprintf(optrel, sizeof optrel, "config/%s/%s.opt", l.emu->config_name, l.emu->config_name) == 0 &&
-        tm_path_join(opt, sizeof opt, P.ra_home, optrel) == 0 && tm_video_core_options(&ini, l.system->id, vcaps, opt) != 0)
+    char opt[TM_PATH_MAX], optrel[TM_PATH_MAX], tuned[TM_PATH_MAX];
+    int have_opt = tm_snprintf(optrel, sizeof optrel, "config/%s/%s.opt", l.emu->config_name, l.emu->config_name) == 0 &&
+                   tm_path_join(opt, sizeof opt, P.ra_home, optrel) == 0;
+    /* recommended settings for this device first, once; the user's image choices after */
+    int t = have_opt && tm_path_join(tuned, sizeof tuned, P.state, "tuned.ini") == 0 ? tm_video_tune(l.emu->id, opt, tuned) : 0;
+    if (t == 1)
+        LOGI("launch: recommended settings for this device applied to %s", l.emu->config_name);
+    else if (t < 0)
+        LOGW("launch: could not write the recommended settings of %s", l.emu->config_name);
+    if (vcaps && have_opt && tm_video_core_options(&ini, l.system->id, vcaps, opt) != 0)
         LOGW("launch: could not write the image options of %s", l.emu->config_name);
     int perf_on = (int)tm_ini_get_long(&ini, "diag", "perf", 0);
     char ra[TM_PATH_MAX], cfg[TM_PATH_MAX], append[TM_PATH_MAX], cache[TM_PATH_MAX];

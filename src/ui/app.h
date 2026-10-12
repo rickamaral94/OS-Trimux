@@ -144,7 +144,8 @@ void app_progress(const char *msg);
 void app_dialog(int id, const char *title, const char *text, long arg, const char *sarg, int info_only);
 void app_header(const char *title);
 /* Smoothly moving value for the selection highlight of list `slot`
- * (0 home, 1 games, 2 menus); row = row height (long jumps snap). */
+ * (0 home, 1 games, 2 menus, 3 cover grid, 4 home carousel); row = row
+ * height (long jumps snap). */
 int app_anim(int slot, int target, int row);
 /* Side panel with a soft shadow; band = platform colour washed in at the top (0: none). */
 /* Cover image path of a game (Imgs/..., or a stock port's own icon); -1 if covers are off. */
@@ -177,6 +178,8 @@ void home_build(void);
 void home_draw(void);
 void home_input(TmButton b);
 size_t home_count(void);
+/* 1 when the home screen is shown as a carousel of big cards */
+int home_carousel(void);
 /* colour of the selected platform, for the background (0: none) */
 uint32_t home_ambient(void);
 
@@ -245,7 +248,7 @@ enum {
     DLG_NONE = 0, DLG_STOCK, DLG_POWEROFF, DLG_REBOOT, DLG_MKDIRS, DLG_RESTORE_EMU, DLG_GROW, DLG_EXPERIMENTAL,
     DLG_WIZ_SKIP, DLG_POWER_DEFAULT, DLG_INFO, DLG_IDLE, DLG_BOOST,
     DLG_FTP, DLG_SSH, DLG_WIFI_FORGET, DLG_CLEAR_LOGS, DLG_UPDATE_INSTALL, DLG_UPDATE_ROLLBACK, DLG_UPDATE_READY,
-    DLG_STORE_INSTALL, DLG_STORE_REMOVE, DLG_WEB, DLG_CLEAN, DLG_FILE_DELETE, DLG_RUN_LOG, DLG_UNINSTALL, DLG_STOCK_PREPARE, DLG_STOCK_TEST,
+    DLG_STORE_INSTALL, DLG_STORE_REMOVE, DLG_WEB, DLG_CLEAN, DLG_FILE_DELETE, DLG_RUN_LOG, DLG_UNINSTALL, DLG_STOCK_PREPARE, DLG_STOCK_TEST, DLG_HEAVY_BOOST,
 };
 
 /* menu actions of tools.c (menus.c hands every id from ACT_T_FIRST on to it) */

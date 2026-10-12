@@ -23,7 +23,7 @@
 #define S(v) ((v) * gfx_h() / 768)
 
 enum {
-    ACT_NONE = 0, ACT_PAGE, ACT_LANG, ACT_THEME, ACT_TOGGLE, ACT_IDLE, ACT_SWAP_AB, ACT_CTRLTEST, ACT_PROFILE,
+    ACT_NONE = 0, ACT_PAGE, ACT_LANG, ACT_THEME, ACT_TOGGLE, ACT_IDLE, ACT_HEAVY_BOOST, ACT_SWAP_AB, ACT_CTRLTEST, ACT_PROFILE,
     ACT_POWER_DEFAULT, ACT_LED_MANAGED, ACT_LED_ON, ACT_LED_COLOR, ACT_LED_BRIGHT, ACT_LED_EFFECT, ACT_RESCAN,
     ACT_MKDIRS, ACT_SET_PLAT_EMU, ACT_RESTORE_EMU, ACT_SET_GAME_EMU, ACT_INFO, ACT_WIZARD, ACT_STOCK,
     ACT_REBOOT, ACT_POWEROFF, ACT_GROW, ACT_PLAY, ACT_FAV, ACT_REMOVE_RECENT, ACT_FAV_ONLY, ACT_SEARCH,
@@ -32,7 +32,7 @@ enum {
     ACT_UPDATE_CHECK, ACT_UPDATE_INSTALL, ACT_UPDATE_ROLLBACK, ACT_UPDATE_REBOOT,
     ACT_LED_POWER, ACT_TZ, ACT_TIME_SYNC, ACT_TIME_FIELD, ACT_TIME_APPLY, ACT_APP,
     ACT_VID_ASPECT, ACT_VID_FILTER, ACT_VID_RES, ACT_VID_COLORS, ACT_VID_GHOST, ACT_VID_HD, ACT_VID_SPEED, ACT_SORT, ACT_STORE,
-    ACT_COVERS_SYS, ACT_GAMES_VIEW,
+    ACT_COVERS_SYS, ACT_GAMES_VIEW, ACT_HOME_VIEW,
 };
 
 static const struct {
@@ -170,6 +170,7 @@ static void page_appearance(Menu *m)
     it = add(m, ACT_TOGGLE, tr("settings.show_empty"), onoff((int)setting_long("general", "show_empty", 0)),
              tr("settings.show_empty.desc"));
     tm_strlcpy(it->sarg, "general/show_empty", sizeof it->sarg);
+    add(m, ACT_HOME_VIEW, tr("view.home"), tr(home_carousel() ? "view.carousel" : "view.list"), tr("view.home.desc"));
     add(m, ACT_GAMES_VIEW, tr("view.title"), tr(games_grid() ? "view.grid" : "view.list"), tr("view.desc"));
     it = add(m, ACT_TOGGLE, tr("settings.animations"), onoff((int)setting_long("general", "animations", 1)),
              tr("settings.animations.desc"));
@@ -229,6 +230,15 @@ static void page_power(Menu *m)
     if (!A.power.has_cpufreq) {
         it->enabled = 0;
         snprintf(it->desc, sizeof it->desc, "%s %s", tr("power.unavailable"), tr(A.power.reason[0] ? A.power.reason : "power.reason.no_cpufreq"));
+    }
+    if (A.power.has_cpufreq) {
+        int on = (int)setting_long("power", "heavy_boost", 0);
+        it = add(m, ACT_HEAVY_BOOST, tr("power.heavy"), onoff(on), tr("power.heavy.desc"));
+        it->arg = on;
+        if (!tm_power_boost_available(&A.power)) {
+            it->enabled = 0;
+            snprintf(it->desc, sizeof it->desc, "%s\n\n%s", tr("power.heavy.desc"), tr("power.heavy.unavailable"));
+        }
     }
     long idle = setting_long("general", "idle_poweroff_min", 0);
     char v[32];
@@ -505,6 +515,23 @@ static void video_set(const char *sys_id, const char *key, const char *val)
     app_save_all();
 }
 
+/* Internal resolution shown for a platform: the stored choice or, unset,
+ * the one the recommended settings for this device use (N64: native). */
+static long video_res_shown(const char *sys_id, const TmVideoCaps *caps, const TmEmulator *em)
+{
+    long r = 0;
+    const char *v = video_get(sys_id, "res");
+    if (v) {
+        r = strtol(v, NULL, 10);
+    } else {
+        const char *tv = em ? tm_video_tune_value(em->id, caps->res_key) : NULL;
+        for (int k = 0; tv && k < caps->nres; k++)
+            if (strcmp(caps->res[k].value, tv) == 0)
+                r = k;
+    }
+    return r >= 0 && r < caps->nres ? r : 0;
+}
+
 static void video_items(Menu *m, const char *sys_id, const TmEmulator *em)
 {
     int all = strcmp(sys_id, "*") == 0;
@@ -529,9 +556,7 @@ static void video_items(Menu *m, const char *sys_id, const TmEmulator *em)
 
     const TmVideoCaps *caps = em ? tm_video_caps(em->id) : NULL;
     if (caps && caps->res_key) {
-        long r = strtol(video_get(sys_id, "res") ? video_get(sys_id, "res") : "0", NULL, 10);
-        if (r < 0 || r >= caps->nres)
-            r = 0;
+        long r = video_res_shown(sys_id, caps, em);
         const char *rdesc = strcmp(em->id, "pcsx_rearmed") == 0 ? "video.res.desc.ps"
                             : strcmp(em->id, "mupen64plus_next") == 0 || strcmp(em->id, "flycast") == 0 ? "video.res.desc.3d"
                                                                                                         : "video.res.desc";
@@ -1838,6 +1863,14 @@ static void activate(MenuItem *it, TmButton b)
         break;
     }
     case ACT_TOGGLE: toggle_key(it->sarg); break;
+    case ACT_HEAVY_BOOST:
+        if (it->arg) { /* turning it off needs no confirmation */
+            tm_ini_set(&A.settings, "power", "heavy_boost", "0");
+            app_mark_settings();
+            break;
+        }
+        app_dialog(DLG_HEAVY_BOOST, tr("power.heavy.confirm.title"), tr("power.heavy.confirm.text"), 0, NULL, 0);
+        return;
     case ACT_IDLE: {
         static const long opts[] = {0, 5, 10, 15, 30};
         long c = setting_long("general", "idle_poweroff_min", 0);
@@ -2111,6 +2144,10 @@ static void activate(MenuItem *it, TmButton b)
         app_mark_settings();
         break;
     case ACT_COVERS_SYS: covers_toggle_system(it->sarg); break;
+    case ACT_HOME_VIEW:
+        tm_ini_set(&A.settings, "general", "home_view", home_carousel() ? "list" : "carousel");
+        app_mark_settings();
+        break;
     case ACT_GAMES_VIEW:
         tm_ini_set(&A.settings, "general", "games_view", games_grid() ? "list" : "grid");
         app_mark_settings();
@@ -2202,8 +2239,12 @@ static void activate(MenuItem *it, TmButton b)
     case ACT_VID_RES: {
         if (it->arg <= 0)
             return; /* nothing to choose on this platform */
-        const char *v = video_get(it->sarg, "res");
-        long r = v ? strtol(v, NULL, 10) : 0, n = it->arg > 0 ? it->arg : 1;
+        const TmSystem *vs = tm_catalog_system(&A.cat, it->sarg);
+        const TmEmulator *ve = vs ? tm_catalog_resolve(&A.cat, vs, NULL, tm_ini_get(&A.settings, "emulators", vs->id, NULL),
+                                                       A.paths.cores)
+                                  : NULL;
+        const TmVideoCaps *vc = ve ? tm_video_caps(ve->id) : NULL;
+        long r = vc ? video_res_shown(it->sarg, vc, ve) : 0, n = it->arg > 0 ? it->arg : 1;
         r = ((r + (b == BTN_LEFT ? -1 : 1)) % n + n) % n;
         char val[8];
         snprintf(val, sizeof val, "%ld", r);
@@ -2339,6 +2380,13 @@ void menu_dialog_result(int id, long arg, const char *sarg, int yes)
         return;
     switch (id) {
     case DLG_STOCK: app_exit(EXIT_STOCK); break;
+    case DLG_HEAVY_BOOST:
+        tm_ini_set(&A.settings, "power", "heavy_boost", "1");
+        LOGI("ui: heavy emulators may use 2.0 GHz (confirmed)");
+        app_mark_settings();
+        app_save_all();
+        menu_rebuild();
+        break;
     case DLG_POWEROFF: app_exit(EXIT_POWEROFF); break;
     case DLG_REBOOT: app_exit(EXIT_REBOOT); break;
     case DLG_GROW: app_exit(EXIT_CARD_GROW); break;

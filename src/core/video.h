@@ -68,6 +68,14 @@ int tm_video_ra_lines(const TmIni *settings, const char *system, const char *sha
  * the keys set in TriMux; every other line is kept). 0 also when there was
  * nothing to do. */
 int tm_video_core_options(const TmIni *settings, const char *system, const TmVideoCaps *caps, const char *opt_path);
+/* Recommended settings for this device of a heavy core (N64, Dreamcast,
+ * PSP), written into its options file once per version of the set (kept in
+ * state_ini, [tuned] <emu> = <version>). Later changes made in RetroArch's
+ * menu stay; TriMux's own image options are written after this. Returns 1
+ * when applied now, 0 when nothing to do, -1 on error. */
+int tm_video_tune(const char *emu_id, const char *opt_path, const char *state_ini);
+/* The recommended value of one option, or NULL. */
+const char *tm_video_tune_value(const char *emu_id, const char *key);
 /* Number of HD packs in <bios>/HdPacks (folders with a hires.txt). */
 int tm_video_count_hdpacks(const char *bios_dir);
 

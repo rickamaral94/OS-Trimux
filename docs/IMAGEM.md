@@ -53,6 +53,8 @@ Só existe onde o emulador desenha em 3D ou tem um motor próprio:
 * **PlayStation** (PCSX ReARMed): *2x* liga o "Enhanced Resolution" do
   renderizador NEON. Os modelos 3D ficam bem mais nítidos, mas é pesado:
   se um jogo ficar lento, volte para *Original*.
+* **Nintendo 64** (Mupen64Plus-Next): *Original* (320×240, o padrão a partir
+  da 0.5.6, mais leve), *Padrão 640×480* ou *2x*.
 * **DOOM** (PrBoom): 320×200, 640×400 ou 960×600.
 * **Quake** (TyrQuake): 320×240, 640×480 ou 1024×768.
 
